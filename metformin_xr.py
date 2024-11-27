@@ -7,13 +7,13 @@ modeling_dir_path = "C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/m
 
 ## Modeling and Dosing Policy 파일 불러오기
 
-# selected_models = []
-selected_models = ['C1A0E1']
+selected_models = []
+# selected_models = ['C1A0E1']
 dspol_df = pd.read_csv(f'{modeling_dir_path}/Modeling_and_Dosing_Policy - MDP.csv')
-dspol_df = dspol_df[dspol_df['MODEL'].isin(selected_models)].reset_index(drop=True)
+if len(selected_models)!=0:
+    dspol_df = dspol_df[dspol_df['MODEL'].isin(selected_models)].reset_index(drop=True)
 dspol_df = dspol_df.applymap(lambda x:convert_to_numeric_value(x))
 unique_models = dspol_df['MODEL'].unique()
-
 
 ## Project, Drug 별로 Conc data 모으기
 
@@ -98,7 +98,7 @@ for model_name in unique_models:
         drug_nmprep_df = list()
         for projectname, prj_dcdf in dcdf.groupby(['PROJECT']):
 
-            prj_dspol = dspol_df[(dspol_df['DRUG']==drug)&(dspol_df['PROJECT']==projectname)]
+            prj_dspol = dspol_df[(dspol_df['MODEL']==model_name)&(dspol_df['DRUG']==drug)&(dspol_df['PROJECT']==projectname)]
 
             for dspol_inx, dspol_row in prj_dspol.iterrows():
 

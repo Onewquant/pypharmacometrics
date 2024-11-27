@@ -17,7 +17,10 @@ def load_data_dict(drug_list, filename_format, input_file_dir_path):
 
 def convert_to_numeric_value(value):
     try:
-        return int(value)
+        if int(value)==float(value):
+            return int(value)
+        else:
+            return float(value)
     except ValueError:
         try:
             return float(value)
