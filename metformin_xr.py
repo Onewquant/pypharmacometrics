@@ -83,7 +83,134 @@ for model_name in unique_models:
         dcdf['NONMEM_RATE'] = '.'
         dcdf['NONMEM_DUR'] = '.'
 
-        ## CMT
+        # ## CMT
+        #
+        # """
+        # # 주로 농도측정이 Systemic compartment에서 진행되므로 2로 표시하는게 나을듯. 나중에 수정필요할수도
+        # # dosing policy 파일에 이 정보가 반영되도록 만들어야.
+        # # (dosing policy / modeling policy 가 모두 영향을 주는 듯)
+        # """
+        #
+        dcdf['NONMEM_CMT'] = 0
+        #
+        # # Dosing row 추가 : Project / Drug 종류에 따라 Dosing Policy 다를 수 있다고 가정. (Drug은 위에서 dcdf로 이미 구분되어있음)
+        #
+        # drug_nmprep_df = list()
+        # for projectname, prj_dcdf in dcdf.groupby(['PROJECT']):
+        #
+        #     prj_dspol = dspol_df[(dspol_df['MODEL']==model_name)&(dspol_df['DRUG']==drug)&(dspol_df['PROJECT']==projectname)]
+        #
+        #     for dspol_inx, dspol_row in prj_dspol.iterrows():
+        #
+        #         for nmid, nmid_df in dcdf.groupby(['NONMEM_ID']):
+        #
+        #             nmid_df=nmid_df.reset_index(drop=True)
+        #
+        #             # 추가할 Dosing row
+        #
+        #             add_row = nmid_df.iloc[0:1, :].copy()
+        #             add_row['NONMEM_TIME']=dspol_row['RELTIME']
+        #             add_row['NONMEM_TAD']=dspol_row['RELTIME']
+        #             add_row['NONMEM_DV'] = '.'
+        #             add_row['NONMEM_MDV'] = 1
+        #             add_row['NONMEM_CMT'] = dspol_row['DOSING_CMT'] # Compartment 는 PO인 경우 CMT=1 / IV인 경우 CMT=2 로 설정 / 기타 IM 등은 모델에 따라 CMT 결정해서 Dosing_Policy에 정확히 기입요망
+        #             add_row['NONMEM_AMT'] = dspol_row['DOSE']
+        #
+        #             # add_row.iloc[0]
+        #             """
+        #             # RATE=-1 : Rate 추정 코드 추가해야
+        #             # RATE=-2 : Dur 추정 코드 추가해야
+        #             """
+        #
+        #             if (dspol_row['ROUTE']=='PO') and (dspol_row['ABS_ORD']==1):
+        #                 add_row['NONMEM_RATE'] = '.'
+        #                 add_row['NONMEM_DUR'] = '.'
+        #             else:
+        #                 # DUR값을 음수로 써 놓은 경우
+        #                 if (dspol_row['DUR'] not in ('.', 0)):
+        #                     if dspol_row['DUR'] < 0:
+        #                         raise ValueError(f"Dosing Policy에서 {dspol_row['ROUTE'].upper()} 투여인데 DUR 값이 음수로 기록됨.")
+        #                     else:
+        #                         pass
+        #
+        #                 # PO with zero-order absorption
+        #                 if dspol_row['ROUTE'].upper()=='PO':
+        #                     if (dspol_row['ABS_ORD']==0):
+        #                         if (dspol_row['RATE']==-2):
+        #                             if dspol_row['DUR'] in (0, '.'):
+        #                                 add_row['NONMEM_RATE'] = dspol_row['RATE']
+        #                                 add_row['NONMEM_DUR'] = dspol_row['DUR']
+        #                                 print(f'PO로 쓰여있으며 Constant Absorption 모델을 의도하였는데, 입력한 DUR은 bolus와 같습니다. / {projectname}, {drug}, {nmid}')
+        #                             else:
+        #                                 add_row['NONMEM_RATE'] = dspol_row['RATE']
+        #                                 add_row['NONMEM_DUR'] = dspol_row['DUR']
+        #                         else:
+        #                             raise ValueError(f"Dosing Policy에서 {dspol_row['ROUTE'].upper()} 투여 및 Constant Absorption인데 RATE가 -2가 아닙니다.")
+        #                     else:
+        #                         print(f'PO로 쓰여있으며 0, 1차 absorption 이외의 다른 모델을 의도한 것 같습니다. / {projectname}, {drug}, {nmid}')
+        #
+        #                 # iV 투여시
+        #                 elif dspol_row['ROUTE'].upper()=='IV_BOLUS':
+        #                     if (dspol_row['RATE'] in (-1, -2)) and (dspol_row['DUR'] in ('.',0)):
+        #                         add_row['NONMEM_RATE'] = dspol_row['RATE']
+        #                         add_row['NONMEM_DUR'] = dspol_row['DUR']
+        #                     else:
+        #                         raise ValueError(f"Dosing Policy에서 {dspol_row['ROUTE'].upper()} 투여인데 RATE와 DUR 값이 바르지 않게 기록됩.")
+        #                 elif dspol_row['ROUTE'].upper()=='IV_INFUSION':
+        #                     # 잘못 써 놓은 경우
+        #                     if (dspol_row['RATE'] in ('.',0)):
+        #                         raise ValueError(f"Dosing Policy에서 {dspol_row['ROUTE'].upper()} 투여인데 RATE 값이 0으로 기록됨.")
+        #
+        #                     # Infusion이라고 서놨지만 iv bolus 투여와 같이 써놓은 경우
+        #                     elif (dspol_row['RATE']==-1) and (type(dspol_row['DUR']) in (int, float)) or (dspol_row['DUR']=='.'):
+        #                         add_row['NONMEM_RATE'] = dspol_row['RATE']
+        #                         add_row['NONMEM_DUR'] = dspol_row['DUR']
+        #                         print(f'iv infusion으로 쓰여있으나, 입력한 RATE와 DUR은 iv bolus와 같습니다. / {projectname}, {drug}, {nmid}')
+        #                     elif (dspol_row['RATE']==-2) and (dspol_row['DUR'] in ('.', 0)):
+        #                         add_row['NONMEM_RATE'] = dspol_row['RATE']
+        #                         add_row['NONMEM_DUR'] = dspol_row['DUR']
+        #                         print(f'iv infusion으로 쓰여있으나, 입력한 RATE와 DUR은 iv bolus와 같습니다. / {projectname}, {drug}, {nmid}')
+        #
+        #                     # Infusion에서 RATE를 모델에서 추정하는 경우
+        #                     elif(dspol_row['RATE']==-2) and (type(dspol_row['DUR']) in (int,float)):
+        #                         add_row['NONMEM_RATE'] = dspol_row['RATE']
+        #                         add_row['NONMEM_DUR'] = dspol_row['DUR']
+        #
+        #                     # Infusion에서 RATE와 DUR를 모두 숫자로 잘 기입해 둔 경우
+        #                     elif (type(dspol_row['RATE']) in (int, float)) and (type(dspol_row['DUR']) in (int, float)):
+        #                         if (dspol_row['RATE'] > 0):
+        #                             add_row['NONMEM_RATE'] = dspol_row['RATE']
+        #                             add_row['NONMEM_DUR'] = dspol_row['DUR']
+        #                         elif (dspol_row['RATE'] == -2) and (dspol_row['DUR'] not in ('.', 0)):
+        #                             add_row['NONMEM_RATE'] = dspol_row['RATE']
+        #                             add_row['NONMEM_DUR'] = dspol_row['DUR']
+        #                         elif (dspol_row['RATE']==-1) and (dspol_row['DUR'] not in ('.',0)):
+        #                             raise ValueError(f"Dosing Policy에서 {dspol_row['ROUTE'].upper()} 투여인데 RATE=-1 / DUR=양수로 논리적으로 맞지 않습니다 (Bolus 인데, Duration 존재)")
+        #                         else:
+        #                             raise ValueError(f"Dosing Policy에서 {dspol_row['ROUTE'].upper()} 투여인데 기타 다른 케이스임. 확인필요")
+        #
+        #             # 추가할 Dosing row를 위치할 곳 설정
+        #
+        #             if dspol_row['RELPOSITION'] not in (0, 1):
+        #                 raise ValueError(f"Dosing Policy에서 RELPOSITION 은 0 또는 1이어야함. 해당 row 기준으로 (0: 직전 / 1: 직후)에 추가 row 삽입")
+        #
+        #             rt_inx = nmid_df[nmid_df[f"NONMEM_{dspol_row['RELTIMECOL']}"]==dspol_row['RELTIME']].iloc[0].name
+        #             add_pos_inx = rt_inx + dspol_row['RELPOSITION']
+        #
+        #             if add_pos_inx < 0:
+        #                 raise ValueError(f"Dosing row를 추가하려는 위치가 0번째 row보다 작은값입니다. / {projectname}, {drug}, {nmid}")
+        #             elif add_pos_inx==0:
+        #                 nmid_df = pd.concat([add_row, nmid_df], ignore_index=True)
+        #             elif (add_pos_inx>0) and (add_pos_inx<len(nmid_df)):
+        #                 nmid_df = pd.concat([nmid_df.loc[:add_pos_inx-1, :].copy(), add_row, nmid_df.loc[add_pos_inx:, :].copy()], ignore_index=True)
+        #             elif (add_pos_inx==len(nmid_df)):
+        #                 nmid_df = pd.concat([nmid_df, add_row], ignore_index=True)
+        #             else:
+        #                 raise ValueError(f"Dosing row를 추가하려는 위치가 마지막 row보다 큰 값입니다. / {projectname}, {drug}, {nmid}")
+        #
+        #             drug_nmprep_df.append(nmid_df)
+
+        ## CMT / DUR / RATE
 
         """
         # 주로 농도측정이 Systemic compartment에서 진행되므로 2로 표시하는게 나을듯. 나중에 수정필요할수도
@@ -91,51 +218,70 @@ for model_name in unique_models:
         # (dosing policy / modeling policy 가 모두 영향을 주는 듯)
         """
 
-        dcdf['NONMEM_CMT'] = 2
-
         # Dosing row 추가 : Project / Drug 종류에 따라 Dosing Policy 다를 수 있다고 가정. (Drug은 위에서 dcdf로 이미 구분되어있음)
 
         drug_nmprep_df = list()
         for projectname, prj_dcdf in dcdf.groupby(['PROJECT']):
 
-            prj_dspol = dspol_df[(dspol_df['MODEL']==model_name)&(dspol_df['DRUG']==drug)&(dspol_df['PROJECT']==projectname)]
+            prj_dspol = dspol_df[(dspol_df['MODEL'] == model_name) & (dspol_df['DRUG'] == drug) & (dspol_df['PROJECT'] == projectname)]
 
             for dspol_inx, dspol_row in prj_dspol.iterrows():
 
                 for nmid, nmid_df in dcdf.groupby(['NONMEM_ID']):
 
-                    nmid_df=nmid_df.reset_index(drop=True)
+                    nmid_df = nmid_df.reset_index(drop=True)
 
                     # 추가할 Dosing row
 
                     add_row = nmid_df.iloc[0:1, :].copy()
-                    add_row['NONMEM_TIME']=dspol_row['RELTIME']
-                    add_row['NONMEM_TAD']=dspol_row['RELTIME']
+                    add_row['NONMEM_TIME'] = dspol_row['RELTIME']
+                    add_row['NONMEM_TAD'] = dspol_row['RELTIME']
                     add_row['NONMEM_DV'] = '.'
                     add_row['NONMEM_MDV'] = 1
-                    add_row['NONMEM_CMT'] = dspol_row['DOSING_CMT'] # Compartment 는 PO인 경우 CMT=1 / IV인 경우 CMT=2 로 설정 / 기타 IM 등은 모델에 따라 CMT 결정해서 Dosing_Policy에 정확히 기입요망
+                    add_row['NONMEM_CMT'] = dspol_row['DOSING_CMT']  # Compartment 는 PO인 경우 CMT=1 / IV인 경우 CMT=2 로 설정 / 기타 IM 등은 모델에 따라 CMT 결정해서 Dosing_Policy에 정확히 기입요망
                     add_row['NONMEM_AMT'] = dspol_row['DOSE']
 
                     # add_row.iloc[0]
                     """
-                    # RATE=-1 : iv bolus 투여로 간주
-                    # RATE=-2 : 
-                        - Model-dependent 투여 (투여 속도를 모델에서 계산)
-                        - 모델 내에 투여 속도 계산 로직 존재해야함
-                        - 예시)
-                            $DES
-                            DADT(1) = -AMT/DUR ; DEPOT 구획에서 흡수 속도
-                            DADT(2) = AMT/DUR - K * A(2) ; CENTRAL 구획으로 이동 후 제거
-                    # Zero-order Absorption 을 구현할때, Dataprep :
-                        - RATE : -2 / DUR : 10 (일반적인 서방형 제제라고 가정시)
-                        - RATE : -2 / DUR : . (Bolus 처럼 투여되는 것으로 계산됨)
+                    # RATE=-1 : Rate 추정 코드 추가해야
+                    # RATE=-2 : Dur 추정 코드 추가해야
                     
-                    """
+                    # [ADVAN 1 - 1구획 iv] : 1CMT (TRANS1 - K / TRANS2 - CL, V)
+                    # [ADVAN 2 - 1구획 PO] : 1CMT-depot, 2CMT-central (TRANS1 - K, KA / TRANS2 - CL, V, KA)
+                    # [ADVAN 3 - 2구획 iv] : 1CMT-central, 2CMT-peripheral (TRANS1 - K, K12, K21 / TRANS3 - CL, V, Q, VSS / TRANS4 - CL, V1, Q, V2 / TRANS5 - AOB, ALPHA, BETA / TRANS6 - ALPHA, BETA, K21)
+                    # [ADVAN 4 - 2구획 PO] : 1CMT-depot, 2CMT-central, 3CMT-peripheral (TRANS1 - K, K23, K32, KA / TRANS3 - CL, V, Q, VSS, KA / TRANS4 - CL, V2, Q, V3, KA / TRANS5 - AOB, ALPHA, BETA, KA / TRANS6 - ALPHA, BETA, K32, KA)
+                    # [ADVAN 11 - 3구획 iv] : 1CMT-central, 2CMT-peripheral1, 3CMT-peripheral2
+                    # [ADVAN 12 - 3구획 PO] : 1CMT-depot, 2CMT-central, 3CMT-peripheral1, 4CMT-peripheral2
+                   
+                   """
 
+                    def dosing_cmt_for_specific_advan_type(advan=0, route=''):
+                        if (advan==1) and (route=='IV'): return 1
+                        elif (advan==1) and (route!='IV'): return 1
+                        elif (advan==2) and (route=='IV'): return 1
+                        elif (advan==2) and (route!='IV'): return 2
+                        elif (advan==3) and (route=='IV'): return 1
+                        elif (advan==3) and (route!='IV'): return 1
+                        elif (advan==4) and (route=='IV'): return 2
+                        elif (advan==4) and (route!='IV'): return 1
+                        elif (advan==11) and (route=='IV'): return 1
+                        elif (advan==11) and (route!='IV'): return 1
+                        elif (advan==12) and (route=='IV'): return 2
+                        elif (advan==12) and (route!='IV'): return 1
+                        else: raise ValueError("Dosing Compartment 결정시 / ADVAN과 ROUTE를 정확히 입력하세요.")
+                    def sampling_cmt_for_specific_advan_type(advan=0):
+                        if (advan==1): return 1
+                        elif (advan==2): return 2
+                        elif (advan==3): return 1
+                        elif (advan==4): return 2
+                        elif (advan==11): return 1
+                        elif (advan==12): return 2
+                        else: raise ValueError("Sampling Compartment 결정시 / ADVAN을 정확히 입력하세요.")
 
-                    if (dspol_row['ROUTE']=='PO') and (dspol_row['ABS_ORD']==1):
+                    if (dspol_row['ROUTE'] != 'IV') and (dspol_row['ABS_ORD'] == 1):
                         add_row['NONMEM_RATE'] = '.'
                         add_row['NONMEM_DUR'] = '.'
+                        add_row['NONMEM_CMT'] = '.' ########### 여기
                     else:
                         # DUR값을 음수로 써 놓은 경우
                         if (dspol_row['DUR'] not in ('.', 0)):
@@ -145,45 +291,52 @@ for model_name in unique_models:
                                 pass
 
                         # PO with zero-order absorption
-                        if dspol_row['ROUTE'].upper()=='PO':
-                            if (dspol_row['ABS_ORD']==0):
-                                if (dspol_row['RATE']==-2):
+                        if dspol_row['ROUTE'].upper() == 'PO':
+                            if (dspol_row['ABS_ORD'] == 0):
+                                if (dspol_row['RATE'] == -2):
                                     if dspol_row['DUR'] in (0, '.'):
                                         add_row['NONMEM_RATE'] = dspol_row['RATE']
                                         add_row['NONMEM_DUR'] = dspol_row['DUR']
-                                        print(f'PO로 쓰여있으며 Constant Absorption 모델을 의도하였는데, 입력한 DUR은 bolus와 같습니다. / {projectname}, {drug}, {nmid}')
+                                        print(
+                                            f'PO로 쓰여있으며 Constant Absorption 모델을 의도하였는데, 입력한 DUR은 bolus와 같습니다. / {projectname}, {drug}, {nmid}')
                                     else:
                                         add_row['NONMEM_RATE'] = dspol_row['RATE']
                                         add_row['NONMEM_DUR'] = dspol_row['DUR']
                                 else:
-                                    raise ValueError(f"Dosing Policy에서 {dspol_row['ROUTE'].upper()} 투여 및 Constant Absorption인데 RATE가 -2가 아닙니다.")
+                                    raise ValueError(
+                                        f"Dosing Policy에서 {dspol_row['ROUTE'].upper()} 투여 및 Constant Absorption인데 RATE가 -2가 아닙니다.")
                             else:
-                                print(f'PO로 쓰여있으며 0, 1차 absorption 이외의 다른 모델을 의도한 것 같습니다. / {projectname}, {drug}, {nmid}')
+                                print(
+                                    f'PO로 쓰여있으며 0, 1차 absorption 이외의 다른 모델을 의도한 것 같습니다. / {projectname}, {drug}, {nmid}')
 
                         # iV 투여시
-                        elif dspol_row['ROUTE'].upper()=='IV_BOLUS':
-                            if (dspol_row['RATE'] in (-1, -2)) and (dspol_row['DUR'] in ('.',0)):
+                        elif dspol_row['ROUTE'].upper() == 'IV_BOLUS':
+                            if (dspol_row['RATE'] in (-1, -2)) and (dspol_row['DUR'] in ('.', 0)):
                                 add_row['NONMEM_RATE'] = dspol_row['RATE']
                                 add_row['NONMEM_DUR'] = dspol_row['DUR']
                             else:
-                                raise ValueError(f"Dosing Policy에서 {dspol_row['ROUTE'].upper()} 투여인데 RATE와 DUR 값이 바르지 않게 기록됩.")
-                        elif dspol_row['ROUTE'].upper()=='IV_INFUSION':
+                                raise ValueError(
+                                    f"Dosing Policy에서 {dspol_row['ROUTE'].upper()} 투여인데 RATE와 DUR 값이 바르지 않게 기록됩.")
+                        elif dspol_row['ROUTE'].upper() == 'IV_INFUSION':
                             # 잘못 써 놓은 경우
-                            if (dspol_row['RATE'] in ('.',0)):
+                            if (dspol_row['RATE'] in ('.', 0)):
                                 raise ValueError(f"Dosing Policy에서 {dspol_row['ROUTE'].upper()} 투여인데 RATE 값이 0으로 기록됨.")
 
                             # Infusion이라고 서놨지만 iv bolus 투여와 같이 써놓은 경우
-                            elif (dspol_row['RATE']==-1) and (type(dspol_row['DUR']) in (int, float)) or (dspol_row['DUR']=='.'):
+                            elif (dspol_row['RATE'] == -1) and (type(dspol_row['DUR']) in (int, float)) or (
+                                    dspol_row['DUR'] == '.'):
                                 add_row['NONMEM_RATE'] = dspol_row['RATE']
                                 add_row['NONMEM_DUR'] = dspol_row['DUR']
-                                print(f'iv infusion으로 쓰여있으나, 입력한 RATE와 DUR은 iv bolus와 같습니다. / {projectname}, {drug}, {nmid}')
-                            elif (dspol_row['RATE']==-2) and (dspol_row['DUR'] in ('.', 0)):
+                                print(
+                                    f'iv infusion으로 쓰여있으나, 입력한 RATE와 DUR은 iv bolus와 같습니다. / {projectname}, {drug}, {nmid}')
+                            elif (dspol_row['RATE'] == -2) and (dspol_row['DUR'] in ('.', 0)):
                                 add_row['NONMEM_RATE'] = dspol_row['RATE']
                                 add_row['NONMEM_DUR'] = dspol_row['DUR']
-                                print(f'iv infusion으로 쓰여있으나, 입력한 RATE와 DUR은 iv bolus와 같습니다. / {projectname}, {drug}, {nmid}')
+                                print(
+                                    f'iv infusion으로 쓰여있으나, 입력한 RATE와 DUR은 iv bolus와 같습니다. / {projectname}, {drug}, {nmid}')
 
                             # Infusion에서 RATE를 모델에서 추정하는 경우
-                            elif(dspol_row['RATE']==-2) and (type(dspol_row['DUR']) in (int,float)):
+                            elif (dspol_row['RATE'] == -2) and (type(dspol_row['DUR']) in (int, float)):
                                 add_row['NONMEM_RATE'] = dspol_row['RATE']
                                 add_row['NONMEM_DUR'] = dspol_row['DUR']
 
@@ -195,31 +348,37 @@ for model_name in unique_models:
                                 elif (dspol_row['RATE'] == -2) and (dspol_row['DUR'] not in ('.', 0)):
                                     add_row['NONMEM_RATE'] = dspol_row['RATE']
                                     add_row['NONMEM_DUR'] = dspol_row['DUR']
-                                elif (dspol_row['RATE']==-1) and (dspol_row['DUR'] not in ('.',0)):
-                                    raise ValueError(f"Dosing Policy에서 {dspol_row['ROUTE'].upper()} 투여인데 RATE=-1 / DUR=양수로 논리적으로 맞지 않습니다 (Bolus 인데, Duration 존재)")
+                                elif (dspol_row['RATE'] == -1) and (dspol_row['DUR'] not in ('.', 0)):
+                                    raise ValueError(
+                                        f"Dosing Policy에서 {dspol_row['ROUTE'].upper()} 투여인데 RATE=-1 / DUR=양수로 논리적으로 맞지 않습니다 (Bolus 인데, Duration 존재)")
                                 else:
-                                    raise ValueError(f"Dosing Policy에서 {dspol_row['ROUTE'].upper()} 투여인데 기타 다른 케이스임. 확인필요")
+                                    raise ValueError(
+                                        f"Dosing Policy에서 {dspol_row['ROUTE'].upper()} 투여인데 기타 다른 케이스임. 확인필요")
 
                     # 추가할 Dosing row를 위치할 곳 설정
 
                     if dspol_row['RELPOSITION'] not in (0, 1):
-                        raise ValueError(f"Dosing Policy에서 RELPOSITION 은 0 또는 1이어야함. 해당 row 기준으로 (0: 직전 / 1: 직후)에 추가 row 삽입")
+                        raise ValueError(
+                            f"Dosing Policy에서 RELPOSITION 은 0 또는 1이어야함. 해당 row 기준으로 (0: 직전 / 1: 직후)에 추가 row 삽입")
 
-                    rt_inx = nmid_df[nmid_df[f"NONMEM_{dspol_row['RELTIMECOL']}"]==dspol_row['RELTIME']].iloc[0].name
+                    rt_inx = nmid_df[nmid_df[f"NONMEM_{dspol_row['RELTIMECOL']}"] == dspol_row['RELTIME']].iloc[0].name
                     add_pos_inx = rt_inx + dspol_row['RELPOSITION']
 
                     if add_pos_inx < 0:
                         raise ValueError(f"Dosing row를 추가하려는 위치가 0번째 row보다 작은값입니다. / {projectname}, {drug}, {nmid}")
-                    elif add_pos_inx==0:
+                    elif add_pos_inx == 0:
                         nmid_df = pd.concat([add_row, nmid_df], ignore_index=True)
-                    elif (add_pos_inx>0) and (add_pos_inx<len(nmid_df)):
-                        nmid_df = pd.concat([nmid_df.loc[:add_pos_inx-1, :].copy(), add_row, nmid_df.loc[add_pos_inx:, :].copy()], ignore_index=True)
-                    elif (add_pos_inx==len(nmid_df)):
+                    elif (add_pos_inx > 0) and (add_pos_inx < len(nmid_df)):
+                        nmid_df = pd.concat(
+                            [nmid_df.loc[:add_pos_inx - 1, :].copy(), add_row, nmid_df.loc[add_pos_inx:, :].copy()],
+                            ignore_index=True)
+                    elif (add_pos_inx == len(nmid_df)):
                         nmid_df = pd.concat([nmid_df, add_row], ignore_index=True)
                     else:
                         raise ValueError(f"Dosing row를 추가하려는 위치가 마지막 row보다 큰 값입니다. / {projectname}, {drug}, {nmid}")
 
                     drug_nmprep_df.append(nmid_df)
+
 
         # Prep Data 생성
 
