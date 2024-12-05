@@ -129,6 +129,15 @@ for model_name in unique_models:
                     # [ADVAN 12 - 3구획 PO] : 1CMT-depot, 2CMT-central, 3CMT-peripheral1, 4CMT-peripheral2
                     """
 
+                    """
+                    [ADVAN1 TRANS2 (1-comp IV세팅, dosing : CMT 1)] 
+                    - AMT(O), RATE( _ or point ), DUR( _ or point ) => 안 돌아감
+                    - AMT(O), RATE(-2), DUR(point) => 돌아감
+                    
+                    [ADVAN2 TRANS2 (1-comp PO세팅, dosing : CMT 2)] 
+                    - AMT(O), RATE( _ or point ), DUR( _ or point ) => 돌아감
+                    """
+
                     add_row['NONMEM_RATE'] = dspol_row['RATE']
                     add_row['NONMEM_DUR'] = dspol_row['DUR']
                     add_row['NONMEM_CMT'] = dosing_cmt_for_advan_type(advan=dspol_row['ADVAN'],route=dspol_row['ROUTE'])
