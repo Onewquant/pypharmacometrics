@@ -43,8 +43,9 @@ for projectname, drug_list in project_dict.items():
 
 uid_inf_cols = ['PROJECT','PERIOD','SEQUENCE']
 uid_inf_dict = dict()
-for model_name in unique_models:
+for model_name in unique_models: #print(model_name)
     for drug in drugconc_dict.keys():
+        # if drug=='Metformin': break
         dcdf = drugconc_dict[drug].copy()
 
         ## ID Column
@@ -96,13 +97,14 @@ for model_name in unique_models:
         # Dosing row 추가 : Project / Drug 종류에 따라 Dosing Policy 다를 수 있다고 가정. (Drug은 위에서 dcdf로 이미 구분되어있음)
 
         drug_nmprep_df = list()
-        for projectlist, prj_dcdf in dcdf.groupby(['PROJECT']):
-            projectname = projectlist[0]
+        for projectname, prj_dcdf in dcdf.groupby(['PROJECT']): #break
+
+            # 해당 dosing policy
             prj_dspol = dspol_df[(dspol_df['MODEL'] == model_name) & (dspol_df['DRUG'] == drug) & (dspol_df['PROJECT'] == projectname)].reset_index(drop=True)
 
-            for dspol_inx, dspol_row in prj_dspol.iterrows():
+            for dspol_inx, dspol_row in prj_dspol.iterrows(): #break
 
-                for nmid, nmid_df in dcdf.groupby(['NONMEM_ID']):
+                for nmid, nmid_df in dcdf.groupby(['NONMEM_ID']): #break
 
                     nmid_df = nmid_df.reset_index(drop=True)
 
@@ -149,10 +151,10 @@ for model_name in unique_models:
                         else:
                             pass
 
-                    if (['AMT'] < 0): ### 여기
-                        raise ValueError(f"AMT가 음수로 기록되었습니다.")
+                    if (dspol_row['DOSE'] < 0): ### 여기
+                        raise ValueError(f"DOSE가 음수로 기록되었습니다.")
                     else:
-                        if (dspol_row['AMT'] > 0) and (dspol_row['RATE'] in (0,'.')):
+                        if (dspol_row['DOSE'] > 0) and (dspol_row['RATE'] in (0,'.')):
                             print('Bolus와 같이 추정합니다. / DUR이 필요한 경우일지도. / 아직 어떻게 진행될지 모름 -> 해보자')
                             add_row['NONMEM_RATE'] = dspol_row['RATE']
                             add_row['NONMEM_DUR'] = dspol_row['DUR']
@@ -245,8 +247,7 @@ for model_name in unique_models:
                     # 추가할 Dosing row를 위치할 곳 설정
 
                     if dspol_row['RELPOSITION'] not in (0, 1):
-                        raise ValueError(
-                            f"Dosing Policy에서 RELPOSITION 은 0 또는 1이어야함. 해당 row 기준으로 (0: 직전 / 1: 직후)에 추가 row 삽입")
+                        raise ValueError(f"Dosing Policy에서 RELPOSITION 은 0 또는 1이어야함. 해당 row 기준으로 (0: 직전 / 1: 직후)에 추가 row 삽입")
 
                     rt_inx = nmid_df[nmid_df[f"NONMEM_{dspol_row['RELTIMECOL']}"] == dspol_row['RELTIME']].iloc[0].name
                     add_pos_inx = rt_inx + dspol_row['RELPOSITION']
