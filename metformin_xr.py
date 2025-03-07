@@ -97,14 +97,14 @@ for model_name in unique_models: #print(model_name)
         # Dosing row 추가 : Project / Drug 종류에 따라 Dosing Policy 다를 수 있다고 가정. (Drug은 위에서 dcdf로 이미 구분되어있음)
 
         drug_nmprep_df = list()
-        for projectname, prj_dcdf in dcdf.groupby(['PROJECT']): #break
+        for projectname, prj_dcdf in dcdf.groupby(['PROJECT']):
 
             # 해당 dosing policy
             prj_dspol = dspol_df[(dspol_df['MODEL'] == model_name) & (dspol_df['DRUG'] == drug) & (dspol_df['PROJECT'] == projectname)].reset_index(drop=True)
 
             for dspol_inx, dspol_row in prj_dspol.iterrows(): #break
 
-                for nmid, nmid_df in dcdf.groupby(['NONMEM_ID']): #break
+                for nmid, nmid_df in prj_dcdf.groupby(['NONMEM_ID']): #break
 
                     nmid_df = nmid_df.reset_index(drop=True)
 
@@ -160,14 +160,14 @@ for model_name in unique_models: #print(model_name)
                             add_row['NONMEM_DUR'] = dspol_row['DUR']
                         else:
                             if (dspol_row['RATE']==-1):
-                                print('Absorption의 Rate을 추정합니다. / NONMEM 코드에 Rn = theta(m) 구문을 추가하세요')
+                                # print('Absorption의 Rate을 추정합니다. / NONMEM 코드에 Rn = theta(m) 구문을 추가하세요')
                                 add_row['NONMEM_RATE'] = -1
                                 add_row['NONMEM_DUR'] = '.'
                             elif (dspol_row['RATE']==-2):
-                                print('Absorption의 Duration을 추정합니다. / NONMEM 코드에 Dn = theta(m) 구문을 추가하세요')
+                                # print('Absorption의 Duration을 추정합니다. / NONMEM 코드에 Dn = theta(m) 구문을 추가하세요')
                                 add_row['NONMEM_DUR'] = '.'
                             elif (dspol_row['RATE']>0):
-                                print('양수인 RATE을 가지고 있습니다. / 코드에 어떻게 추가해야하는지 아직 모름 -> 해보자')
+                                # print('양수인 RATE을 가지고 있습니다. / 코드에 어떻게 추가해야하는지 아직 모름 -> 해보자')
                                 add_row['NONMEM_DUR'] = '.'
                             else:
                                 raise ValueError(f"RATE, DURATION 값을 확인하세요.")
@@ -272,21 +272,28 @@ for model_name in unique_models: #print(model_name)
 
         drug_nmprep_df = pd.concat(drug_nmprep_df, ignore_index=True)
 
+
+
         # Prep Data 컬럼편집
 
         drug_nonmem_cols = [c for c in drug_nmprep_df.columns if c.split('_')[0]=='NONMEM']
         drug_nmprep_df=drug_nmprep_df[drug_nonmem_cols].copy()
         drug_nmprep_df.columns=[c[7:] for c in drug_nonmem_cols]
 
+        # ID 값을 작은 값으로 재조정 및 dictionary 생성
+
+        short_id_dict = {id:short_id+1 for short_id, id in enumerate(drug_nmprep_df['ID'].unique())}
+        drug_nmprep_df['ID'] = drug_nmprep_df['ID'].map(short_id_dict)
+
         # Prep Data 에 Covariate정보 추가 (추후 구현)
-
-
 
         # Prep Data 저장
 
         if not os.path.exists(f"{modeling_dir_path}/prep_data"):
             os.mkdir(f"{modeling_dir_path}/prep_data")
-        drug_nmprep_df.to_csv(f"{modeling_dir_path}/prep_data/MDP_{model_name}_({drug}).csv", index=False, encoding='utf-8-sig')
+        drug_nmprep_df.to_csv(f"{modeling_dir_path}/prep_data/MDP_{model_name}_{drug}.csv", index=False, encoding='utf-8-sig')
+
+
 
         # CMT, RATE, DUR, EVID, SS, ADDL
 
