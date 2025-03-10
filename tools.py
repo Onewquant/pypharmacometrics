@@ -30,27 +30,27 @@ def convert_to_numeric_value(value):
 
 def dosing_cmt_for_advan_type(advan=0, route='', forced_dosing_cmt=np.nan):
     # Specific ADVAN
-    if (advan == 1):
+    if (advan== 1):                          # 1 comp / IV or zero-order abs
         return 1
-    elif (advan == 2) and (route == 'IV'):
-        return 1
-    elif (advan == 2) and (route != 'IV'):
+    elif (advan == 2) and (route == 'IV'):   # 1 comp / ExtraVascular (IV로 주므로 central comp에)
         return 2
-    elif (advan == 3) and (route == 'IV'):
+    elif (advan == 2) and (route != 'IV'):   # 1 comp / ExtraVascular (IV아니므로 depot comp에)
         return 1
-    elif (advan == 3) and (route != 'IV'):
+    elif (advan == 3) and (route == 'IV'):   # 2 comp / IV (IV 이므로 central comp에)
         return 1
-    elif (advan == 4) and (route == 'IV'):
+    elif (advan == 3) and (route != 'IV'):   # 2 comp / IV - zero-order abs 만 가능
+        return 1
+    elif (advan == 4) and (route == 'IV'):   # 2 comp / ExtraVascular (IV로 주므로 central comp에)
         return 2
-    elif (advan == 4) and (route != 'IV'):
+    elif (advan == 4) and (route != 'IV'):   # 2 comp / ExtraVascular (IV아니므로 depot comp에)
         return 1
-    elif (advan == 11) and (route == 'IV'):
+    elif (advan == 11) and (route == 'IV'):   # 3 comp / IV (IV 이므로 central comp에)
         return 1
-    elif (advan == 11) and (route != 'IV'):
+    elif (advan == 11) and (route != 'IV'):   # 3 comp / IV - zero-order abs 만 가능
         return 1
-    elif (advan == 12) and (route == 'IV'):
+    elif (advan == 12) and (route == 'IV'):   # 3 comp / ExtraVascular (IV로 주므로 central comp에)
         return 2
-    elif (advan == 12) and (route != 'IV'):
+    elif (advan == 12) and (route != 'IV'):   # 3 comp / ExtraVascular (IV아니므로 depot comp에)
         return 1
     # General ADVAN
     elif (advan in (5, 6, 7, 8, 9, 13)):
@@ -67,17 +67,17 @@ def dosing_cmt_for_advan_type(advan=0, route='', forced_dosing_cmt=np.nan):
 
 def sampling_cmt_for_specific_advan_type(advan=0, forced_sampling_cmt=np.nan):
     # Specific ADVAN
-    if (advan == 1):
+    if (advan == 1):     # 1 comp / IV
         return 1
-    elif (advan == 2):
+    elif (advan == 2):   # 1 comp / ExtraVascular
         return 2
-    elif (advan == 3):
+    elif (advan == 3):   # 2 comp / IV
         return 1
-    elif (advan == 4):
+    elif (advan == 4):   # 2 comp / ExtraVascular
         return 2
-    elif (advan == 11):
+    elif (advan == 11):   # 3 comp / IV
         return 1
-    elif (advan == 12):
+    elif (advan == 12):   # 3 comp / ExtraVascular
         return 2
     # General ADVAN
     elif (advan in (5, 6, 7, 8, 9, 13)):

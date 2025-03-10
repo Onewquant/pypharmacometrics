@@ -45,6 +45,8 @@ uid_inf_cols = ['PROJECT','PERIOD','SEQUENCE']
 uid_inf_dict = dict()
 for model_name in unique_models: #print(model_name)
     for drug in drugconc_dict.keys():
+
+        model_drug_dspol = dspol_df[(dspol_df['MODEL'] == model_name) & (dspol_df['DRUG'] == drug)].copy()
         # if drug=='Metformin': break
         dcdf = drugconc_dict[drug].copy()
 
@@ -86,7 +88,7 @@ for model_name in unique_models: #print(model_name)
 
         dcdf['NONMEM_RATE'] = '.'
         dcdf['NONMEM_DUR'] = '.'
-        dcdf['NONMEM_CMT'] = 0
+        dcdf['NONMEM_CMT'] = sampling_cmt_for_specific_advan_type(advan=model_drug_dspol['ADVAN'].iloc[0], forced_sampling_cmt=np.nan)
 
         """
         # 주로 농도측정이 Systemic compartment에서 진행되므로 2로 표시하는게 나을듯. 나중에 수정필요할수도
@@ -100,7 +102,7 @@ for model_name in unique_models: #print(model_name)
         for projectname, prj_dcdf in dcdf.groupby(['PROJECT']):
 
             # 해당 dosing policy
-            prj_dspol = dspol_df[(dspol_df['MODEL'] == model_name) & (dspol_df['DRUG'] == drug) & (dspol_df['PROJECT'] == projectname)].reset_index(drop=True)
+            prj_dspol = model_drug_dspol[(dspol_df['PROJECT'] == projectname)].reset_index(drop=True)
 
             for dspol_inx, dspol_row in prj_dspol.iterrows(): #break
 
@@ -115,7 +117,7 @@ for model_name in unique_models: #print(model_name)
                     add_row['NONMEM_TAD'] = dspol_row['RELTIME']
                     add_row['NONMEM_DV'] = '.'
                     add_row['NONMEM_MDV'] = 1
-                    add_row['NONMEM_CMT'] = dspol_row['DOSING_CMT']  # Compartment 는 PO인 경우 CMT=1 / IV인 경우 CMT=2 로 설정 / 기타 IM 등은 모델에 따라 CMT 결정해서 Dosing_Policy에 정확히 기입요망
+                    add_row['NONMEM_CMT'] = dosing_cmt_for_advan_type(advan=dspol_row['ADVAN'], route=dspol_row['ROUTE'], forced_dosing_cmt=np.nan)
                     add_row['NONMEM_AMT'] = dspol_row['DOSE']
 
                     # add_row.iloc[0]
