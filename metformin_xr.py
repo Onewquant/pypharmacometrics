@@ -13,7 +13,7 @@ dspol_df = pd.read_csv(f'{modeling_dir_path}/Modeling_and_Dosing_Policy - MDP.cs
 if len(selected_models)!=0:
     dspol_df = dspol_df[dspol_df['MODEL'].isin(selected_models)].reset_index(drop=True)
 dspol_df = dspol_df.applymap(lambda x:convert_to_numeric_value(x))
-unique_models = dspol_df['MODEL'].unique()
+
 
 ## Project, Drug 별로 Conc data 모으기
 
@@ -69,9 +69,13 @@ def generate_nonmem_subject_id(df, sid_col, uid_cols):
     # dcdf['NONMEM_UID'] = dcdf['NONMEM_ID'].copy()
     return dcdf['NONMEM_ID'].copy()
 
-def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_dir_path, covar_df=pd.DataFrame(columns=['UID']), uid_on=True):
+def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_dir_path, covar_cols=[], add_covar_df=pd.DataFrame(columns=['UID']), uid_on=True, term_dict={'TIME':'ATIME','TAD':'NTIME','DV':'CONC','ID':'ID'}):
 
+    """
+    # add_covar_df 를 추가할때는 uid_cols를 반드시 포함하는 primary key로서 사용
+    """
 
+    unique_models = dspol_df['MODEL'].unique()
     for model_name in unique_models: #print(model_name)
         for drug in drugconc_dict.keys():
 
@@ -79,7 +83,37 @@ def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_di
             # if drug=='Metformin': break
             dcdf = drugconc_dict[drug].copy()
 
-            dcdf['NONMEM_ID'] = generate_nonmem_subject_id(df=dcdf, sid_col='ID', uid_cols=uid_cols)
+            ## conc data에 이미 covar이 존재하는 경우 covar col 남김
+
+            drug_covar_cols = list()
+            for covar_c in covar_cols:
+                if covar_c in dcdf.columns:
+                    dcdf[f'NONMEM_{covar_c}'] = dcdf[covar_c].copy()
+                    drug_covar_cols.append(covar_c)
+                else:
+                    print(f"{model_name} / {drug} / Raw data에 {covar_c}라는 컬럼이 존재하지 않습니다.")
+                    continue
+
+            ## Result columns 설정
+
+            result_cols = ['ID'] + ['UID'] if uid_on else [] + ['TIME','TAD','DV','MDV','AMT','RATE','DUR','CMT'] + drug_covar_cols
+
+            ## add_covar_df 추가하는 경우 (uid_cols 제외하고)
+
+            add_covar_df_copy = add_covar_df.copy()
+            new_add_covar_df_cols = list()
+            for add_var_df_col in add_covar_df_copy.columns:
+                if add_var_df_col in uid_cols:
+                    new_add_covar_df_cols.append(add_var_df_col)
+                else:
+                    new_add_covar_df_cols.append(f"NONMEM_{add_var_df_col}")
+            add_covar_df_copy.columns = new_add_covar_df_cols
+
+            dcdf = dcdf.merge(add_covar_df_copy, on=uid_cols, how='left')
+
+            ## nonmem_subject_id 생성
+
+            dcdf['NONMEM_ID'] = generate_nonmem_subject_id(df=dcdf, sid_col=term_dict['ID'], uid_cols=uid_cols)
             if uid_on:
                 dcdf['NONMEM_UID'] = dcdf['NONMEM_ID'].copy()
 
@@ -105,13 +139,12 @@ def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_di
 
             ## TIME Columns
 
-            dcdf['NONMEM_TIME']=dcdf['ATIME'].copy()
-            dcdf['NONMEM_TAD'] = dcdf['NTIME'].copy()
-
+            dcdf['NONMEM_TIME'] = dcdf[term_dict['TIME']].copy()
+            dcdf['NONMEM_TAD'] = dcdf[term_dict['TAD']].copy()
 
             ## DV, MDV Column
 
-            dcdf['NONMEM_DV'] = dcdf['CONC'].copy()
+            dcdf['NONMEM_DV'] = dcdf[term_dict['DV']].copy()
             dcdf['NONMEM_MDV'] = 0
 
             ## AMT, RATE, DUR
@@ -253,16 +286,16 @@ def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_di
 
             if not os.path.exists(f"{modeling_dir_path}/prep_data"):
                 os.mkdir(f"{modeling_dir_path}/prep_data")
-            drug_nmprep_df.to_csv(f"{modeling_dir_path}/prep_data/MDP_{model_name}_{drug}.csv", index=False, encoding='utf-8-sig')
+            drug_nmprep_df[result_cols].to_csv(f"{modeling_dir_path}/prep_data/MDP_{model_name}_{drug}.csv", index=False, encoding='utf-8-sig')
 
             print(f"{model_name} / {drug} / data-formatting completed")
 
             # CMT, RATE, DUR, EVID, SS, ADDL
 
-
             ## Covariates
 
 
 
+formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_dir_path=, covar_cols=[], add_covar_df=pd.DataFrame(columns=['UID']), uid_on=True)
 
 
