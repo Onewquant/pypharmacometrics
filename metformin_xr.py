@@ -296,6 +296,6 @@ def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_di
 
 
 
-formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_dir_path=, covar_cols=[], add_covar_df=pd.DataFrame(columns=['UID']), uid_on=True)
+nm_df = formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols=uid_inf_cols, modeling_dir_path=modeling_dir_path, covar_cols=[], add_covar_df=pd.DataFrame(columns=['UID']), uid_on=True)
 
 
