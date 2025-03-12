@@ -104,16 +104,15 @@ def modeling_dosing_policy(mdpolicy_file_path, selected_models=[], model_colname
     return dspol_df
 
 
-def get_drug_conc_data_dict_of_multiple_projects(project_dict, modeling_dir_path, conc_filename_format="[project]_ConcPrep_[drug](R).csv"):
+def get_drug_conc_data_dict_of_multiple_projects(project_dict, prepconc_dir_path, conc_filename_format="[project]_ConcPrep_[drug](R).csv"):
     project_drugconc_dict = dict()
     drugconc_dict = dict()
     for projectname, drug_list in project_dict.items():
         filename_format = conc_filename_format.replace('[project]', projectname)
 
-        ct_project_dir_path = modeling_dir_path + '/' + projectname
+        # ct_project_dir_path = modeling_dir_path + '/' + projectname
 
-        project_drugconc_dict[projectname] = load_data_dict(drug_list, filename_format=filename_format,
-                                                            input_file_dir_path=ct_project_dir_path)
+        project_drugconc_dict[projectname] = load_data_dict(drug_list, filename_format=filename_format, input_file_dir_path=prepconc_dir_path)
 
         ## Drug별 데이터 따로 모으기
 
@@ -128,12 +127,15 @@ def get_drug_conc_data_dict_of_multiple_projects(project_dict, modeling_dir_path
             # drugconc_df['SEQUENCE'] = drugconc_df['ID'].map(lambda x:x[0]).map({'A':1,'B':2})
             # drugconc_df.to_csv(f'{modeling_dir_path}/{projectname}/{projectname}_ConcPrep_{drug}(R).csv', index=False, encoding='utf-8-sig')
 
-        return drugconc_dict
+    return drugconc_dict
 
 def generate_nonmem_subject_id(df, sid_col, uid_cols):
     ## ID Column
 
-    dcdf = df[[sid_col] + uid_cols].copy()
+    if len(uid_cols)==0:
+        dcdf = df.copy()
+    else:
+        dcdf = df[uid_cols].copy()
     dcdf['NONMEM_ID'] = '1'  # 처음에 0이 안나오도록 설정: 사람이면 1, 동물이면 2로 하면 될듯
 
     # uid (Project 내의 고유 대상자 번호를 포함한 ID) 생성
@@ -164,6 +166,8 @@ def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_di
     # add_covar_df 를 추가할때는 uid_cols를 반드시 포함하는 primary key로서 사용
     """
 
+    uid_cols = list(set(uid_cols))
+
     unique_models = dspol_df['MODEL'].unique()
     for model_name in unique_models:  #break
         for drug in drugconc_dict.keys():  #break
@@ -191,14 +195,16 @@ def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_di
 
             ## add_covar_df 추가하는 경우 (uid_cols 제외하고)
 
+
             add_covar_df_copy = add_covar_df.copy()
             new_add_covar_df_cols = list()
-            for add_var_df_col in add_covar_df_copy.columns:
-                if add_var_df_col in uid_cols:
-                    new_add_covar_df_cols.append(add_var_df_col)
-                else:
-                    new_add_covar_df_cols.append(f"NONMEM_{add_var_df_col}")
-            add_covar_df_copy.columns = new_add_covar_df_cols
+            if len(uid_cols) != 0:
+                for add_var_df_col in add_covar_df_copy.columns:
+                    if add_var_df_col in uid_cols:
+                        new_add_covar_df_cols.append(add_var_df_col)
+                    else:
+                        new_add_covar_df_cols.append(f"NONMEM_{add_var_df_col}")
+                add_covar_df_copy.columns = new_add_covar_df_cols
 
             if len(add_covar_df)!=0:
                 dcdf = dcdf.merge(add_covar_df_copy, on=uid_cols, how='left')
@@ -259,16 +265,18 @@ def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_di
             # Dosing row 추가 : Project / Drug 종류에 따라 Dosing Policy 다를 수 있다고 가정. (Drug은 위에서 dcdf로 이미 구분되어있음)
 
             drug_nmprep_df = list()
-            for projectname, prj_dcdf in dcdf.groupby(['PROJECT']):
+            for projectname, prj_dcdf in dcdf.groupby(['PROJECT']): #break
 
                 # 해당 dosing policy
-                prj_dspol = model_drug_dspol[(dspol_df['PROJECT'] == projectname)].reset_index(drop=True)
+                prj_dspol = model_drug_dspol[model_drug_dspol['PROJECT']==projectname[0]].reset_index(drop=True)
 
-                for dspol_inx, dspol_row in prj_dspol.iterrows():  # break
 
-                    for nmid, nmid_df in prj_dcdf.groupby(['NONMEM_ID']):  # break
 
-                        nmid_df = nmid_df.reset_index(drop=True)
+                for nmid, nmid_df in prj_dcdf.groupby(['NONMEM_ID']):  # break
+
+                    nmid_df = nmid_df.reset_index(drop=True)
+
+                    for dspol_inx, dspol_row in prj_dspol.iterrows():  # break
 
                         # 추가할 Dosing row
 
@@ -340,27 +348,37 @@ def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_di
                         # 추가할 Dosing row를 위치할 곳 설정
 
                         if dspol_row['RELPOSITION'] not in (0, 1):
-                            raise ValueError(
-                                f"Dosing Policy에서 RELPOSITION 은 0 또는 1이어야함. 해당 row 기준으로 (0: 직전 / 1: 직후)에 추가 row 삽입")
+                            raise ValueError(f"Dosing Policy에서 RELPOSITION 은 0 또는 1이어야함. 해당 row 기준으로 (0: 직전 / 1: 직후)에 추가 row 삽입")
 
-                        rt_inx = nmid_df[nmid_df[f"NONMEM_{dspol_row['RELTIMECOL']}"] == dspol_row['RELTIME']].iloc[
-                            0].name
-                        add_pos_inx = rt_inx + dspol_row['RELPOSITION']
+                        ## 원하는 RELTIME 기준이 데이터상에 존재하지 않는 경우 처리
+
+                        if dspol_row['RELPOSITION'] == 1:
+                            rt_inx_ds = nmid_df[f"NONMEM_{dspol_row['RELTIMECOL']}"] <= dspol_row['RELTIME']
+                            if len(nmid_df[rt_inx_ds])==0:
+                                continue
+                            rt_inx = nmid_df[rt_inx_ds].iloc[-1].name
+                            add_pos_inx = rt_inx + dspol_row['RELPOSITION'] ###############################################
+
+                        elif dspol_row['RELPOSITION']==0:
+                            rt_inx_ds = nmid_df[f"NONMEM_{dspol_row['RELTIMECOL']}"] >= dspol_row['RELTIME']
+                            if len(nmid_df[rt_inx_ds])==0:
+                                continue
+                            rt_inx = nmid_df[rt_inx_ds].iloc[0].name
+                            add_pos_inx = rt_inx + dspol_row['RELPOSITION'] ###############################################
+
 
                         if add_pos_inx < 0:
                             raise ValueError(f"Dosing row를 추가하려는 위치가 0번째 row보다 작은값입니다. / {projectname}, {drug}, {nmid}")
                         elif add_pos_inx == 0:
                             nmid_df = pd.concat([add_row, nmid_df], ignore_index=True)
                         elif (add_pos_inx > 0) and (add_pos_inx < len(nmid_df)):
-                            nmid_df = pd.concat(
-                                [nmid_df.loc[:add_pos_inx - 1, :].copy(), add_row, nmid_df.loc[add_pos_inx:, :].copy()],
-                                ignore_index=True)
+                            nmid_df = pd.concat([nmid_df.loc[:add_pos_inx - 1, :].copy(), add_row, nmid_df.loc[add_pos_inx:, :].copy()], ignore_index=True)
                         elif (add_pos_inx == len(nmid_df)):
                             nmid_df = pd.concat([nmid_df, add_row], ignore_index=True)
                         else:
                             raise ValueError(f"Dosing row를 추가하려는 위치가 마지막 row보다 큰 값입니다. / {projectname}, {drug}, {nmid}")
 
-                        drug_nmprep_df.append(nmid_df)
+                    drug_nmprep_df.append(nmid_df)
 
             # Prep Data 생성
 
