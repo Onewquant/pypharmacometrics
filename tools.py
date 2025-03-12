@@ -135,7 +135,7 @@ def generate_nonmem_subject_id(df, sid_col, uid_cols):
     if len(uid_cols)==0:
         dcdf = df.copy()
     else:
-        dcdf = df[uid_cols].copy()
+        dcdf = df[list(set([sid_col]+uid_cols))].copy()
     dcdf['NONMEM_ID'] = '1'  # 처음에 0이 안나오도록 설정: 사람이면 1, 동물이면 2로 하면 될듯
 
     # uid (Project 내의 고유 대상자 번호를 포함한 ID) 생성
@@ -377,6 +377,9 @@ def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_di
                             nmid_df = pd.concat([nmid_df, add_row], ignore_index=True)
                         else:
                             raise ValueError(f"Dosing row를 추가하려는 위치가 마지막 row보다 큰 값입니다. / {projectname}, {drug}, {nmid}")
+
+                    while nmid_df['NONMEM_MDV'].iloc[-1]==1:
+                        nmid_df = nmid_df.iloc[:-1]
 
                     drug_nmprep_df.append(nmid_df)
 
