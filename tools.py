@@ -29,6 +29,21 @@ def convert_to_numeric_value(value):
         except ValueError:
             return str(value)
 
+def dosing_duration_for_abs_policy(input_dur, input_abs_pol):
+    if input_abs_pol.upper()=='ZERO':
+        return input_dur
+    elif input_abs_pol.upper() == 'FIRST':
+        return '.'
+    elif input_abs_pol.upper() == 'ELANG':
+        return '.'
+    elif input_abs_pol.upper() == 'TRANSIT':
+        return '.'
+    else:
+        return '.'
+
+
+
+    return None
 
 def dosing_cmt_for_advan_type(advan=0, route='', forced_dosing_cmt=np.nan):
     # Specific ADVAN
@@ -167,6 +182,7 @@ def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_di
     """
 
     uid_cols = list(set(uid_cols))
+    cat_covar_dict = dict()
 
     unique_models = dspol_df['MODEL'].unique()
     for model_name in unique_models:  #break
@@ -176,12 +192,22 @@ def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_di
             # if drug=='Metformin': break
             dcdf = drugconc_dict[drug].copy()
 
-            ## conc data에 이미 covar이 존재하는 경우 covar col 남김
+            ## conc data에 이미 covar이 존재하는 경우 covar col 남김 (But, categorical의 경우 numeric으로 바꿔서)
 
             drug_covar_cols = list()
             for covar_c in covar_cols:
                 if covar_c in dcdf.columns:
-                    dcdf[f'NONMEM_{covar_c}'] = dcdf[covar_c].copy()
+                    numeric_covar = True
+                    frag_covar_val_dict = dict()
+                    for ucovar_c in dcdf[covar_c].unique():
+                        if type(ucovar_c) in [str, object]:
+                            numeric_covar=False
+                    if not numeric_covar:
+                        frag_covar_val_dict = {covar_val:covar_inx+1 for covar_inx, covar_val in enumerate(dcdf[covar_c].unique())}
+                        dcdf[f'NONMEM_{covar_c}'] = dcdf[covar_c].map(frag_covar_val_dict)
+                    else:
+                        dcdf[f'NONMEM_{covar_c}'] = dcdf[covar_c].copy()
+                    cat_covar_dict[covar_c] = frag_covar_val_dict
                     drug_covar_cols.append(covar_c)
                 else:
                     print(f"{model_name} / {drug} / Raw data에 {covar_c}라는 컬럼이 존재하지 않습니다.")
@@ -193,7 +219,7 @@ def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_di
             else:
                 result_cols = ['ID'] + ['TAD', 'TIME', 'DV', 'MDV', 'AMT', 'RATE', 'DUR', 'CMT'] + drug_covar_cols
 
-            ## add_covar_df 추가하는 경우 (uid_cols 제외하고)
+            ## add_covar_df 추가하는 경우 (uid_cols 제외하고) (####### numeric 아닌경우 numeric으로 바꾸고 cat_covar_dict에 해당 내용 추가하는 코드 수정해야함)
 
             add_covar_df_copy = add_covar_df.copy()
             new_add_covar_df_cols = list()
@@ -310,7 +336,8 @@ def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_di
                         """
 
                         add_row['NONMEM_RATE'] = dspol_row['RATE']
-                        add_row['NONMEM_DUR'] = dspol_row['DUR']
+                        # add_row['NONMEM_DUR'] = dspol_row['DUR'] if dspol_row['ABS_POLICY'].upper() in ['ZERO']
+                        add_row['NONMEM_DUR'] = dosing_duration_for_abs_policy(input_dur=dspol_row['DUR'], input_abs_pol =dspol_row['ABS_POLICY'])
                         add_row['NONMEM_CMT'] = dosing_cmt_for_advan_type(advan=dspol_row['ADVAN'],
                                                                           route=dspol_row['ROUTE'])
 
@@ -402,9 +429,11 @@ def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_di
             if not os.path.exists(f"{modeling_dir_path}/{output_dir_name}"):
                 os.mkdir(f"{modeling_dir_path}/{output_dir_name}")
             drug_nmprep_df[result_cols].to_csv(f"{modeling_dir_path}/{output_dir_name}/MDP_{model_name}_{drug}.csv", index=False, encoding='utf-8-sig')
+            cat_covar_dict
 
             print(f"{model_name} / {drug} / data-formatting completed")
 
             # CMT, RATE, DUR, EVID, SS, ADDL
 
             ## Covariates
+
