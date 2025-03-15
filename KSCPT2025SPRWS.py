@@ -21,7 +21,7 @@ drugconc_dict=get_drug_conc_data_dict_of_multiple_projects(project_dict, prepcon
 # drugconc_dict['SGLT2INH'].columns
 ## NONMEM 형식으로 Dataprep
 
-uid_cols = []
+uid_cols = ['GRP']
 covar_cols=['GRP','SITENM', 'AGE', 'SEX', 'HT', 'WT', 'BMI', 'ALB', 'GFR', 'TBIL']
 add_covar_df=pd.DataFrame(columns=['UID'])
 uid_on=True

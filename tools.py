@@ -195,7 +195,6 @@ def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_di
 
             ## add_covar_df 추가하는 경우 (uid_cols 제외하고)
 
-
             add_covar_df_copy = add_covar_df.copy()
             new_add_covar_df_cols = list()
             if len(uid_cols) != 0:
@@ -268,9 +267,7 @@ def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_di
             for projectname, prj_dcdf in dcdf.groupby(['PROJECT']): #break
 
                 # 해당 dosing policy
-                prj_dspol = model_drug_dspol[model_drug_dspol['PROJECT']==projectname[0]].reset_index(drop=True)
-
-
+                prj_dspol = model_drug_dspol[model_drug_dspol['PROJECT']==projectname].reset_index(drop=True)
 
                 for nmid, nmid_df in prj_dcdf.groupby(['NONMEM_ID']):  # break
 
