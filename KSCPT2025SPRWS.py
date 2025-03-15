@@ -21,11 +21,11 @@ drugconc_dict=get_drug_conc_data_dict_of_multiple_projects(project_dict, prepcon
 # drugconc_dict['SGLT2INH'].columns
 ## NONMEM 형식으로 Dataprep
 
-uid_cols = ['GRP']
+uid_cols = []
 covar_cols=['GRP','SITENM', 'AGE', 'SEX', 'HT', 'WT', 'BMI', 'ALB', 'GFR', 'TBIL']
 add_covar_df=pd.DataFrame(columns=['UID'])
 uid_on=True
 term_dict={'TIME': 'ATIME', 'TAD': 'NTIME', 'DV': 'CONC', 'ID': 'ID'}
-formatting_data_nca_to_nonmem(drugconc_dict=drugconc_dict, dspol_df=dspol_df, uid_cols=uid_cols, modeling_dir_path=modeling_dir_path, covar_cols=covar_cols, add_covar_df=pd.DataFrame(columns=['UID']), uid_on=True)
+formatting_data_nca_to_nonmem(drugconc_dict=drugconc_dict, dspol_df=dspol_df, uid_cols=uid_cols, modeling_dir_path=modeling_dir_path, covar_cols=covar_cols, add_covar_df=pd.DataFrame(columns=['UID']), uid_on=True, term_dict=term_dict)
 
 
