@@ -525,7 +525,7 @@ def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_di
 
             # Basic Code 저장
 
-            get_basic_nonmem_code(prep_df=drug_nmprep_df, dspol_df=model_drug_dspol, modeling_dir_path=modeling_dir_path)
+            get_basic_nonmem_code(prep_df=drug_nmprep_df[result_cols], dspol_df=model_drug_dspol, modeling_dir_path=modeling_dir_path)
 
 
 
