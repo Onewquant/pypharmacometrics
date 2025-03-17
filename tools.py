@@ -45,7 +45,7 @@ def dosing_duration_for_abs_policy(input_dur, input_abs_pol):
 
     return None
 
-def dosing_cmt_for_advan_type(advan=0, route='', forced_dosing_cmt=np.nan):
+def dosing_cmt_for_advan_type(advan=0, route='', forced_dosing_cmt=np.nan, abs_policy=''):
     # Specific ADVAN
     if (advan== 1):                          # 1 comp / IV or zero-order abs
         return 1
@@ -71,6 +71,14 @@ def dosing_cmt_for_advan_type(advan=0, route='', forced_dosing_cmt=np.nan):
         return 1
     # General ADVAN
     elif (advan in (5, 6, 7, 8, 9, 13)):
+
+        ## Erlang model인 경우
+        erlang_patterns = re.findall(r'^ERLANG[\d]+$',abs_policy.upper())
+        if len(erlang_patterns)>0:
+            erlang_num = int(erlang_patterns[0].replace('ERLANG',''))
+            return 1
+
+        ## 기타 다른 모델인 경우
         if (type(forced_dosing_cmt) in (float, int)):
             if not np.isnan(forced_dosing_cmt):
                 return forced_dosing_cmt
@@ -82,7 +90,7 @@ def dosing_cmt_for_advan_type(advan=0, route='', forced_dosing_cmt=np.nan):
         raise ValueError("Dosing Compartment 결정시 / ADVAN과 ROUTE를 정확히 입력하세요.")
 
 
-def sampling_cmt_for_specific_advan_type(advan=0, forced_sampling_cmt=np.nan):
+def sampling_cmt_for_specific_advan_type(advan=0, forced_sampling_cmt=np.nan, abs_policy=''):
     # Specific ADVAN
     if (advan == 1):     # 1 comp / IV
         return 1
@@ -98,6 +106,14 @@ def sampling_cmt_for_specific_advan_type(advan=0, forced_sampling_cmt=np.nan):
         return 2
     # General ADVAN
     elif (advan in (5, 6, 7, 8, 9, 13)):
+        ## Erlang model인 경우
+        erlang_patterns = re.findall(r'^ERLANG[\d]+$', abs_policy.upper())
+        if len(erlang_patterns) > 0:
+            erlang_num = int(erlang_patterns[0].replace('ERLANG', ''))
+            erlang_sampling_cmt_num = 2+erlang_num
+            return erlang_sampling_cmt_num
+
+        ## 기타 다른 모델인 경우
         if (type(forced_sampling_cmt) in (float, int)):
             if not np.isnan(forced_sampling_cmt):
                 return forced_sampling_cmt
@@ -172,6 +188,82 @@ def generate_nonmem_subject_id(df, sid_col, uid_cols):
     # dcdf['NONMEM_UID'] = dcdf['NONMEM_ID'].copy()
     return dcdf['NONMEM_ID'].copy()
 
+def get_basic_nonmem_code(prep_df, dspol_df, modeling_dir_path, output_dir_name='modeling_basic_codes'):
+    # prep_df = drugconc_dict['SGLT2INH']
+
+    ess_dspol_cols = ['MODEL','DRUG','ROUTE','RATE','DOSING_CMT','SAMPLING_CMT','ABS_POLICY','ELIM_POLICY','ADVAN','TRANS']
+    dspol_df_for_codes = dspol_df[ess_dspol_cols].drop_duplicates(ess_dspol_cols, ignore_index=True)
+    basic_code_dir = f"{modeling_dir_path}/{output_dir_name}"
+    for inx, row in dspol_df_for_codes.iterrows(): #break
+        basic_code_path = f"{basic_code_dir}/{row['MODEL']}_{row['DRUG']}.txt"
+        basic_code = ''
+
+        PROBLEM = f"$PROBLEM {row['MODEL']}_{row['DRUG']}\n\n"
+        INPUT = "$INPUT "+ str(list(prep_df.columns)).replace("['","").replace("']","").replace("', '"," ") + "\n\n"
+        DATA = f"$DATA ..//MDP_{row['MODEL']}_{row['DRUG']}.csv IGNORE=@\n\n"
+
+        SUBROUTINES = ""
+        PK = ""
+
+        MODEL = ""
+        DES = ""
+        ERROR = "$ERROR\nIPRED = F\nW = SQRT(THETA(?)**2*IPRED**2 + THETA(?)**2)\nY = IPRED + W*EPS(1)\nIRES = DV-IPRED\nIWRES = IRES/W"
+
+        if row['ADVAN'] in [1, 2, 3, 4, 11, 12]:
+            SUBROUTINES = f"$SUBROUTINES ADVAN{row['ADVAN']} TRANS{row['TRANS']}\n\n"
+            PK = "$PK\n\n"
+            MODEL = ""
+            DES = ""
+        else:
+            if row['ADVAN'] in [5, 7]:
+                SUBROUTINES = f"$SUBROUTINES ADVAN{row['ADVAN']}\n\n"
+                MODEL = "$MODEL\n\n\n\n"
+                DES = ""
+
+                ## ERLANG 모델인 경우
+                # row['ABS_POLICY'] = 'Erlang6'
+                erlang_patterns = re.findall(r'^ERLANG[\d]+$', row['ABS_POLICY'].upper())
+                if len(erlang_patterns) > 0:
+                    erlang_num = int(erlang_patterns[0].replace('ERLANG',''))
+                    MODEL = "$MODEL\nCOMP=(DEPOT,DEFDOSE)\n"
+                    PK = "$PK\nK12=THETA(1)*EXP(ETA(1)\n"
+                    for erl_comp_num in range(1,erlang_num+1):
+                        erlang_comp_frag = f"COMP=(DELA{erl_comp_num})\n"
+                        erlang_rateconstant_frag = f"K{erl_comp_num+1}{erl_comp_num+2}=K12\n"
+
+                        MODEL+=erlang_comp_frag
+                        PK += erlang_rateconstant_frag
+
+                    MODEL+='COMP=(CENTRAL, DEFOBS)\n\n'
+                    PK+=f'CL=THETA(2)*EXP(ETA(2))\nV{erlang_num+2}=THETA(3)*EXP(ETA(3))\n\n'
+
+
+            else:
+                SUBROUTINES = f"$SUBROUTINES ADVAN{row['ADVAN']} TOL=4\n\n"
+                MODEL = "$MODEL\n\n\n\n"
+                DES = "$DES\n\n\n\n"
+
+        THETA = "$THETA\n\n\n\n"
+        OMEGA = "$OMEGA\n\n\n\n"
+        SIGMA = "$SIGMA\n\n\n\n"
+        EST = "$EST METHOD=1 INTER MAXEVAL=9999 NOABORT SIG=3 PRINT=1 POSTHOC\n"
+        COV = "$COV\n\n"
+
+        Xpose = "; Xpose\n"
+        SDTAB = "$TABLE ID AMT TAD TIME RATE DV MDV IPRED IWRES CWRES ONEHEADER NOPRINT FILE=sdtab004"
+        PATAB = "$TABLE CL KA V2 V3 Q ONEHEADER NOPRINT  FIRSTONLY FILE=patab004"
+        COTAB = ""
+        CATAB = ""
+        TABLE = f"{SDTAB}\n{PATAB}\n{COTAB}\n{CATAB}\n"
+
+        basic_code += (PROBLEM + INPUT + DATA + SUBROUTINES + MODEL + DES + THETA + OMEGA + SIGMA + EST + COV + Xpose + TABLE)
+
+        if not os.path.exists(f"{modeling_dir_path}/{output_dir_name}"):
+            os.mkdir(f"{modeling_dir_path}/{output_dir_name}")
+        with open(basic_code_path, 'w', encoding='utf-8-sig') as f:
+            f.write(basic_code)
+
+
 
 
 def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_dir_path, covar_cols=[],
@@ -215,7 +307,7 @@ def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_di
 
             ## Result columns 설정
             if uid_on:
-                result_cols = ['ID'] + ['UID']  + ['TAD', 'TIME', 'DV', 'MDV', 'AMT', 'RATE', 'DUR', 'CMT'] + drug_covar_cols
+                result_cols = ['ID'] + ['UID'] + ['TAD', 'TIME', 'DV', 'MDV', 'AMT', 'RATE', 'DUR', 'CMT'] + drug_covar_cols
             else:
                 result_cols = ['ID'] + ['TAD', 'TIME', 'DV', 'MDV', 'AMT', 'RATE', 'DUR', 'CMT'] + drug_covar_cols
 
@@ -276,10 +368,11 @@ def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_di
 
             ## CMT / DUR / RATE
 
+            dspol_first_row = model_drug_dspol.iloc[0]
+
             dcdf['NONMEM_RATE'] = '.'
             dcdf['NONMEM_DUR'] = '.'
-            dcdf['NONMEM_CMT'] = sampling_cmt_for_specific_advan_type(advan=model_drug_dspol['ADVAN'].iloc[0],
-                                                                      forced_sampling_cmt=np.nan)
+            dcdf['NONMEM_CMT'] = sampling_cmt_for_specific_advan_type(advan=dspol_first_row['ADVAN'], forced_sampling_cmt=dspol_first_row['SAMPLING_CMT'], abs_policy=dspol_first_row['ABS_POLICY'])
 
             """
             # 주로 농도측정이 Systemic compartment에서 진행되므로 2로 표시하는게 나을듯. 나중에 수정필요할수도
@@ -295,7 +388,7 @@ def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_di
                 # 해당 dosing policy
                 prj_dspol = model_drug_dspol[model_drug_dspol['PROJECT']==projectname].reset_index(drop=True)
 
-                for nmid, nmid_df in prj_dcdf.groupby(['NONMEM_ID']):  # break
+                for nmid, nmid_df in prj_dcdf.groupby(['NONMEM_ID']):   #break
 
                     nmid_df = nmid_df.reset_index(drop=True)
 
@@ -308,9 +401,7 @@ def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_di
                         add_row['NONMEM_TAD'] = dspol_row['RELTIME']
                         add_row['NONMEM_DV'] = '.'
                         add_row['NONMEM_MDV'] = 1
-                        add_row['NONMEM_CMT'] = dosing_cmt_for_advan_type(advan=dspol_row['ADVAN'],
-                                                                          route=dspol_row['ROUTE'],
-                                                                          forced_dosing_cmt=np.nan)
+                        add_row['NONMEM_CMT'] = dosing_cmt_for_advan_type(advan=dspol_row['ADVAN'], route=dspol_row['ROUTE'], forced_dosing_cmt=dspol_row['DOSING_CMT'],abs_policy=dspol_row['ABS_POLICY'])
                         add_row['NONMEM_AMT'] = dspol_row['DOSE']
 
                         # add_row.iloc[0]
@@ -337,9 +428,8 @@ def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_di
 
                         add_row['NONMEM_RATE'] = dspol_row['RATE']
                         # add_row['NONMEM_DUR'] = dspol_row['DUR'] if dspol_row['ABS_POLICY'].upper() in ['ZERO']
-                        add_row['NONMEM_DUR'] = dosing_duration_for_abs_policy(input_dur=dspol_row['DUR'], input_abs_pol =dspol_row['ABS_POLICY'])
-                        add_row['NONMEM_CMT'] = dosing_cmt_for_advan_type(advan=dspol_row['ADVAN'],
-                                                                          route=dspol_row['ROUTE'])
+                        add_row['NONMEM_DUR'] = dosing_duration_for_abs_policy(input_dur=dspol_row['DUR'], input_abs_pol=dspol_row['ABS_POLICY'])
+                        # add_row['NONMEM_CMT'] = dosing_cmt_for_advan_type(advan=dspol_row['ADVAN'], route=dspol_row['ROUTE'])
 
                         # DUR값을 음수인 경우 -> 에러처리
                         if (dspol_row['DUR'] not in ('.', 0)):
@@ -352,7 +442,7 @@ def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_di
                             raise ValueError(f"DOSE가 음수로 기록되었습니다.")
                         else:
                             if (dspol_row['DOSE'] > 0) and (dspol_row['RATE'] in (0, '.')):
-                                print('Bolus와 같이 추정합니다. / DUR이 필요한 경우일지도. / 아직 어떻게 진행될지 모름 -> 해보자')
+                                # print('Bolus와 같이 추정합니다. / DUR이 필요한 경우일지도. / 아직 어떻게 진행될지 모름 -> 해보자')
                                 add_row['NONMEM_RATE'] = dspol_row['RATE']
                                 add_row['NONMEM_DUR'] = dspol_row['DUR']
                             else:
@@ -429,11 +519,18 @@ def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_di
             if not os.path.exists(f"{modeling_dir_path}/{output_dir_name}"):
                 os.mkdir(f"{modeling_dir_path}/{output_dir_name}")
             drug_nmprep_df[result_cols].to_csv(f"{modeling_dir_path}/{output_dir_name}/MDP_{model_name}_{drug}.csv", index=False, encoding='utf-8-sig')
-            cat_covar_dict
+            # cat_covar_dict
 
             print(f"{model_name} / {drug} / data-formatting completed")
+
+            # Basic Code 저장
+
+            get_basic_nonmem_code(prep_df=drug_nmprep_df, dspol_df=model_drug_dspol, modeling_dir_path=modeling_dir_path)
+
+
 
             # CMT, RATE, DUR, EVID, SS, ADDL
 
             ## Covariates
+
 

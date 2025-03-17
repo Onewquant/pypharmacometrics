@@ -19,6 +19,7 @@ dspol_df = modeling_dosing_policy(mdpolicy_file_path, selected_models=[], model_
 
 drugconc_dict=get_drug_conc_data_dict_of_multiple_projects(project_dict, prepconc_dir_path=prepconc_dir_path, conc_filename_format="[project]_ConcPrep_[drug](R).csv")
 # drugconc_dict['SGLT2INH'].columns
+
 ## NONMEM 형식으로 Dataprep
 
 uid_cols = []
@@ -27,5 +28,6 @@ add_covar_df=pd.DataFrame(columns=['UID'])
 uid_on=True
 term_dict={'TIME': 'ATIME', 'TAD': 'NTIME', 'DV': 'CONC', 'ID': 'ID'}
 formatting_data_nca_to_nonmem(drugconc_dict=drugconc_dict, dspol_df=dspol_df, uid_cols=uid_cols, modeling_dir_path=modeling_dir_path, covar_cols=covar_cols, add_covar_df=pd.DataFrame(columns=['UID']), uid_on=True, term_dict=term_dict)
+# formatting_data_nca_to_nonmem(drugconc_dict=drugconc_dict, dspol_df=dspol_df[dspol_df['ABS_POLICY'].map(lambda x:x[0])=='E'], uid_cols=uid_cols, modeling_dir_path=modeling_dir_path, covar_cols=covar_cols, add_covar_df=pd.DataFrame(columns=['UID']), uid_on=True, term_dict=term_dict)
 
 
