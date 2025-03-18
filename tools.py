@@ -226,10 +226,14 @@ def get_basic_nonmem_code(prep_df, dspol_df, modeling_dir_path, output_dir_name=
                 if len(erlang_patterns) > 0:
                     erlang_num = int(erlang_patterns[0].replace('ERLANG',''))
                     MODEL = "$MODEL\nCOMP=(DEPOT,DEFDOSE)\n"
-                    PK = "$PK\nK12=THETA(1)*EXP(ETA(1)\n"
+                    PK = "$PK\nK12=THETA(1)*EXP(ETA(1))\n"
                     for erl_comp_num in range(1,erlang_num+1):
                         erlang_comp_frag = f"COMP=(DELA{erl_comp_num})\n"
-                        erlang_rateconstant_frag = f"K{erl_comp_num+1}{erl_comp_num+2}=K12\n"
+
+                        if erl_comp_num==erlang_num:
+                            erlang_rateconstant_frag = ''
+                        else:
+                            erlang_rateconstant_frag = f"K{erl_comp_num+1}{erl_comp_num+2}=K12\n"
 
                         MODEL+=erlang_comp_frag
                         PK += erlang_rateconstant_frag
@@ -256,7 +260,7 @@ def get_basic_nonmem_code(prep_df, dspol_df, modeling_dir_path, output_dir_name=
         CATAB = ""
         TABLE = f"{SDTAB}\n{PATAB}\n{COTAB}\n{CATAB}\n"
 
-        basic_code += (PROBLEM + INPUT + DATA + SUBROUTINES + MODEL + DES + THETA + OMEGA + SIGMA + EST + COV + Xpose + TABLE)
+        basic_code += (PROBLEM + INPUT + DATA + SUBROUTINES + MODEL + PK + DES + THETA + OMEGA + SIGMA + EST + COV + Xpose + TABLE)
 
         if not os.path.exists(f"{modeling_dir_path}/{output_dir_name}"):
             os.mkdir(f"{modeling_dir_path}/{output_dir_name}")
