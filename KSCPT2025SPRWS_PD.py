@@ -114,3 +114,5 @@ pre_df = upd_daily_df[upd_daily_df['DAY']==-1].copy()
 nss_df = upd_daily_df[upd_daily_df['DAY']==1].copy()
 ss_df = upd_daily_df[upd_daily_df['DAY']==7].copy()
 
+nss_df['UGE24']
+nss_df['UGE24']
