@@ -6,6 +6,10 @@ modeling_dir_path = "C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/K
 prepconc_dir_path = "C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25/prep_data"
 resource_dir_path = "C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25/resources"
 
+## AUC 구하기
+
+
+## PD와 연결
 
 bpd_df = pd.read_excel(f"{resource_dir_path}/PD prep_Final_0707_BASE group.xlsx")
 upd_df = pd.read_excel(f"{resource_dir_path}/PD urine_prep_Final_0707_prep_BASE group.xlsx")

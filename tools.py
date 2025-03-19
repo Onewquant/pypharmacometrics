@@ -199,7 +199,7 @@ def get_basic_nonmem_code(prep_df, dspol_df, modeling_dir_path, output_dir_name=
         basic_code = ''
 
         PROBLEM = f"$PROBLEM {row['MODEL']}_{row['DRUG']}\n\n"
-        INPUT = "$INPUT "+ str(list(prep_df.columns)).replace("['","").replace("']","").replace("', '"," ") + "\n\n"
+        INPUT = ("$INPUT "+ str(list(prep_df.columns)).replace("['","").replace("']","").replace("', '"," ") + "\n\n").replace('UID','UID=DROP')
         DATA = f"$DATA ..//MDP_{row['MODEL']}_{row['DRUG']}.csv IGNORE=@\n\n"
 
         SUBROUTINES = ""
