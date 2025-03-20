@@ -1,11 +1,14 @@
 from tools import *
 from pynca.tools import *
+import statsmodels.api as sm
+from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 
 project_dict = {'KSCPTSPRWS25MULTI':['SGLT2INH'], 'KSCPTSPRWS25SINGLE':['SGLT2INH']}
 modeling_dir_path = "C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25"
 modeling_prepconc_dir_path = "C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25/modeling_prep_data"
 resource_dir_path = "C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25/resource"
+results_dir_path = "C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25/results"
 
 ## AUC 구하기
 
@@ -96,7 +99,7 @@ upd_df['AUCTIMEINT'] = upd_df['N_Time']
 upd_df['Amount_GLU'] = upd_df['Amount_GLU'].astype(float)
 upd_df['Volume'] = upd_df['Volume'].astype(float)
 upd_addcol_df = upd_df.groupby(['UID','DAY']).agg({'Amount_GLU':'sum','Volume':'sum'}).reset_index(drop=False).rename(columns={'Amount_GLU':'UGE24','Volume':'VOLUME24'})
-upd_baseline_df = upd_addcol_df[upd_addcol_df['DAY']==-1].copy().rename(columns={'UGE24':'BASELINE'}).drop(['DAY','VOLUME24'],axis=1)
+upd_baseline_df = upd_addcol_df[upd_addcol_df['DAY']==-1].copy().rename(columns={'UGE24':'UGEbase'}).drop(['DAY','VOLUME24'],axis=1)
 upd_addcol_df = upd_addcol_df.merge(upd_baseline_df, on=['UID'],how='left')
 upd_df = upd_df.merge(upd_addcol_df, on=['UID','DAY'],how='left')
 
@@ -114,30 +117,52 @@ upd_daily_df = upd_daily_df.drop_duplicates(['UID','N_Day','N_Time'])
 covar_df = mdprep_conc_df[['ID','UID']+list(mdprep_conc_df.columns)[7:15]].drop_duplicates(['ID'])
 upd_daily_df = upd_daily_df.merge(covar_df, on=['UID'],how='left')
 upd_daily_df = upd_daily_df.merge(s_glu_df, on=['UID','N_Day'],how='left')
-upd_daily_df = upd_daily_df.merge(iauc_res_df[['UID','N_Day','AUCTIMEINT','AUClast']], on=['UID','N_Day','AUCTIMEINT'],how='left')
+upd_daily_df = upd_daily_df.merge(iauc_res_df[['UID','N_Day','AUCTIMEINT','AUClast','Cmax','Tmax']], on=['UID','N_Day','AUCTIMEINT'],how='left')
+# iauc_res_df.columns
+upd_daily_df['EFFECT0'] = (upd_daily_df['UGE24']-upd_daily_df['UGEbase'])/upd_daily_df['PG_ZERO']
+upd_daily_df['EFFECT1'] = (upd_daily_df['UGE24']-upd_daily_df['UGEbase'])/upd_daily_df['PG_AVG']
+upd_daily_df['EFFECTgfr'] = (upd_daily_df['UGE24']-upd_daily_df['UGEbase'])/(upd_daily_df['PG_AVG']*upd_daily_df['GFR'])
+upd_daily_df['EFFECTdelta'] = (upd_daily_df['UGE24']-upd_daily_df['UGEbase'])
 
-upd_daily_df['EFFECT0'] = (upd_daily_df['UGE24']-upd_daily_df['BASELINE'])/upd_daily_df['PG_ZERO']
-upd_daily_df['EFFECT1'] = (upd_daily_df['UGE24']-upd_daily_df['BASELINE'])/upd_daily_df['PG_AVG']
-upd_daily_df['EFFECTgfr'] = (upd_daily_df['UGE24']-upd_daily_df['BASELINE'])/(upd_daily_df['PG_AVG']*upd_daily_df['GFR'])
 
-upd_daily_df['GFR_MULTI_AUC'] = upd_daily_df['GFR']*upd_daily_df['AUClast']
+# upd_daily_df['GFR_WEIGHTED_AUC'] = upd_daily_df['GFR']*upd_daily_df['AUClast']
 
-upd_daily_df.columns
+# upd_daily_df.columns
 
 
 # EDA
 pre_df = upd_daily_df[upd_daily_df['DAY']==-1].sort_values(['GRP','UID'])
 nss_df = upd_daily_df[upd_daily_df['DAY']==1].sort_values(['GRP','UID'])
 ss_df = upd_daily_df[upd_daily_df['DAY']==7].sort_values(['GRP','UID'])
+integ_df = pd.concat([nss_df, ss_df], ignore_index=True)
+
+pre_df.to_csv(f"{results_dir_path}/KSCPTSPRWS25_PD_BASE.csv", index=False)
+nss_df.to_csv(f"{results_dir_path}/KSCPTSPRWS25_PD_NSS.csv", index=False)
+ss_df.to_csv(f"{results_dir_path}/KSCPTSPRWS25_PD_SS.csv", index=False)
+integ_df.to_csv(f"{results_dir_path}/KSCPTSPRWS25_PD_INTEG(NSS_SS).csv", index=False)
+#
+# nss_df['TIME'] = 24
+# nss_zero_df = nss_df.copy()
+# nss_zero_df['TIME'] = 0
+# nss_zero_df['EFFECT1'] = 0
+# pd_adj_df = pd.concat([nss_df, nss_zero_df]).sort_values(['UID','TIME'])
+# pd_adj_df['DV'] = pd_adj_df['EFFECT1']
+# pd_adj_df.to_csv(f"{results_dir_path}/KSCPTSPRWS25_PD_NSS_ADJ.csv", index=False)
+
+pd_df = nss_df.copy()
+# pd_df = integ_df.copy()
 
 ## Multivariable linear regression
 
-import statsmodels.api as sm
-from statsmodels.stats.outliers_influence import variance_inflation_factor
-
-
 # 상관계수 행렬 계산
-corr_matrix = nss_df[['AGE', 'SEX', 'HT', 'WT', 'BMI', 'ALB', 'GFR', 'TBIL', 'AUC_GLU', 'PG_AVG', 'PG_ZERO', 'AUClast','GFR_MULTI_AUC']].corr().abs()
+corr_matrix = pd_df[['AGE', 'SEX', 'HT', 'WT', 'BMI', 'ALB', 'GFR', 'TBIL', 'AUC_GLU', 'PG_AVG', 'PG_ZERO', 'AUClast']].corr().abs()
+
+# # 히트맵 그리기
+# plt.figure(figsize=(15, 10))
+# sns.heatmap(corr_matrix, annot=True, fmt=".2f", cmap='coolwarm', vmin=-1, vmax=1)
+# plt.title("Correlation Matrix Heatmap")
+# plt.show()
+
 
 # 상삼각행렬 추출 (자기 자신과 중복 제거)
 lower = corr_matrix.where(np.tril(np.ones(corr_matrix.shape), k=-1).astype(bool))
@@ -146,13 +171,14 @@ lower = corr_matrix.where(np.tril(np.ones(corr_matrix.shape), k=-1).astype(bool)
 to_drop = [column for column in lower.columns if any(lower[column] > 0.7)]
 
 # 독립변수(X), 종속변수(y)
-total_cand = ['AGE', 'SEX', 'HT', 'WT', 'BMI', 'ALB', 'GFR', 'TBIL', 'AUC_GLU', 'PG_AVG', 'PG_ZERO', 'AUClast','GFR_MULTI_AUC']
+total_cand = ['AGE', 'SEX', 'HT', 'WT', 'BMI', 'ALB', 'GFR', 'TBIL', 'AUC_GLU', 'PG_AVG', 'PG_ZERO', 'AUClast']
 
-X = nss_df[list(set(total_cand)-set(to_drop))]
+X = pd_df[list(set(total_cand)-set(to_drop))]
+# X = nss_df[list(set(total_cand))]
 for c in X.columns:
     X[c]=X[c].astype(float)
 
-y = nss_df['UGE24']
+y = pd_df['UGE24']
 
 # VIF 계산
 vif_data = pd.DataFrame(columns=['Variable','VIF'])
@@ -161,10 +187,12 @@ vif_data['VIF'] = [variance_inflation_factor(X.values, i) for i in range(X.shape
 no_vif_cols = list(vif_data[vif_data['VIF'] < 10]['Variable'])
 
 # 회귀모형 적합
-model = sm.OLS(y, X[no_vif_cols]).fit()
+total_model = sm.OLS(y, X[list(vif_data['Variable'])]).fit()
+sel_model = sm.OLS(y, X[no_vif_cols]).fit()
 
 # 결과 출력
-print(model.summary())
+print(total_model.summary())
+print(sel_model.summary())
 
 
 # nss_df['EFFECT'] = (nss_df['UGE24']-nss_df['BASELINE'])/nss_df['PG_AVG']
@@ -173,18 +201,22 @@ print(model.summary())
 
 # scatter plot 그리기
 plt.figure(figsize=(15, 10))
-# x = 'GFR'
-x = 'GFR_MULTI_AUC'
+# x = 'AUClast'
+# x = 'Cmax'
+x = 'GFR'
+# x = 'GFR_WEIGHTED_AUC'
 # y = 'EFFECTgfr'
-y = 'EFFECT0'
-# y = 'EFFECT1'
+# y = 'EFFECT0'
+y = 'EFFECT1'
+# y = 'EFFECTgfr'
+# y = 'EFFECTdelta'
 hue = 'GRP'
 
 # sns.scatterplot(data=ss_df, x='AUClast', y='EFFECT0', hue='GRP')
 # sns.scatterplot(data=ss_df, x='AUClast', y='EFFECT1', hue='GRP')
 # sns.scatterplot(data=nss_df, x='AUClast', y='EFFECT0', hue='GRP')
 # sns.scatterplot(data=nss_df, x='AUClast', y='EFFECT1', hue='GRP')
-sns.scatterplot(data=nss_df, x=x, y=y, hue=hue)
+sns.scatterplot(data=integ_df, x=x, y=y, hue=hue)
 plt.title(f'{x} vs {y} by {hue}')
 plt.xlabel(x)
 plt.ylabel(y)
@@ -202,3 +234,38 @@ model = sm.OLS(y_vals, X_const).fit()
 intercept, slope = model.params
 r_squared = model.rsquared
 p_value = model.pvalues[x]
+
+
+## Fitting
+
+from scipy.optimize import curve_fit
+
+# Sigmoid Emax 모델 함수 정의
+def sigmoid_emax(conc, Emax, EC50, H):
+    return Emax * conc**H / (EC50**H + conc**H)
+
+gfr = nss_df['GFR']
+effect = nss_df['EFFECT1']
+
+# curve fitting
+popt, pcov = curve_fit(sigmoid_emax, gfr, effect, p0=[0.5, 50, 1])  # 초기값 설정
+
+# 피팅된 파라미터 출력
+Emax_fit, EC50_fit, H_fit = popt
+print(f"Emax: {Emax_fit:.2f}, EC50: {EC50_fit:.2f}, Hill coefficient: {H_fit:.2f}")
+
+# 예측값 계산
+gfr_fit = np.linspace(0.1, 120, 100)
+effect_fit = sigmoid_emax(gfr_fit, *popt)
+
+# 시각화
+plt.figure(figsize=(15, 10))
+plt.scatter(gfr, effect, label='Observed data', color='black')
+plt.plot(gfr_fit, effect_fit, label='Sigmoid Emax Fit', color='blue')
+plt.xlabel('GFR')
+plt.ylabel('Effect1')
+plt.title('Sigmoid Emax Model Fit (Python)')
+plt.legend()
+plt.grid(True)
+plt.show()
+
