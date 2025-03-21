@@ -26,6 +26,22 @@ nss_mpg_df = m_pg_df[m_pg_df['TIME']<=24].copy()
 ss_mpg_df = m_pg_df[m_pg_df['TIME']>=333].copy()
 ss_mpg_df['TIME']=ss_mpg_df['TIME']-336
 
+# iAUC_df=pd.DataFrame({'Name':['T[0-6h]','T[6-12h]','T[12-24h]','T[0-24h]'], 'Start':[0,6,12,0], 'End':[6,12,24,24]})
+# result = tblNCA(concData=mdprep_conc_df,key=['ID','DAY'],colTime="A_TIME",colConc='CONC',down = "Linear",iAUC=iAUC_df,dose=0.5,slopeMode='BEST',colStyle='pw')
+ss_gluauc_result = tblNCA(concData=ss_mpg_df,key=['ID'],colTime="TIME",colConc='PG',down = "Log",dose=1,slopeMode='BEST',colStyle='pw')
+nss_gluauc_result = tblNCA(concData=nss_mpg_df,key=['ID'],colTime="TIME",colConc='PG',down = "Log",dose=1,slopeMode='BEST',colStyle='pw')
+
+ss_gluauc_result = ss_gluauc_result.rename(columns={'AUClast':'AUC_GLU'}).iloc[1:,:]
+nss_gluauc_result = nss_gluauc_result.rename(columns={'AUClast':'AUC_GLU'}).iloc[1:,:]
+
+ss_gluauc_result['PG_AVG'] = ss_gluauc_result['AUC_GLU'].astype(float)/24
+nss_gluauc_result['PG_AVG'] = nss_gluauc_result['AUC_GLU'].astype(float)/24
+
+ss_gluauc_result = ss_gluauc_result[['ID','AUC_GLU','PG_AVG']]
+nss_gluauc_result = nss_gluauc_result[['ID','AUC_GLU','PG_AVG']]
+
+# ss_mpg_df = ss_mpg_df.merge(ss_gluauc_result[['ID','AUC_GLU','PG_AVG']], on=['ID'], how='left')
+# nss_mpg_df = nss_mpg_df.merge(nss_gluauc_result[['ID','AUC_GLU','PG_AVG']], on=['ID'], how='left')
 
 m_uge_df = m_uge_df[['Subject','C_TAD','Cumul_C','steady']].iloc[1:].dropna()
 m_uge_df = m_uge_df[m_uge_df['C_TAD']==24].reset_index(drop=True)
@@ -41,10 +57,10 @@ nss_muge_df = nss_muge_df.rename(columns={'NSS':'NSS_UGE24'})
 ss_muge_df = m_uge_df[['ID','TIME','SS']].copy()
 ss_muge_df = ss_muge_df.rename(columns={'SS':'SS_UGE24'})
 
-ss_pd_df = ss_muge_df.merge(ss_mpg_df, on=['ID','TIME'], how='left')
-ss_pd_df['SS_EFFECT1'] = ss_pd_df['SS_UGE24']/ss_pd_df['PG']
-nss_pd_df = nss_muge_df.merge(nss_mpg_df, on=['ID','TIME'], how='left')
-nss_pd_df['NSS_EFFECT1'] = nss_pd_df['NSS_UGE24']/nss_pd_df['PG']
+ss_pd_df = ss_muge_df.merge(ss_gluauc_result, on=['ID'], how='left')
+ss_pd_df['SS_EFFECT1'] = ss_pd_df['SS_UGE24']/ss_pd_df['PG_AVG']
+nss_pd_df = nss_muge_df.merge(nss_gluauc_result, on=['ID'], how='left')
+nss_pd_df['NSS_EFFECT1'] = nss_pd_df['NSS_UGE24']/nss_pd_df['PG_AVG']
 
 mpd_df = ss_pd_df[['ID','TIME','SS_UGE24','SS_EFFECT1']].merge(nss_pd_df[['ID','TIME','NSS_UGE24','NSS_EFFECT1']], on=['ID','TIME'], how='left')
 # 상관계수 및 p-value 계산
@@ -58,15 +74,20 @@ r_squared = r**2
 
 # 산점도 + 회귀선 그래프 그리기
 plt.figure(figsize=(20, 10))
-sns.regplot(data=mpd_df, x=x, y=y, ci=95, line_kws={'color': 'red'})
+sns.regplot(data=mpd_df, x=x, y=y, ci=95, line_kws={'color': 'royalblue'}, color='black')
 
 # R²와 p-value 텍스트로 그래프에 추가
-plt.title(f'Correlation Plot\n$R^2$ = {r_squared:.3f}, p-value = {p_value:.3g}', fontsize=14)
+plt.title(f'Correlation Plot (N={len(mpd_df)})\n$R^2$ = {r_squared:.3f}, p-value = {p_value:.3g}', fontsize=14)
 plt.xlabel(x)
 plt.ylabel(y)
 plt.grid(True)
 plt.tight_layout()
-# plt.show()
+
+plt.savefig(f"{results_dir_path}/{x} vs {y} in healthy volunteers (MAD).png")  # PNG 파일로 저장
+
+plt.cla()
+plt.clf()
+plt.close()
 
 ########################################
 ## SAD 분석
@@ -95,7 +116,9 @@ pg_df = pg_df.melt(id_vars=['ID'],var_name='DT',value_name='PG')
 pg_df['TIME'] = pg_df['DT'].map(lambda x:(float(x[0])-1)*24+float(x[2:-1]))
 pg_df = pg_df[['ID','TIME','PG']].sort_values(['ID','TIME'],ignore_index=True)
 
-
+gluauc_result = tblNCA(concData=pg_df,key=['ID'],colTime="TIME",colConc='PG',down = "Log",dose=1,slopeMode='BEST',colStyle='pw')
+gluauc_result = gluauc_result.rename(columns={'AUClast':'AUC_GLU'}).iloc[1:,:]
+gluauc_result['PG_AVG'] = gluauc_result['AUC_GLU'].astype(float)/24
 
 uge_df = uge_df.iloc[1:].copy()
 uge_df['ID'] = uge_df['Subject'].map(lambda x:str(int(x)))
@@ -104,29 +127,80 @@ uge_df = uge_df[uge_df['N_Time']==24][['ID','Cumul_C', 'N_Time']]
 uge_df = uge_df.rename(columns={'Cumul_C':'UGE24', 'N_Time':'TIME'}).reset_index(drop=True)
 
 
-hpd_df = uge_df.merge(pg_df, on=['ID','TIME'], how='left')
+hpd_df = uge_df.merge(gluauc_result, on=['ID'], how='left')
 hpd_df = hpd_df.merge(auc_df, on=['ID'], how='left')
 hpd_df = hpd_df.merge(rand_df, on=['ID'], how='left')
 
-hpd_df['EFFECT1'] = hpd_df['UGE24']/hpd_df['PG']
+hpd_df['EFFECT1'] = hpd_df['UGE24']/hpd_df['PG_AVG']
+hpd_df['AUClast_DOSE'] =hpd_df['AUClast']/(hpd_df['DOSE'].astype(float))
+hpd_df = hpd_df.sort_values(['DOSE'])
+
+hue_order = list(hpd_df['DOSE'].sort_values().unique())
 
 
-plt.figure(figsize=(20, 10))
-x = 'AUClast'
-y = 'EFFECT1'
-# y = 'UGE24'
-# y = 'EFFECTdelta'
-hue = 'DOSE'
+for x in ['AUClast']:
+    for y in ['EFFECT1', 'UGE24']:
 
-# sns.scatterplot(data=ss_df, x='AUClast', y='EFFECT0', hue='GRP')
-# sns.scatterplot(data=ss_df, x='AUClast', y='EFFECT1', hue='GRP')
-# sns.scatterplot(data=nss_df, x='AUClast', y='EFFECT0', hue='GRP')
-# sns.scatterplot(data=nss_df, x='AUClast', y='EFFECT1', hue='GRP')
-sns.scatterplot(data=hpd_df, x=x, y=y, hue=hue)
-plt.title(f'{x} vs {y} by {hue}')
-plt.xlabel(x)
-plt.ylabel(y)
-plt.grid(True)
-plt.tight_layout()
-plt.show()
+        plt.figure(figsize=(20, 10))
+        # x = 'AUClast'
+        # y = 'EFFECT1'
+        # # y = 'UGE24'
+        # # y = 'EFFECTdelta'
+        hue = 'DOSE'
 
+        # sns.scatterplot(data=ss_df, x='AUClast', y='EFFECT0', hue='GRP')
+        # sns.scatterplot(data=ss_df, x='AUClast', y='EFFECT1', hue='GRP')
+        # sns.scatterplot(data=nss_df, x='AUClast', y='EFFECT0', hue='GRP')
+        # sns.scatterplot(data=nss_df, x='AUClast', y='EFFECT1', hue='GRP')
+        sns.scatterplot(data=hpd_df, x=x, y=y, hue=hue,  hue_order=hue_order)
+        plt.title(f'{x} vs {y} by {hue}')
+        plt.xlabel(x)
+        plt.ylabel(y)
+        plt.grid(True)
+        plt.tight_layout()
+        # plt.show()
+
+        plt.savefig(f"{results_dir_path}/{x} vs {y} by DOSE in healthy volunteers (SAD).png")  # PNG 파일로 저장
+
+        plt.cla()
+        plt.clf()
+        plt.close()
+
+
+categories = hpd_df["DOSE"].unique()
+
+# 원하는 컬러맵에서 n개의 색상 추출
+cmap = plt.get_cmap("Greys")
+colors = [cmap(i / len(categories)) for i in range(len(categories))]
+
+# 범주에 색상 매핑
+palette = dict(zip(categories, colors))
+
+for x in ['DOSE']:
+    for y in ['AUClast', 'AUClast_DOSE']:
+
+        plt.figure(figsize=(20, 10))
+        # x = 'AUClast'
+        # y = 'EFFECT1'
+        # # y = 'UGE24'
+        # # y = 'EFFECTdelta'
+        hue = 'DOSE'
+
+        # sns.scatterplot(data=ss_df, x='AUClast', y='EFFECT0', hue='GRP')
+        # sns.scatterplot(data=ss_df, x='AUClast', y='EFFECT1', hue='GRP')
+        # sns.scatterplot(data=nss_df, x='AUClast', y='EFFECT0', hue='GRP')
+        # sns.scatterplot(data=nss_df, x='AUClast', y='EFFECT1', hue='GRP')
+        # sns.scatterplot(data=hpd_df, x=x, y=y, hue=hue,  hue_order=hue_order)
+        sns.boxplot(data=hpd_df, x=x, y=y, linewidth=2, hue=hue,  hue_order=hue_order, palette=palette)
+        plt.title(f'{x} vs {y}')
+        plt.xlabel(x)
+        plt.ylabel(y)
+        plt.grid(True)
+        plt.tight_layout()
+        # plt.show()
+
+        plt.savefig(f"{results_dir_path}/{x} vs {y} in healthy volunteers (SAD).png")  # PNG 파일로 저장
+
+        plt.cla()
+        plt.clf()
+        plt.close()

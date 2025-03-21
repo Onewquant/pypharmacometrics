@@ -157,11 +157,19 @@ pd_df = nss_df.copy()
 # 상관계수 행렬 계산
 corr_matrix = pd_df[['AGE', 'SEX', 'HT', 'WT', 'BMI', 'ALB', 'GFR', 'TBIL', 'AUC_GLU', 'PG_AVG', 'PG_ZERO', 'AUClast']].corr().abs()
 
-# # 히트맵 그리기
-# plt.figure(figsize=(15, 10))
-# sns.heatmap(corr_matrix, annot=True, fmt=".2f", cmap='coolwarm', vmin=-1, vmax=1)
-# plt.title("Correlation Matrix Heatmap")
+# 히트맵 그리기
+plt.figure(figsize=(20, 15))
+sns.heatmap(corr_matrix, annot=True, fmt=".2f", cmap='coolwarm', vmin=-1, vmax=1)
+plt.title("Correlation Matrix Heatmap")
+plt.xticks(fontsize=14)
+plt.yticks(fontsize=14)
 # plt.show()
+plt.savefig(f"{results_dir_path}/Heatmap of covariates.png")  # PNG 파일로 저장
+
+plt.cla()
+plt.clf()
+plt.close()
+
 
 
 # 상삼각행렬 추출 (자기 자신과 중복 제거)
@@ -181,13 +189,42 @@ for c in X.columns:
 y = pd_df['UGE24']
 
 # VIF 계산
-vif_data = pd.DataFrame(columns=['Variable','VIF'])
-vif_data['Variable'] = list(X.columns)
+vif_data = pd.DataFrame(columns=['Covariates','VIF'])
+vif_data['Covariates'] = list(X.columns)
 vif_data['VIF'] = [variance_inflation_factor(X.values, i) for i in range(X.shape[1])]
-no_vif_cols = list(vif_data[vif_data['VIF'] < 10]['Variable'])
+
+# VIF 값 오름차순 정렬
+df_vif_sorted = vif_data.sort_values(by='VIF', ascending=False)
+
+# 수평 막대그래프 그리기
+plt.figure(figsize=(15, 10))
+plt.barh(df_vif_sorted['Covariates'], df_vif_sorted['VIF'], color='royalblue')
+plt.xlabel('VIF Value')
+# plt.xticks(fontsize=14)
+# plt.yticks(fontsize=14)
+plt.title('Variance Inflation Factor (VIF) per Covariate')
+plt.grid(axis='x', linestyle='--', alpha=0.5)
+
+# VIF 값 표시 (선택 사항)
+for index, value in enumerate(df_vif_sorted['VIF']):
+    plt.text(value + 0.1, index, f"{value:.2f}", va='center')
+
+plt.tight_layout()
+plt.show()
+
+plt.savefig(f"{results_dir_path}/VIF values of covariates.png")  # PNG 파일로 저장
+
+plt.cla()
+plt.clf()
+plt.close()
+
+
+
+no_vif_cols = list(vif_data[vif_data['VIF'] < 10]['Covariates'])
+
 
 # 회귀모형 적합
-total_model = sm.OLS(y, X[list(vif_data['Variable'])]).fit()
+total_model = sm.OLS(y, X[list(vif_data['Covariates'])]).fit()
 sel_model = sm.OLS(y, X[no_vif_cols]).fit()
 
 # 결과 출력
@@ -201,28 +238,38 @@ print(sel_model.summary())
 
 # scatter plot 그리기
 plt.figure(figsize=(15, 10))
-# x = 'AUClast'
-# x = 'Cmax'
-x = 'GFR'
-# x = 'GFR_WEIGHTED_AUC'
-# y = 'EFFECTgfr'
-# y = 'EFFECT0'
-y = 'EFFECT1'
-# y = 'EFFECTgfr'
-# y = 'EFFECTdelta'
-hue = 'GRP'
 
-# sns.scatterplot(data=ss_df, x='AUClast', y='EFFECT0', hue='GRP')
-# sns.scatterplot(data=ss_df, x='AUClast', y='EFFECT1', hue='GRP')
-# sns.scatterplot(data=nss_df, x='AUClast', y='EFFECT0', hue='GRP')
-# sns.scatterplot(data=nss_df, x='AUClast', y='EFFECT1', hue='GRP')
-sns.scatterplot(data=integ_df, x=x, y=y, hue=hue)
-plt.title(f'{x} vs {y} by {hue}')
-plt.xlabel(x)
-plt.ylabel(y)
-plt.grid(True)
-plt.tight_layout()
-plt.show()
+for x in ['AUClast','Cmax','GFR']:
+    for y in ['EFFECT1', 'EFFECTdelta']:
+        # x = 'AUClast'
+        # x = 'Cmax'
+        # x = 'GFR'
+        # x = 'GFR_WEIGHTED_AUC'
+        # y = 'EFFECTgfr'
+        # y = 'EFFECT0'
+        # y = 'EFFECT1'
+        # y = 'EFFECTgfr'
+        # y = 'EFFECTdelta'
+        hue = 'GRP'
+
+        # sns.scatterplot(data=ss_df, x='AUClast', y='EFFECT0', hue='GRP')
+        # sns.scatterplot(data=ss_df, x='AUClast', y='EFFECT1', hue='GRP')
+        # sns.scatterplot(data=nss_df, x='AUClast', y='EFFECT0', hue='GRP')
+        # sns.scatterplot(data=nss_df, x='AUClast', y='EFFECT1', hue='GRP')
+        sns.scatterplot(data=integ_df, x=x, y=y, hue=hue)
+        plt.title(f'{x} vs {y} by {hue}')
+        plt.xlabel(x)
+        plt.ylabel(y)
+        plt.grid(True)
+        plt.tight_layout()
+        # plt.show()
+
+        plt.savefig(f"{results_dir_path}/{x} vs {y} by {hue}.png")  # PNG 파일로 저장
+
+        plt.cla()
+        plt.clf()
+        plt.close()
+
 
 
 X = nss_df[[x]]
@@ -259,13 +306,22 @@ gfr_fit = np.linspace(0.1, 120, 100)
 effect_fit = sigmoid_emax(gfr_fit, *popt)
 
 # 시각화
+
+x = 'GFR'
+y = 'Effect1'
+
 plt.figure(figsize=(15, 10))
-plt.scatter(gfr, effect, label='Observed data', color='black')
-plt.plot(gfr_fit, effect_fit, label='Sigmoid Emax Fit', color='blue')
-plt.xlabel('GFR')
-plt.ylabel('Effect1')
-plt.title('Sigmoid Emax Model Fit (Python)')
+plt.scatter(gfr, effect, label=x, color='black')
+plt.plot(gfr_fit, effect_fit, label=y, color='royalblue')
+plt.xlabel(x)
+plt.ylabel(y)
+plt.title(f'Sigmoid Emax Model Fit\nEmax: {Emax_fit:.2f}, EC50: {EC50_fit:.2f}, Hill coefficient: {H_fit:.2f}')
 plt.legend()
 plt.grid(True)
 plt.show()
 
+plt.savefig(f"{results_dir_path}/Sigmoid Emax Model Fit ({x} vs {y}).png")  # PNG 파일로 저장
+
+plt.cla()
+plt.clf()
+plt.close()
