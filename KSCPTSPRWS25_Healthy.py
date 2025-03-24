@@ -77,13 +77,13 @@ plt.figure(figsize=(20, 10))
 sns.regplot(data=mpd_df, x=x, y=y, ci=95, line_kws={'color': 'royalblue'}, color='black')
 
 # R²와 p-value 텍스트로 그래프에 추가
-plt.title(f'Correlation Plot (N={len(mpd_df)})\n$R^2$ = {r_squared:.3f}, p-value = {p_value:.3g}', fontsize=14)
+plt.title(f'Correlation Plot (N={len(mpd_df)})\nR = {r:.3f}, $R^2$ = {r_squared:.3f}, p-value = {p_value:.3g}', fontsize=14)
 plt.xlabel(x)
 plt.ylabel(y)
 plt.grid(True)
 plt.tight_layout()
 
-plt.savefig(f"{results_dir_path}/{x} vs {y} in healthy volunteers (MAD).png")  # PNG 파일로 저장
+plt.savefig(f"{results_dir_path}/[Healthy (MAD)] {x} vs {y}.png")  # PNG 파일로 저장
 
 plt.cla()
 plt.clf()
@@ -132,11 +132,23 @@ hpd_df = hpd_df.merge(auc_df, on=['ID'], how='left')
 hpd_df = hpd_df.merge(rand_df, on=['ID'], how='left')
 
 hpd_df['EFFECT1'] = hpd_df['UGE24']/hpd_df['PG_AVG']
+hpd_df['CL'] =(hpd_df['DOSE'].astype(float))/hpd_df['AUClast']
+hpd_df['CL_DOSE'] =hpd_df['CL']/(hpd_df['DOSE'].astype(float))
 hpd_df['AUClast_DOSE'] =hpd_df['AUClast']/(hpd_df['DOSE'].astype(float))
 hpd_df = hpd_df.sort_values(['DOSE'])
 
 hue_order = list(hpd_df['DOSE'].sort_values().unique())
+# sns.histplot(hpd_df, x='EFFECT1', bins=30)
+# 평균과 표준편차 계산
+mean = hpd_df['EFFECT1'].mean()
+std = hpd_df['EFFECT1'].std()
+q25 = hpd_df['EFFECT1'].quantile(0.25)
+q75 = hpd_df['EFFECT1'].quantile(0.75)
 
+# ±2 standard deviation 범위
+
+lower_bound = mean - 2 * std
+upper_bound = mean + 2 * std
 
 for x in ['AUClast']:
     for y in ['EFFECT1', 'UGE24']:
@@ -160,7 +172,7 @@ for x in ['AUClast']:
         plt.tight_layout()
         # plt.show()
 
-        plt.savefig(f"{results_dir_path}/{x} vs {y} by DOSE in healthy volunteers (SAD).png")  # PNG 파일로 저장
+        plt.savefig(f"{results_dir_path}/[Healthy (SAD)] {x} vs {y}.png")  # PNG 파일로 저장
 
         plt.cla()
         plt.clf()
@@ -177,7 +189,7 @@ colors = [cmap(i / len(categories)) for i in range(len(categories))]
 palette = dict(zip(categories, colors))
 
 for x in ['DOSE']:
-    for y in ['AUClast', 'AUClast_DOSE']:
+    for y in ['AUClast', 'AUClast_DOSE', 'CL', 'CL_DOSE']:
 
         plt.figure(figsize=(20, 10))
         # x = 'AUClast'
@@ -199,7 +211,7 @@ for x in ['DOSE']:
         plt.tight_layout()
         # plt.show()
 
-        plt.savefig(f"{results_dir_path}/{x} vs {y} in healthy volunteers (SAD).png")  # PNG 파일로 저장
+        plt.savefig(f"{results_dir_path}/[Healthy (SAD)] {x} vs {y}.png")  # PNG 파일로 저장
 
         plt.cla()
         plt.clf()

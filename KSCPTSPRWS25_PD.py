@@ -160,11 +160,12 @@ corr_matrix = pd_df[['AGE', 'SEX', 'HT', 'WT', 'BMI', 'ALB', 'GFR', 'TBIL', 'AUC
 # 히트맵 그리기
 plt.figure(figsize=(20, 15))
 sns.heatmap(corr_matrix, annot=True, fmt=".2f", cmap='coolwarm', vmin=-1, vmax=1)
-plt.title("Correlation Matrix Heatmap")
+fig_title = "[WSCT] Correlation matrix heatmap of the covariates"
+plt.title(fig_title)
 plt.xticks(fontsize=14)
 plt.yticks(fontsize=14)
 # plt.show()
-plt.savefig(f"{results_dir_path}/Heatmap of covariates.png")  # PNG 파일로 저장
+plt.savefig(f"{results_dir_path}/{fig_title}.png")  # PNG 파일로 저장
 
 plt.cla()
 plt.clf()
@@ -202,7 +203,8 @@ plt.barh(df_vif_sorted['Covariates'], df_vif_sorted['VIF'], color='royalblue')
 plt.xlabel('VIF Value')
 # plt.xticks(fontsize=14)
 # plt.yticks(fontsize=14)
-plt.title('Variance Inflation Factor (VIF) per Covariate')
+fig_title = '[WSCT] Variance Inflation Factor (VIF) of covariates'
+plt.title(fig_title)
 plt.grid(axis='x', linestyle='--', alpha=0.5)
 
 # VIF 값 표시 (선택 사항)
@@ -212,7 +214,7 @@ for index, value in enumerate(df_vif_sorted['VIF']):
 plt.tight_layout()
 plt.show()
 
-plt.savefig(f"{results_dir_path}/VIF values of covariates.png")  # PNG 파일로 저장
+plt.savefig(f"{results_dir_path}/{fig_title}.png")  # PNG 파일로 저장
 
 plt.cla()
 plt.clf()
@@ -257,14 +259,15 @@ for x in ['AUClast','Cmax','GFR']:
         # sns.scatterplot(data=nss_df, x='AUClast', y='EFFECT0', hue='GRP')
         # sns.scatterplot(data=nss_df, x='AUClast', y='EFFECT1', hue='GRP')
         sns.scatterplot(data=integ_df, x=x, y=y, hue=hue)
-        plt.title(f'{x} vs {y} by {hue}')
+        fig_title = f'[WSCT] {x} vs {y} by {hue}'
+        plt.title(fig_title)
         plt.xlabel(x)
         plt.ylabel(y)
         plt.grid(True)
         plt.tight_layout()
         # plt.show()
 
-        plt.savefig(f"{results_dir_path}/{x} vs {y} by {hue}.png")  # PNG 파일로 저장
+        plt.savefig(f"{results_dir_path}/{fig_title}.png")  # PNG 파일로 저장
 
         plt.cla()
         plt.clf()
@@ -315,12 +318,13 @@ plt.scatter(gfr, effect, label=x, color='black')
 plt.plot(gfr_fit, effect_fit, label=y, color='royalblue')
 plt.xlabel(x)
 plt.ylabel(y)
-plt.title(f'Sigmoid Emax Model Fit\nEmax: {Emax_fit:.2f}, EC50: {EC50_fit:.2f}, Hill coefficient: {H_fit:.2f}')
+fig_title = f'[WSCT] Sigmoid Emax Model Fit ({x} vs {y})\nEmax: {Emax_fit:.2f}, EC50: {EC50_fit:.2f}, Hill coefficient: {H_fit:.2f}'
+plt.title(fig_title)
 plt.legend()
 plt.grid(True)
 plt.show()
 
-plt.savefig(f"{results_dir_path}/Sigmoid Emax Model Fit ({x} vs {y}).png")  # PNG 파일로 저장
+plt.savefig(f"{results_dir_path}/{fig_title.split('Emax:')[0].strip()}.png")  # PNG 파일로 저장
 
 plt.cla()
 plt.clf()
