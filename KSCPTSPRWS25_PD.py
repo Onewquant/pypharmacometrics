@@ -75,7 +75,7 @@ bpd_df['N_TIME'] = bpd_df['N_TIME'].astype(float)
 bpd_df['C_Serum GLU'] = bpd_df['C_Serum GLU'].astype(float)
 bpd_df = bpd_df[(bpd_df['DAY'].isin([1,7]))&(bpd_df['N_TIME'] <= 24)].copy()
 
-pg_zero_df = bpd_df[bpd_df['N_TIME']==0][['ID','DAY','C_Serum GLU']].rename(columns={'C_Serum GLU':'PG_ZERO'})
+pg_zero_df = bpd_df[bpd_df['N_TIME']==0][['ID','DAY','C_Serum GLU','HbA1c']].rename(columns={'C_Serum GLU':'PG_ZERO'})
 
 glu_nca_result = tblNCA(concData=bpd_df,key=['ID','DAY'],colTime="N_TIME",colConc='C_Serum GLU',down = "Log",dose=0.1,slopeMode='BEST',colStyle='pw')
 # glu_nca_result.columns
@@ -329,3 +329,8 @@ plt.savefig(f"{results_dir_path}/{fig_title.split('Emax:')[0].strip()}.png")  # 
 plt.cla()
 plt.clf()
 plt.close()
+
+## Data For PD-Endpoint Simulation
+
+nss_df['dUGEc'] = nss_df['EFFECT1']
+nss_df[['UID','GRP','GFR','dUGEc','AUC_GLU','PG_AVG','PG_ZERO']].to_csv(f"{results_dir_path}/PD_Endpoint_Sim_data(KSCPTSPR25).csv", index=False)
