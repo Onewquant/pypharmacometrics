@@ -10,9 +10,9 @@ input_data <- read_csv("PD_data.csv")  # 파일 경로는 실제 환경에 맞�
 
 # 공통 파라미터 설정 (예시값, 필요 시 조정)
 common_params <- list(
-  FPGbaseline = 160,
+  FPGbaseline = 120,
   HbA1cbaseline = 7.92,
-  Pfmax = 15,
+  Pfmax = 1.90,
   Kfp = 0.34,
   DISfp = 3.13,
   SLOPEfd = -43.3,
@@ -33,7 +33,8 @@ model_fn <- function(t, state, parms) {
     FPG <- FPGplacebo + SLOPEfd * dUGEc
     HbA1cplacebo <- HbA1cbaseline - Phmax * (1 - exp(-Khp * t)) + DIShp * t
     Kin <- Kout * HbA1cbaseline - Kin2
-    dHbA1cdrug <- (FPG / FPGbaseline) * Kin + Kin2 - Kout * HbA1cdrug
+    HbA1c <- HbA1cplacebo + HbA1cdrug
+    dHbA1cdrug <- (FPG / FPGbaseline) * Kin + Kin2 - Kout * HbA1c
     
     list(c(dHbA1cdrug = dHbA1cdrug),
          FPG = FPG,
