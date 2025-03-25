@@ -9,20 +9,24 @@ library(deSolve)
 library(tidyverse)
 
 # ΔUGEc 데이터
-input_data <- read_csv("PD_data.csv")
+input_data <- read_csv("PD_Endpoint_Sim_data(KSCPTSPR25).csv")
 
+mean_baseline_pg = input_data %>% summarise(mean_PG_ZERO = mean(PG_ZERO, na.rm = TRUE)) %>% pull(mean_PG_ZERO)
+mean_baseline_HbA1c = input_data %>% summarise(mean_HbA1c = mean(HbA1c, na.rm = TRUE)) %>% pull(mean_HbA1c)
+print(mean_baseline_pg)
+print(mean_baseline_HbA1c)
+mean_baseline_pg
 # 공통 파라미터
 params_fixed <- list(
-  FPGbaseline = 160,
-  HbA1cbaseline = 7.92,
+  FPGbaseline = mean_baseline_pg,  # 145
+  HbA1cbaseline = mean_baseline_HbA1c, # 6.72
   Pfmax = 1.9,
   Kfp = 0.34,
-  DISfp = 3.13,
-  # DISfp = 3.13,
+  DISfp = 0.0313,
   SLOPEfd = -43.3,
   Phmax = 0.051,
   Khp = 0.24,
-  DIShp = 0.31,
+  DIShp = 0.0031,
   Kin2 = 0.5,
   Kout = 0.2
 )
@@ -44,9 +48,16 @@ model_fn <- function(t, state, parms) {
     dHbA1cdrug <- (FPG / FPGbaseline) * Kin + Kin2 - Kout * (HbA1cplacebo + HbA1cdrug)
     
     list(c(dHbA1cdrug), 
+         
          dHbA1cdrug = dHbA1cdrug,
+         # Pfmax_term = Pfmax * (1 - exp(-Kfp * t)),
+         # DISfp_term = DISfp * t,
+         # dUGEc_term = SLOPEfd * dUGEc,
+         Phmax_term = Phmax * (1 - exp(-Khp * t)),
+         DIShp_term = DIShp * t,
          # HbA1cplacebo = HbA1cplacebo, #+ HbA1cdrug,
          HbA1c = HbA1cplacebo + HbA1cdrug,
+         
          FPGplacebo = FPGplacebo,
          FPG = FPG,
          HbA1cplacebo = HbA1cplacebo)
@@ -63,16 +74,18 @@ for (i in 1:nrow(input_data)) {
   
   out <- ode(y = state, times = times, func = model_fn, parms = parms) %>%
     as.data.frame() %>%
-    mutate(UID = subj$UID)
+    mutate(UID = subj$UID,
+           GRP = subj$GRP)
   
   results_list[[i]] <- out
 }
 
 results_all <- bind_rows(results_list)
-results_all
-# 시각화
-# ggplot(results_all, aes(x = time, y = HbA1c, color = UID)) +
-#   geom_line(size = 1) +
-#   labs(title = "Simulated HbA1c over Time",
-#        x = "Time (weeks)", y = "HbA1c (%)") +
-#   theme_minimal()
+# results_all
+#시각화
+ggplot(results_all, aes(x = time, y = HbA1c, color = as.factor(GRP), group = UID)) +
+  geom_line(size = 1, alpha = 0.8) +
+  labs(title = "Simulated HbA1c over Time by Group",
+       x = "Time (weeks)", y = "HbA1c (%)",
+       color = "Group") +
+  theme_minimal()

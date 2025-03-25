@@ -333,4 +333,4 @@ plt.close()
 ## Data For PD-Endpoint Simulation
 
 nss_df['dUGEc'] = nss_df['EFFECT1']
-nss_df[['UID','GRP','GFR','dUGEc','AUC_GLU','PG_AVG','PG_ZERO']].to_csv(f"{results_dir_path}/PD_Endpoint_Sim_data(KSCPTSPR25).csv", index=False)
+nss_df[['UID','GRP','GFR','dUGEc','AUC_GLU','PG_AVG','PG_ZERO','HbA1c']].to_csv(f"{results_dir_path}/PD_Endpoint_Sim_data(KSCPTSPR25).csv", index=False)
