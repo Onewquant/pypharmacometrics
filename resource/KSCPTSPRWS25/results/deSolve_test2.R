@@ -1,4 +1,4 @@
-library(deSolve)
+# library(deSolve)
 library(readr)
 library(dplyr)
 library(ggplot2)
@@ -8,18 +8,21 @@ setwd('C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25/re
 library(deSolve)
 library(tidyverse)
 
-# ΔUGEc 데이터
+# dUGEc 데이터
 input_data <- read_csv("PD_Endpoint_Sim_data(KSCPTSPR25).csv")
+input_data$dUGEc <- input_data$dUGEc * 2.5
 
 mean_baseline_pg = input_data %>% summarise(mean_PG_ZERO = mean(PG_ZERO, na.rm = TRUE)) %>% pull(mean_PG_ZERO)
 mean_baseline_HbA1c = input_data %>% summarise(mean_HbA1c = mean(HbA1c, na.rm = TRUE)) %>% pull(mean_HbA1c)
 print(mean_baseline_pg)
 print(mean_baseline_HbA1c)
-mean_baseline_pg
+
 # 공통 파라미터
 params_fixed <- list(
-  FPGbaseline = mean_baseline_pg,  # 145
-  HbA1cbaseline = mean_baseline_HbA1c, # 6.72
+  # FPGbaseline = mean_baseline_pg,  # 145
+  # HbA1cbaseline = mean_baseline_HbA1c, # 6.72
+  FPGbaseline = 150,
+  HbA1cbaseline = 7.0,
   Pfmax = 1.9,
   Kfp = 0.34,
   DISfp = 0.0313,
@@ -53,14 +56,13 @@ model_fn <- function(t, state, parms) {
          # Pfmax_term = Pfmax * (1 - exp(-Kfp * t)),
          # DISfp_term = DISfp * t,
          # dUGEc_term = SLOPEfd * dUGEc,
-         Phmax_term = Phmax * (1 - exp(-Khp * t)),
-         DIShp_term = DIShp * t,
+         # Phmax_term = Phmax * (1 - exp(-Khp * t)),
+         # DIShp_term = DIShp * t,
          # HbA1cplacebo = HbA1cplacebo, #+ HbA1cdrug,
          HbA1c = HbA1cplacebo + HbA1cdrug,
-         
          FPGplacebo = FPGplacebo,
-         FPG = FPG,
-         HbA1cplacebo = HbA1cplacebo)
+         FPG = FPG
+         )
   })
 }
 
