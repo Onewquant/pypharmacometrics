@@ -7,6 +7,82 @@ import pandas as pd
 import seaborn as sns
 import pynca
 
+## OLS result report
+
+import statsmodels.api as sm
+from fpdf import FPDF
+from sklearn.preprocessing import StandardScaler
+
+# Standardized Coefficient 계산
+def get_standardized_coefficients(X, y):
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    y_scaled = (y - y.mean()) / y.std()
+    model_std = sm.OLS(y_scaled, X_scaled).fit()
+    return model_std.params
+
+# 결과 DataFrame 만들기
+def ols_result_df(result, X, y):
+    # standardized_coefs = get_standardized_coefficients(X, y)
+    df = pd.DataFrame({
+        'Coefficient': result.params,
+        'Std.Err': result.bse,
+        't-value': result.tvalues,
+        'P-value': result.pvalues,
+        'CI Lower': result.conf_int()[0],
+        'CI Upper': result.conf_int()[1],
+        # 'Standardized Coef': standardized_coefs
+    }).round(4)
+    return df
+
+# PDF 리포트 생성 함수
+def create_pdf_report(result, result_df, filepath="OLS_Report.pdf"):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "OLS Multivariable Linear Regression Report", ln=True, align="C")
+    pdf.ln(10)
+
+    # 모델 요약
+    pdf.set_font("Arial", "", 12)
+    pdf.multi_cell(0, 8,
+        f"Dependent Variable: {result.model.endog_names}\n"
+        f"Number of Observations: {int(result.nobs)}\n"
+        f"Degrees of Freedom: {int(result.df_model)} (Model), {int(result.df_resid)} (Residual)\n"
+        f"R-squared: {result.rsquared:.4f}\n"
+        f"Adjusted R-squared: {result.rsquared_adj:.4f}\n"
+        f"F-statistic: {result.fvalue:.4f}\n"
+        f"Prob (F-statistic): {result.f_pvalue:.4g}\n"
+        f"AIC: {result.aic:.2f}, BIC: {result.bic:.2f}"
+    )
+    pdf.ln(10)
+
+    # Coefficient Table
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 10, "Coefficients Summary", ln=True)
+    pdf.set_font("Arial", "", 10)
+    col_width = pdf.w / (len(result_df.columns)+2)
+
+    # Header
+    row_height = 8
+    pdf.cell(col_width, row_height, ' ', border=1, align="C")
+    for col in result_df.columns:
+        pdf.cell(col_width, row_height, col, border=1, align="C")
+    pdf.ln()
+
+    # Rows
+    for index, row in result_df.iterrows():
+        pdf.cell(col_width, row_height, str(index), border=1, align="C")
+        for item in row:
+            pdf.cell(col_width, row_height, str(item), border=1, align="C")
+        pdf.ln()
+
+    # Save
+    pdf.output(filepath)
+    print(f"✅ PDF Report saved as: {filepath}")
+
+
+
 ## Basic functions
 
 def load_data_dict(drug_list, filename_format, input_file_dir_path):

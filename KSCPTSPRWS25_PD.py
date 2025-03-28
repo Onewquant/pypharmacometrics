@@ -1,6 +1,5 @@
 from tools import *
 from pynca.tools import *
-import statsmodels.api as sm
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 
@@ -52,6 +51,8 @@ iAUC_df=pd.DataFrame({'Name':['T[0-6h]','T[6-12h]','T[12-24h]','T[0-24h]'], 'Sta
 # result = tblNCA(concData=mdprep_conc_df,key=['ID','DAY'],colTime="A_TIME",colConc='CONC',down = "Linear",iAUC=iAUC_df,dose=0.5,slopeMode='BEST',colStyle='pw')
 iauc_result = tblNCA(concData=mdprep_conc_df,key=['ID','UID','DAY'],colTime="ADJTIME",colConc='DV',down = "Log",iAUC=iAUC_df,dose=0.5,slopeMode='BEST',colStyle='pw')
 iauc_res_df = iauc_result.iloc[1:,:-1].melt(id_vars=list(iauc_result.iloc[:,:-1].columns[:-4]), var_name='AUCTIMEINT', value_name='IAUC')
+# iauc_res_df.columns
+# iauc_res_df[iauc_res_df['DAY']==1][['ID', 'N_Samples', 'Tmax', 'Cmax', 'AUClast', 'Vz_F_obs', 'Cl_F_obs']]
 
 ## PD와 연결
 
@@ -83,6 +84,8 @@ s_glu_df = glu_nca_result[['ID','DAY','AUClast']].iloc[1:]
 s_glu_df['PG_AVG'] = s_glu_df['AUClast'].astype(float)/24
 s_glu_df = s_glu_df.merge(pg_zero_df, on=['ID','DAY'], how='left')
 s_glu_df = s_glu_df.rename(columns={'AUClast':'AUC_GLU','DAY':'N_Day','ID':'UID'})
+# s_glu_df['PG_AVG'].mean()
+# s_glu_df['PG_ZERO'].mean()
 
 # bpd_df[bpd_df['ID']=='S031']
 
@@ -114,15 +117,19 @@ upd_daily_df = upd_daily_df.drop_duplicates(['UID','N_Day','N_Time'])
 
 
 # 공변량 붙이기
-covar_df = mdprep_conc_df[['ID','UID']+list(mdprep_conc_df.columns)[7:15]].drop_duplicates(['ID'])
+covar_df = mdprep_conc_df[['ID','UID']+list(mdprep_conc_df.columns)[7:18]].drop_duplicates(['ID'])
 upd_daily_df = upd_daily_df.merge(covar_df, on=['UID'],how='left')
 upd_daily_df = upd_daily_df.merge(s_glu_df, on=['UID','N_Day'],how='left')
 upd_daily_df = upd_daily_df.merge(iauc_res_df[['UID','N_Day','AUCTIMEINT','AUClast','Cmax','Tmax']], on=['UID','N_Day','AUCTIMEINT'],how='left')
 # iauc_res_df.columns
+# upd_daily_df['EFFECT0'] = (upd_daily_df['UGE24']-upd_daily_df['UGEbase'])/upd_daily_df['PG_ZERO']
+upd_daily_df['eGFRxTBIL'] = upd_daily_df['GFR']*upd_daily_df['TBIL']
+upd_daily_df['dUGE'] = (upd_daily_df['UGE24']-upd_daily_df['UGEbase'])
 upd_daily_df['EFFECT0'] = (upd_daily_df['UGE24']-upd_daily_df['UGEbase'])/upd_daily_df['PG_ZERO']
 upd_daily_df['EFFECT1'] = (upd_daily_df['UGE24']-upd_daily_df['UGEbase'])/upd_daily_df['PG_AVG']
-upd_daily_df['EFFECTgfr'] = (upd_daily_df['UGE24']-upd_daily_df['UGEbase'])/(upd_daily_df['PG_AVG']*upd_daily_df['GFR'])
-upd_daily_df['EFFECTdelta'] = (upd_daily_df['UGE24']-upd_daily_df['UGEbase'])
+
+# upd_daily_df['EFFECTgfr'] = (upd_daily_df['UGE24']-upd_daily_df['UGEbase'])/(upd_daily_df['PG_AVG']*upd_daily_df['GFR'])
+# upd_daily_df['EFFECTdelta'] = (upd_daily_df['UGE24']-upd_daily_df['UGEbase'])
 
 
 # upd_daily_df['GFR_WEIGHTED_AUC'] = upd_daily_df['GFR']*upd_daily_df['AUClast']
@@ -150,12 +157,19 @@ integ_df.to_csv(f"{results_dir_path}/KSCPTSPRWS25_PD_INTEG(NSS_SS).csv", index=F
 # pd_adj_df.to_csv(f"{results_dir_path}/KSCPTSPRWS25_PD_NSS_ADJ.csv", index=False)
 
 pd_df = nss_df.copy()
+# pd_df[['UID', 'GRP', 'UGE24', 'UGEbase', 'dUGE','PG_AVG', 'PG_ZERO', 'EFFECT0', 'EFFECT1']]
+# pd_df['dUGE'].mean()
+# pd_df.columns
 # pd_df = integ_df.copy()
 
 ## Multivariable linear regression
 
 # 상관계수 행렬 계산
-corr_matrix = pd_df[['AGE', 'SEX', 'HT', 'WT', 'BMI', 'ALB', 'GFR', 'TBIL', 'AUC_GLU', 'PG_AVG', 'PG_ZERO', 'AUClast']].corr().abs()
+# corr_matrix = pd_df[['AGE', 'SEX', 'HT', 'WT', 'BMI', 'ALB', 'GFR', 'TBIL', 'AUClast']].corr().abs()
+cov_cand = ['AGE', 'SEX', 'HT', 'WT', 'BMI', 'ALB', 'GFR', 'TBIL', 'AUClast']
+# cov_cand = ['AGE', 'SEX', 'HT', 'WT', 'BMI', 'ALB', 'GFR', 'AST', 'ALT', 'SODIUM', 'TBIL', 'AUClast']
+# cov_cand = ['AGE', 'SEX', 'HT', 'WT', 'BMI', 'ALB', 'GFR', 'AST','ALT','SODIUM','AUClast']
+corr_matrix = pd_df[cov_cand].corr().abs()
 
 # 히트맵 그리기
 plt.figure(figsize=(20, 15))
@@ -180,14 +194,21 @@ lower = corr_matrix.where(np.tril(np.ones(corr_matrix.shape), k=-1).astype(bool)
 to_drop = [column for column in lower.columns if any(lower[column] > 0.7)]
 
 # 독립변수(X), 종속변수(y)
-total_cand = ['AGE', 'SEX', 'HT', 'WT', 'BMI', 'ALB', 'GFR', 'TBIL', 'AUC_GLU', 'PG_AVG', 'PG_ZERO', 'AUClast']
+# total_cand = ['AGE', 'SEX', 'HT', 'WT', 'BMI', 'ALB', 'GFR', 'TBIL', 'AUC_GLU', 'PG_AVG', 'PG_ZERO', 'AUClast']
+# total_cand = ['AGE', 'SEX', 'HT', 'WT', 'BMI', 'ALB', 'GFR', 'TBIL', 'AUClast']
+total_cand = cov_cand
 
 X = pd_df[list(set(total_cand)-set(to_drop))]
 # X = nss_df[list(set(total_cand))]
 for c in X.columns:
     X[c]=X[c].astype(float)
 
-y = pd_df['UGE24']
+# y = pd_df['UGE24']
+effect_col = 'EFFECT1'
+# effect_col = 'EFFECT0'
+
+y = pd_df[effect_col]
+
 
 # VIF 계산
 vif_data = pd.DataFrame(columns=['Covariates','VIF'])
@@ -196,6 +217,7 @@ vif_data['VIF'] = [variance_inflation_factor(X.values, i) for i in range(X.shape
 
 # VIF 값 오름차순 정렬
 df_vif_sorted = vif_data.sort_values(by='VIF', ascending=False)
+print(df_vif_sorted)
 
 # 수평 막대그래프 그리기
 plt.figure(figsize=(15, 10))
@@ -231,7 +253,12 @@ sel_model = sm.OLS(y, X[no_vif_cols]).fit()
 
 # 결과 출력
 print(total_model.summary())
-print(sel_model.summary())
+# print(sel_model.summary())
+
+
+# OLS 모델
+result_df = ols_result_df(total_model, X, y)
+create_pdf_report(total_model, result_df,filepath=f"{results_dir_path}/[WSCT] Multivariable LR results.pdf")
 
 
 # nss_df['EFFECT'] = (nss_df['UGE24']-nss_df['BASELINE'])/nss_df['PG_AVG']
@@ -241,24 +268,11 @@ print(sel_model.summary())
 # scatter plot 그리기
 plt.figure(figsize=(15, 10))
 
-for x in ['AUClast','Cmax','GFR']:
-    for y in ['EFFECT1', 'EFFECTdelta']:
-        # x = 'AUClast'
-        # x = 'Cmax'
-        # x = 'GFR'
-        # x = 'GFR_WEIGHTED_AUC'
-        # y = 'EFFECTgfr'
-        # y = 'EFFECT0'
-        # y = 'EFFECT1'
-        # y = 'EFFECTgfr'
-        # y = 'EFFECTdelta'
+for x in ['AUClast','Cmax','GFR','TBIL','eGFRxTBIL']:
+    for y in [effect_col]:
         hue = 'GRP'
 
-        # sns.scatterplot(data=ss_df, x='AUClast', y='EFFECT0', hue='GRP')
-        # sns.scatterplot(data=ss_df, x='AUClast', y='EFFECT1', hue='GRP')
-        # sns.scatterplot(data=nss_df, x='AUClast', y='EFFECT0', hue='GRP')
-        # sns.scatterplot(data=nss_df, x='AUClast', y='EFFECT1', hue='GRP')
-        sns.scatterplot(data=integ_df, x=x, y=y, hue=hue)
+        sns.scatterplot(data=nss_df, x=x, y=y, hue=hue)
         fig_title = f'[WSCT] {x} vs {y} by {hue}'
         plt.title(fig_title)
         plt.xlabel(x)
@@ -291,18 +305,43 @@ p_value = model.pvalues[x]
 from scipy.optimize import curve_fit
 
 # Sigmoid Emax 모델 함수 정의
-def sigmoid_emax(conc, Emax, EC50, H):
-    return Emax * conc**H / (EC50**H + conc**H)
+def sigmoid_emax(conc, E0, Emax, EC50, H):
+    return E0+Emax * conc**H / (EC50**H + conc**H)
 
-gfr = nss_df['GFR']
-effect = nss_df['EFFECT1']
+x_col = 'GFR'
+# x_col = 'eGFRxTBIL'
+
+x_sigemax = nss_df[x_col]
+effect = nss_df[effect_col]
 
 # curve fitting
-popt, pcov = curve_fit(sigmoid_emax, gfr, effect, p0=[0.5, 50, 1])  # 초기값 설정
+popt, pcov = curve_fit(sigmoid_emax, x_sigemax, effect, p0=[0.02, 0.5, 50, 1])  # 초기값 설정
 
 # 피팅된 파라미터 출력
-Emax_fit, EC50_fit, H_fit = popt
-print(f"Emax: {Emax_fit:.2f}, EC50: {EC50_fit:.2f}, Hill coefficient: {H_fit:.2f}")
+E0_fit, Emax_fit, EC50_fit, H_fit = popt
+print(f"E0: {E0_fit:.2f}, Emax: {Emax_fit:.2f}, EC50: {EC50_fit:.2f}, Hill coefficient: {H_fit:.2f}")
+
+# 적합도 판별
+
+# 예측값
+y_pred = sigmoid_emax(x_sigemax, *popt)
+
+# R-squared 계산
+ss_res = np.sum((nss_df[y] - y_pred) ** 2)
+ss_tot = np.sum((nss_df[y] - np.mean(nss_df[y])) ** 2)
+r_squared = 1 - (ss_res / ss_tot)
+
+# RMSE
+rmse = np.sqrt(np.mean((nss_df[y] - y_pred) ** 2))
+
+# AIC (Optional)
+n = len(y)
+k = len(popt)
+aic = n * np.log(ss_res / n) + 2 * k
+
+print(f"Effect fitting / R-squared: {r_squared:.4f}")
+print(f"Effect fitting / RMSE: {rmse:.4f}")
+print(f"Effect fitting / AIC: {aic:.2f}")
 
 # 예측값 계산
 gfr_fit = np.linspace(0.1, 120, 100)
@@ -310,21 +349,20 @@ effect_fit = sigmoid_emax(gfr_fit, *popt)
 
 # 시각화
 
-x = 'GFR'
-y = 'Effect1'
+y = effect_col
 
 plt.figure(figsize=(15, 10))
-plt.scatter(gfr, effect, label=x, color='black')
+plt.scatter(x_sigemax, effect, label=x_col, color='black')
 plt.plot(gfr_fit, effect_fit, label=y, color='royalblue')
-plt.xlabel(x)
+plt.xlabel(x_col)
 plt.ylabel(y)
-fig_title = f'[WSCT] Sigmoid Emax Model Fit ({x} vs {y})\nEmax: {Emax_fit:.2f}, EC50: {EC50_fit:.2f}, Hill coefficient: {H_fit:.2f}'
+fig_title = f'[WSCT] Sigmoid Emax Model Fit ({x_col} vs {y})\nE0: {E0_fit:.2f}, Emax: {Emax_fit:.2f}, EC50: {EC50_fit:.2f}, Hill coefficient: {H_fit:.2f}\nR-squared: {r_squared:.4f}, RMSE: {rmse:.4f}, AIC: {aic:.2f}'
 plt.title(fig_title)
 plt.legend()
 plt.grid(True)
 plt.show()
 
-plt.savefig(f"{results_dir_path}/{fig_title.split('Emax:')[0].strip()}.png")  # PNG 파일로 저장
+plt.savefig(f"{results_dir_path}/{fig_title.split('E0:')[0].strip()}.png")  # PNG 파일로 저장
 
 plt.cla()
 plt.clf()
@@ -332,5 +370,8 @@ plt.close()
 
 ## Data For PD-Endpoint Simulation
 
-nss_df['dUGEc'] = nss_df['EFFECT1']
-nss_df[['UID','GRP','GFR','dUGEc','AUC_GLU','PG_AVG','PG_ZERO','HbA1c']].to_csv(f"{results_dir_path}/PD_Endpoint_Sim_data(KSCPTSPR25).csv", index=False)
+nss_df['dUGEc'] = nss_df[effect_col]
+nss_df[['UID','GRP','GFR','TBIL','eGFRxTBIL','dUGEc','PG_AVG','PG_ZERO','HbA1c']].to_csv(f"{results_dir_path}/PD_Endpoint_Sim_data(KSCPTSPR25).csv", index=False)
+
+# nss_df['EFFECT0'].median()
+# nss_df['EFFECT1'].median()

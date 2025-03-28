@@ -10,7 +10,7 @@ library(tidyverse)
 
 # dUGEc 데이터
 input_data <- read_csv("PD_Endpoint_Sim_data(KSCPTSPR25).csv")
-input_data$dUGEc <- input_data$dUGEc * 2.5
+input_data$dUGEc <- input_data$dUGEc
 
 mean_baseline_pg = input_data %>% summarise(mean_PG_ZERO = mean(PG_ZERO, na.rm = TRUE)) %>% pull(mean_PG_ZERO)
 mean_baseline_HbA1c = input_data %>% summarise(mean_HbA1c = mean(HbA1c, na.rm = TRUE)) %>% pull(mean_HbA1c)
@@ -21,8 +21,8 @@ print(mean_baseline_HbA1c)
 params_fixed <- list(
   # FPGbaseline = mean_baseline_pg,  # 145
   # HbA1cbaseline = mean_baseline_HbA1c, # 6.72
-  FPGbaseline = 150,
-  HbA1cbaseline = 7.0,
+  # FPGbaseline = 150,
+  # HbA1cbaseline = 7.0,
   Pfmax = 1.9,
   Kfp = 0.34,
   DISfp = 0.0313,
@@ -41,8 +41,18 @@ times <- seq(0, 52, by = 1)
 model_fn <- function(t, state, parms) {
   with(as.list(c(state, parms)), {
     
+    # # 1. Placebo 모델
+    # FPGplacebo <- FPGbaseline + Pfmax * (1 - exp(-Kfp * t)) + DISfp * t
+    # FPG <- FPGplacebo + SLOPEfd * dUGEc
+    # HbA1cplacebo <- HbA1cbaseline - Phmax * (1 - exp(-Khp * t)) + DIShp * t
+    # Kin <- Kout * HbA1cbaseline - Kin2
+    # 
+    # # 2. ODE: 약물 효과 (ODE 대상 변수는 HbA1cdrug)
+    # dHbA1cdrug <- (FPG / FPGbaseline) * Kin + Kin2 - Kout * (HbA1cplacebo + HbA1cdrug)
+    
+    
     # 1. Placebo 모델
-    FPGplacebo <- FPGbaseline + Pfmax * (1 - exp(-Kfp * t)) + DISfp * t
+    FPGplacebo <- PG_ZERO + Pfmax * (1 - exp(-Kfp * t)) + DISfp * t
     FPG <- FPGplacebo + SLOPEfd * dUGEc
     HbA1cplacebo <- HbA1cbaseline - Phmax * (1 - exp(-Khp * t)) + DIShp * t
     Kin <- Kout * HbA1cbaseline - Kin2
