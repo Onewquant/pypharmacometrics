@@ -41,24 +41,24 @@ times <- seq(0, 52, by = 1)
 model_fn <- function(t, state, parms) {
   with(as.list(c(state, parms)), {
     
-    # # 1. Placebo 모델
-    # FPGplacebo <- FPGbaseline + Pfmax * (1 - exp(-Kfp * t)) + DISfp * t
-    # FPG <- FPGplacebo + SLOPEfd * dUGEc
-    # HbA1cplacebo <- HbA1cbaseline - Phmax * (1 - exp(-Khp * t)) + DIShp * t
-    # Kin <- Kout * HbA1cbaseline - Kin2
-    # 
-    # # 2. ODE: 약물 효과 (ODE 대상 변수는 HbA1cdrug)
-    # dHbA1cdrug <- (FPG / FPGbaseline) * Kin + Kin2 - Kout * (HbA1cplacebo + HbA1cdrug)
-    
-    
     # 1. Placebo 모델
-    FPGplacebo <- PG_ZERO + Pfmax * (1 - exp(-Kfp * t)) + DISfp * t
+    FPGplacebo <- FPGbaseline + Pfmax * (1 - exp(-Kfp * t)) + DISfp * t
     FPG <- FPGplacebo + SLOPEfd * dUGEc
     HbA1cplacebo <- HbA1cbaseline - Phmax * (1 - exp(-Khp * t)) + DIShp * t
     Kin <- Kout * HbA1cbaseline - Kin2
-    
+
     # 2. ODE: 약물 효과 (ODE 대상 변수는 HbA1cdrug)
     dHbA1cdrug <- (FPG / FPGbaseline) * Kin + Kin2 - Kout * (HbA1cplacebo + HbA1cdrug)
+
+    
+    # # 1. Placebo 모델
+    # FPGplacebo <- PG_ZERO + Pfmax * (1 - exp(-Kfp * t)) + DISfp * t
+    # FPG <- FPGplacebo + SLOPEfd * dUGEc
+    # HbA1cplacebo <- HbA1c - Phmax * (1 - exp(-Khp * t)) + DIShp * t
+    # Kin <- Kout * HbA1c - Kin2
+    # 
+    # # 2. ODE: 약물 효과 (ODE 대상 변수는 HbA1cdrug)
+    # dHbA1cdrug <- (FPG / FPGbaseline) * Kin + Kin2 - Kout * (HbA1cplacebo + HbA1cdrug)
     
     list(c(dHbA1cdrug), 
          
@@ -68,8 +68,8 @@ model_fn <- function(t, state, parms) {
          # dUGEc_term = SLOPEfd * dUGEc,
          # Phmax_term = Phmax * (1 - exp(-Khp * t)),
          # DIShp_term = DIShp * t,
-         # HbA1cplacebo = HbA1cplacebo, #+ HbA1cdrug,
-         HbA1c = HbA1cplacebo + HbA1cdrug,
+         # HbA1cdrug = HbA1cdrug,
+         HbA1ctotal = HbA1cplacebo + HbA1cdrug,
          FPGplacebo = FPGplacebo,
          FPG = FPG
          )
@@ -81,7 +81,8 @@ results_list <- list()
 
 for (i in 1:nrow(input_data)) {
   subj <- input_data[i, ]
-  parms <- c(params_fixed, dUGEc = subj$dUGEc)
+  # parms <- c(params_fixed, dUGEc = subj$dUGEc)
+  parms <- c(params_fixed, dUGEc = subj$dUGEc, FPGbaseline=subj$PG_ZERO, HbA1cbaseline=subj$HbA1c)
   state <- c(HbA1cdrug = 0)
   
   out <- ode(y = state, times = times, func = model_fn, parms = parms) %>%
@@ -93,11 +94,13 @@ for (i in 1:nrow(input_data)) {
 }
 
 results_all <- bind_rows(results_list)
+results_all
+
 # results_all
 #시각화
-ggplot(results_all, aes(x = time, y = HbA1c, color = as.factor(GRP), group = UID)) +
+ggplot(results_all, aes(x = time, y = HbA1cdrug, color = as.factor(GRP), group = UID)) +
   geom_line(size = 1, alpha = 0.8) +
-  labs(title = "Simulated HbA1c over Time by Group",
-       x = "Time (weeks)", y = "HbA1c (%)",
+  labs(title = "Simulated delta HbA1c (%) over Time by Group",
+       x = "Time (weeks)", y = "delta HbA1c (%)",
        color = "Group") +
   theme_minimal()
