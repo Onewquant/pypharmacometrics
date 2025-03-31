@@ -62,7 +62,7 @@ model_fn <- function(t, state, parms) {
     
     list(c(dHbA1cdrug), 
          
-         dHbA1cdrug = dHbA1cdrug,
+         dHbA1c = HbA1cplacebo + HbA1cdrug - HbA1cbaseline,
          # Pfmax_term = Pfmax * (1 - exp(-Kfp * t)),
          # DISfp_term = DISfp * t,
          # dUGEc_term = SLOPEfd * dUGEc,
@@ -98,7 +98,7 @@ results_all
 
 # results_all
 #시각화
-ggplot(results_all, aes(x = time, y = HbA1cdrug, color = as.factor(GRP), group = UID)) +
+ggplot(results_all, aes(x = time, y = dHbA1c, color = as.factor(GRP), group = UID)) +
   geom_line(size = 1, alpha = 0.8) +
   labs(title = "Simulated delta HbA1c (%) over Time by Group",
        x = "Time (weeks)", y = "delta HbA1c (%)",
