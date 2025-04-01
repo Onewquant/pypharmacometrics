@@ -9,13 +9,13 @@ library(deSolve)
 library(tidyverse)
 
 # dUGEc 데이터
-input_data <- read_csv("KSCPTSPR25_PD_Endpoint_Sim_data.csv")
+input_data <- read_csv("virtual_patients_for_simulation.csv")
 input_data$dUGEc <- input_data$dUGEc * 7 * 0.8
+input_data <- input_data %>% filter(GRP == 3)
+input_data$UID <- input_data$ID
 
-mean_avg_pg = input_data %>% summarise(mean_PG_AVG = mean(PG_AVG, na.rm = TRUE)) %>% pull(mean_PG_AVG)
 mean_baseline_pg = input_data %>% summarise(mean_PG_ZERO = mean(PG_ZERO, na.rm = TRUE)) %>% pull(mean_PG_ZERO)
 mean_baseline_HbA1c = input_data %>% summarise(mean_HbA1c = mean(HbA1c, na.rm = TRUE)) %>% pull(mean_HbA1c)
-print(mean_avg_pg)
 print(mean_baseline_pg)
 print(mean_baseline_HbA1c)
 
@@ -48,10 +48,10 @@ model_fn <- function(t, state, parms) {
     FPG <- FPGplacebo + SLOPEfd * dUGEc
     HbA1cplacebo <- HbA1cbaseline - Phmax * (1 - exp(-Khp * t)) + DIShp * t
     Kin <- Kout * HbA1cbaseline - Kin2
-
+    
     # 2. ODE: 약물 효과 (ODE 대상 변수는 HbA1cdrug)
     dHbA1cdrug <- (FPG / FPGbaseline) * Kin + Kin2 - Kout * (HbA1cplacebo + HbA1cdrug)
-
+    
     
     # # 1. Placebo 모델
     # FPGplacebo <- PG_ZERO + Pfmax * (1 - exp(-Kfp * t)) + DISfp * t
@@ -74,14 +74,19 @@ model_fn <- function(t, state, parms) {
          HbA1ctotal = HbA1cplacebo + HbA1cdrug,
          FPGplacebo = FPGplacebo,
          FPG = FPG
-         )
+    )
   })
 }
 
 # 시뮬레이션
 results_list <- list()
 
-for (i in 1:nrow(input_data)) {
+grp_list <- unique(input_data$GRP)
+
+for (grp in grp_list) {
+  
+# for (i in 1:nrow(input_data %>% filter(GRP==grp))) {
+  for (i in 1:nrow(input_data)) {
   subj <- input_data[i, ]
   # parms <- c(params_fixed, dUGEc = subj$dUGEc)
   parms <- c(params_fixed, dUGEc = subj$dUGEc, FPGbaseline=subj$PG_ZERO, HbA1cbaseline=subj$HbA1c)
@@ -95,12 +100,14 @@ for (i in 1:nrow(input_data)) {
   results_list[[i]] <- out
 }
 
+}
+  
 results_all <- bind_rows(results_list)
 results_all
 
 # results_all
 #시각화
-ggplot(results_all, aes(x = time, y = dHbA1c, color = as.factor(GRP), group = UID)) +
+ggplot(results_all, aes(x = time, y = dHbA1c, color = as.factor(GRP))) +
   geom_line(size = 1, alpha = 0.8) +
   labs(title = "Simulated delta HbA1c (%) over Time by Group",
        x = "Time (weeks)", y = "delta HbA1c (%)",

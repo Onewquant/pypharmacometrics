@@ -293,7 +293,7 @@ for x in ['AUClast', 'Cmax', 'eGFR', 'TBIL', 'ALT']:
 
 
         sns.scatterplot(data=nss_df, x=x, y=y, hue=hue)
-        fig_title = f'[WSCT] {x} vs {y} by {hue}\nR-squared:{r_squared:.4f}, p-value: {p_value:.4f}\nbeta: {p_value:.4f}, intercept: {intercept:.4f} '
+        fig_title = f'[WSCT] {x} vs {y} by {hue}\nR-squared:{r_squared:.4f}, p-value: {p_value:.4f}\nbeta: {slope:.4f}, intercept: {intercept:.4f} '
         plt.title(fig_title)
         plt.xlabel(x)
         plt.ylabel(y)
@@ -442,3 +442,33 @@ nss_df[['ID','UID','GRP','eGFR','TBIL','ALT','AUClast','eGFRxTBIL','dUGEc','PG_A
 
 # nss_df['EFFECT0'].median()
 # nss_df['EFFECT1'].median()
+
+# hue = 'GRP'
+#
+# x = 'PG_ZERO'
+# y = 'PG_AVG'
+# X = nss_df[[x]].copy()
+# X_const = sm.add_constant(X).applymap(float)
+# y_vals = nss_df[y].map(float)
+#
+# model = sm.OLS(y_vals, X_const).fit()
+#
+# intercept, slope = model.params
+# r_squared = model.rsquared
+# p_value = model.pvalues[x]
+#
+#
+# sns.scatterplot(data=nss_df, x=x, y=y, hue=hue)
+# fig_title = f'[WSCT] {x} vs {y} by {hue}\nR-squared:{r_squared:.4f}, p-value: {p_value:.4f}\nbeta: {slope:.4f}, intercept: {intercept:.4f} '
+# plt.title(fig_title)
+# plt.xlabel(x)
+# plt.ylabel(y)
+# plt.grid(True)
+# plt.tight_layout()
+# # plt.show()
+#
+# plt.savefig(f"{results_dir_path}/{fig_title.split('R-squared')[0].strip()}.png")  # PNG 파일로 저장
+#
+# plt.cla()
+# plt.clf()
+# plt.close()
