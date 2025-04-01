@@ -10,8 +10,8 @@ library(tidyverse)
 
 # dUGEc 데이터
 input_data <- read_csv("virtual_patients_for_simulation.csv")
-input_data$dUGEc <- input_data$dUGEc * 7 * 0.8
-input_data <- input_data %>% filter(GRP == 3)
+input_data$dUGEc <- input_data$dUGEc * 7 * 0.7
+# input_data <- input_data %>% filter(GRP == 3)
 input_data$UID <- input_data$ID
 
 mean_baseline_pg = input_data %>% summarise(mean_PG_ZERO = mean(PG_ZERO, na.rm = TRUE)) %>% pull(mean_PG_ZERO)
@@ -107,9 +107,54 @@ results_all
 
 # results_all
 #시각화
-ggplot(results_all, aes(x = time, y = dHbA1c, color = as.factor(GRP))) +
-  geom_line(size = 1, alpha = 0.8) +
-  labs(title = "Simulated delta HbA1c (%) over Time by Group",
-       x = "Time (weeks)", y = "delta HbA1c (%)",
-       color = "Group") +
-  theme_minimal()
+# ggplot(results_all, aes(x = time, y = dHbA1c, color = as.factor(GRP))) +
+#   geom_line(size = 1, alpha = 0.8) +
+#   labs(title = "Simulated delta HbA1c (%) over Time by Group",
+#        x = "Time (weeks)", y = "delta HbA1c (%)",
+#        color = "Group") +
+#   theme_minimal()
+
+# ### 📊 요약통계 (Mean, 95% CI)
+# summary_df <- results_all %>%
+#   group_by(time) %>%
+#   summarise(
+#     mean_dHbA1c = mean(dHbA1c, na.rm = TRUE),
+#     lower_CI = quantile(dHbA1c, 0.025, na.rm = TRUE),
+#     upper_CI = quantile(dHbA1c, 0.975, na.rm = TRUE)
+#   )
+# 
+# ### 🎨 시각화
+# ggplot(summary_df, aes(x = time, y = mean_dHbA1c)) +
+#   geom_line(color = "blue", size = 1.2) +
+#   geom_ribbon(aes(ymin = lower_CI, ymax = upper_CI), fill = "blue", alpha = 0.2) +
+#   labs(
+#     title = "Simulated delta HbA1c over Time (GRP = 3)",
+#     x = "Time (weeks)",
+#     y = "ΔHbA1c (%)"
+#   ) +
+#   theme_minimal(base_size = 14)
+
+
+### 📊 그룹별 요약통계
+summary_df <- results_all %>%
+  group_by(GRP, time) %>%
+  summarise(
+    mean_dHbA1c = mean(dHbA1c, na.rm = TRUE),
+    lower_CI = quantile(dHbA1c, 0.025, na.rm = TRUE),
+    upper_CI = quantile(dHbA1c, 0.975, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+### 🎨 그룹별 CI 음영 + dashed line 시각화
+ggplot(summary_df, aes(x = time, y = mean_dHbA1c, color = as.factor(GRP), fill = as.factor(GRP))) +
+  geom_line(size = 1.2) +
+  geom_ribbon(aes(ymin = lower_CI, ymax = upper_CI), alpha = 0.2, color = NA) +
+  geom_hline(yintercept = -0.5, linetype = "dashed", color = "black", size = 0.8) +  # 🔥 추가 부분
+  labs(
+    title = "Simulated delta HbA1c over Time by Group",
+    x = "Time (weeks)",
+    y = "ΔHbA1c (%)",
+    color = "Group",
+    fill = "Group"
+  ) +
+  theme_minimal(base_size = 14)
