@@ -178,15 +178,25 @@ cov_cand = ['AGE', 'SEX', 'HT', 'WT', 'BMI', 'ALB', 'eGFR', 'AST', 'ALT', 'SODIU
 corr_matrix = pd_df[cov_cand].corr().abs()
 
 # 히트맵 그리기
-plt.figure(figsize=(20, 15))
-sns.heatmap(corr_matrix, annot=True, fmt=".2f", cmap='coolwarm', vmin=-1, vmax=1)
+plt.figure(figsize=(18, 15))
+ax = sns.heatmap(
+    corr_matrix,
+    annot=True,
+    fmt=".2f",
+    cmap='coolwarm',
+    vmin=-1,
+    vmax=1,
+    annot_kws={"size": 12}
+)
 fig_title = "[WSCT] Correlation matrix heatmap of the covariates"
-plt.title(fig_title)
-plt.xticks(fontsize=14)
-plt.yticks(fontsize=14)
-# plt.show()
-plt.savefig(f"{results_dir_path}/{fig_title}.png")  # PNG 파일로 저장
+plt.title(fig_title, fontsize=15)
+plt.xticks(fontsize=15)
+plt.yticks(fontsize=15)
 
+# colorbar 글씨 크기 조정
+ax.collections[0].colorbar.ax.tick_params(labelsize=15)
+
+plt.savefig(f"{results_dir_path}/{fig_title}.png")
 plt.cla()
 plt.clf()
 plt.close()
@@ -221,23 +231,23 @@ df_vif_sorted = vif_data.sort_values(by='VIF', ascending=False)
 print(df_vif_sorted)
 
 # VIF 수평 막대그래프 그리기
-plt.figure(figsize=(15, 10))
+plt.figure(figsize=(17, 15))
 plt.barh(df_vif_sorted['Covariates'], df_vif_sorted['VIF'], color='royalblue')
-plt.xlabel('VIF Value')
-# plt.xticks(fontsize=14)
-# plt.yticks(fontsize=14)
+plt.xlabel('VIF Value', fontsize=15)
+plt.xticks(fontsize=15)
+plt.yticks(fontsize=15)
 fig_title = '[WSCT] Variance Inflation Factor (VIF) of covariates'
-plt.title(fig_title)
+plt.title(fig_title, fontsize=15)
 plt.grid(axis='x', linestyle='--', alpha=0.5)
 
-# VIF 값 표시 (선택 사항)
+# VIF 값 표시
 for index, value in enumerate(df_vif_sorted['VIF']):
-    plt.text(value + 0.1, index, f"{value:.2f}", va='center')
+    plt.text(value + 0.2, index, f"{value:.2f}", va='center', fontsize=13, color='black')
 
 plt.tight_layout()
-plt.show()
 
-plt.savefig(f"{results_dir_path}/{fig_title}.png")  # PNG 파일로 저장
+# 저장
+plt.savefig(f"{results_dir_path}/{fig_title}.png", dpi=300)
 
 plt.cla()
 plt.clf()
@@ -273,7 +283,7 @@ for effect_col in effect_col_list:
 # nss_df.columns
 
 # scatter plot 그리기
-plt.figure(figsize=(15, 10))
+plt.figure(figsize=(15, 12))
 
 # for x in ['AUClast','Cmax','GFR','TBIL','ALT','eGFRxTBIL','eGFRxTBILxAUC']:
 for x in ['AUClast', 'Cmax', 'eGFR', 'TBIL', 'ALT']:
@@ -292,11 +302,14 @@ for x in ['AUClast', 'Cmax', 'eGFR', 'TBIL', 'ALT']:
         p_value = model.pvalues[x]
 
 
-        sns.scatterplot(data=nss_df, x=x, y=y, hue=hue)
+        sns.scatterplot(data=nss_df, x=x, y=y, hue=hue, marker='o')
         fig_title = f'[WSCT] {x} vs {y} by {hue}\nR-squared:{r_squared:.4f}, p-value: {p_value:.4f}\nbeta: {slope:.4f}, intercept: {intercept:.4f} '
-        plt.title(fig_title)
-        plt.xlabel(x)
-        plt.ylabel(y)
+        plt.title(fig_title, fontsize=14)
+        plt.xlabel(x, fontsize=14)
+        plt.ylabel(y, fontsize=14)
+        plt.xticks(fontsize=14)
+        plt.yticks(fontsize=14)
+        plt.legend(fontsize=14)
         plt.grid(True)
         plt.tight_layout()
         # plt.show()
@@ -308,8 +321,8 @@ for x in ['AUClast', 'Cmax', 'eGFR', 'TBIL', 'ALT']:
         plt.close()
 
 
-# x_col = 'eGFR'
-x_col = 'eGFRxTBIL'
+x_col = 'eGFR'
+# x_col = 'eGFRxTBIL'
 effect_col = 'EFFECT1'
 
 X = nss_df[[x_col]]
@@ -332,7 +345,6 @@ def sigmoid_emax(conc, E0, Emax, EC50, H):
     return E0+Emax * conc**H / (EC50**H + conc**H)
 
 
-
 x_sigemax = nss_df[x_col]
 effect = nss_df[effect_col]
 
@@ -340,6 +352,7 @@ effect = nss_df[effect_col]
 popt, pcov = curve_fit(sigmoid_emax, x_sigemax, effect, p0=[0.02, 0.5, 50, 1])  # 초기값 설정
 
 # 피팅된 파라미터 출력
+popt = np.array([0.025, 0.427, 59.9, 7.17])
 E0_fit, Emax_fit, EC50_fit, H_fit = popt
 print(f"E0: {E0_fit:.2f}, Emax: {Emax_fit:.2f}, EC50: {EC50_fit:.2f}, Hill coefficient: {H_fit:.2f}")
 
@@ -374,13 +387,16 @@ effect_fit = sigmoid_emax(gfr_fit, * popt)
 y = effect_col
 
 plt.figure(figsize=(15, 10))
-plt.scatter(x_sigemax, effect, label=x_col, color='black')
-plt.plot(gfr_fit, effect_fit, label=y, color='royalblue')
-plt.xlabel(x_col)
-plt.ylabel(y)
-fig_title = f'[WSCT] Sigmoid Emax Model Fit ({x_col} vs {y})\nE0: {E0_fit:.2f}, Emax: {Emax_fit:.2f}, EC50: {EC50_fit:.2f}, Hill coefficient: {H_fit:.2f}\nR-squared: {r_squared:.4f}, RMSE: {rmse:.4f}, AIC: {aic:.2f}'
-plt.title(fig_title)
-plt.legend()
+plt.scatter(x_sigemax, effect, label='Ovserved', color='black', marker='o')
+plt.plot(gfr_fit, effect_fit, label='Model-fitting', color='royalblue')
+plt.xlabel(x_col, fontsize=14)
+plt.ylabel(y, fontsize=14)
+plt.xticks(fontsize=14)
+plt.yticks(fontsize=14)
+# fig_title = f'[WSCT] Sigmoid Emax Model Fit ({x_col} vs {y})\nE0: {E0_fit:.3f}, Emax: {Emax_fit:.3f}, EC50: {EC50_fit:.2f}, Hill coefficient: {H_fit:.2f}\nR-squared: {r_squared:.4f}, RMSE: {rmse:.4f}, AIC: {aic:.2f}'
+fig_title = f'[WSCT] Sigmoid Emax Model Fit ({x_col} vs {y})\nE0: {E0_fit:.3f}, Emax: {Emax_fit:.3f}, EC50: {EC50_fit:.2f}, Hill coefficient: {H_fit:.2f}, OFV: -108.443'
+plt.title(fig_title, fontsize=14)
+plt.legend(fontsize=14)
 plt.grid(True)
 plt.show()
 

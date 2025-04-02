@@ -56,8 +56,9 @@ for uid in unique_ids:
         # marker=marker_map[uid],
         marker = 'o',
         markers=True,
+        markersize=10,
         dashes=False,
-        legend=False
+        legend=False,
     )
 
 # 범례는 GRP 기준으로 수동 생성
@@ -68,11 +69,14 @@ legend_elements = [
     for i in range(gdf['GRP'].nunique())
 ]
 
-plt.legend(handles=legend_elements, title='GRP', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.legend(handles=legend_elements, bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=15)
 fig_title = '[WSCT] Individual Time-Concentration Profiles by GRP'
-plt.title(fig_title)
-plt.xlabel('Time (ATIME)')
-plt.ylabel('Concentration (CONC)')
+plt.title(fig_title, fontsize=15)
+plt.xlabel('Time (ATIME)', fontsize=15)
+plt.ylabel('Concentration (CONC)', fontsize=15)
+plt.xticks(fontsize=15)
+plt.yticks(fontsize=15)
+plt.grid(True)
 plt.tight_layout()
 # plt.show()
 
@@ -81,6 +85,65 @@ plt.savefig(f"{results_dir_path}/{fig_title}.png")  # PNG 파일로 저장
 plt.cla()
 plt.clf()
 plt.close()
+
+## Population
+
+plt.figure(figsize=(15, 12))
+
+# 2. 그룹별 Mean ± SD 계산
+summary_df = gdf.groupby(['GRP', 'NTIME']).agg(
+    mean_CONC=('CONC', 'mean'),
+    sd_CONC=('CONC', 'std')
+).reset_index()
+
+# 3. 그룹별 평균 라인 & SD 범위 그리기
+for grp in summary_df['GRP'].unique():
+    grp_df = summary_df[summary_df['GRP'] == grp]
+
+    # Mean line
+    plt.plot(
+        grp_df['NTIME'],
+        grp_df['mean_CONC'],
+        color=palette[int(grp) - 1],
+        label=f'GRP {grp} Mean',
+        linewidth=2.5,
+        marker='o',            # ★ marker 추가
+        markersize=10,          # ★ marker 크기
+    )
+
+    # SD 범위 (음영)
+    plt.fill_between(
+        grp_df['NTIME'],
+        grp_df['mean_CONC'] - grp_df['sd_CONC'],
+        grp_df['mean_CONC'] + grp_df['sd_CONC'],
+        color=palette[int(grp) - 1],
+        alpha=0.2
+    )
+
+# 범례
+legend_elements = [
+    Line2D([0], [0], color=palette[i], lw=2, label=f'GRP {i + 1} Mean ± SD')
+    for i in range(gdf['GRP'].nunique())
+]
+plt.legend(handles=legend_elements, bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=13)
+
+# 기타 설정
+fig_title = '[WSCT] Population Time-Concentration Profiles by GRP'
+plt.title(fig_title, fontsize=15)
+plt.xlabel('Time (NTIME)', fontsize=15)
+plt.ylabel('Concentration (CONC)', fontsize=15)
+plt.xticks(fontsize=15)
+plt.yticks(fontsize=15)
+plt.grid(True, linestyle='--', alpha=0.5)
+plt.tight_layout()
+
+# 저장
+plt.savefig(f"{results_dir_path}/{fig_title}.png", dpi=300)
+
+plt.cla()
+plt.clf()
+plt.close()
+
 
 ## NCA
 

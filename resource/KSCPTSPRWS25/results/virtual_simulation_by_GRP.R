@@ -145,16 +145,31 @@ summary_df <- results_all %>%
     .groups = "drop"
   )
 
+### 최종 시점에서의 그룹별 mean 값 추출
+last_time <- max(summary_df$time)
+annotation_df <- summary_df %>%
+  filter(time == last_time) %>%
+  mutate(label = sprintf("%.2f", mean_dHbA1c))
+
 ### 🎨 그룹별 CI 음영 + dashed line 시각화
 ggplot(summary_df, aes(x = time, y = mean_dHbA1c, color = as.factor(GRP), fill = as.factor(GRP))) +
   geom_line(size = 1.2) +
   geom_ribbon(aes(ymin = lower_CI, ymax = upper_CI), alpha = 0.2, color = NA) +
-  geom_hline(yintercept = -0.5, linetype = "dashed", color = "black", size = 0.8) +  # 🔥 추가 부분
+  geom_hline(yintercept = -0.5, linetype = "dashed", color = "black", size = 0.8) +
+  # 마지막 시점 mean 값 annotation
+  geom_text(
+    data = annotation_df,
+    aes(label = label, x = time + 3, y = mean_dHbA1c),
+    color = "black",
+    inherit.aes = FALSE,
+    size = 3
+  ) +
   labs(
-    title = "Simulated delta HbA1c over Time by Group",
+    title = "Simulated ΔHbA1c (%) over Time by Group",
     x = "Time (weeks)",
     y = "ΔHbA1c (%)",
     color = "Group",
-    fill = "Group"
-  ) +
+    fill = "Group"  ) +
+
   theme_minimal(base_size = 14)
+

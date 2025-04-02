@@ -101,10 +101,11 @@ results_all
 # results_all
 #시각화
 ggplot(results_all, aes(x = time, y = dHbA1c, color = as.factor(GRP), group = UID)) +
-  geom_line(size = 1, alpha = 0.8) +
+  geom_line(size = 1.0, alpha = 0.8) +
   geom_hline(yintercept = -0.5, linetype = "dashed", color = "black", size = 0.8) +
   # annotate("text", x = 50, y = -0.45, label = "Target ΔHbA1c = -0.5", color = "black", size = 5, hjust = 1) +
-  labs(title = "Simulated delta HbA1c (%) over Time by Group",
-       x = "Time (weeks)", y = "delta HbA1c (%)",
+  labs(title = "Simulated ΔHbA1c (%) over Time by Group",
+       x = "Time (weeks)", 
+       y = "ΔHbA1c (%)",
        color = "Group") +
-  theme_minimal()
+  theme_minimal(base_size = 14)
