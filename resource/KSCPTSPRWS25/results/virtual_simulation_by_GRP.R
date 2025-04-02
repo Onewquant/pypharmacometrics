@@ -137,7 +137,7 @@ p <- ggplot(summary_df, aes(x = time, y = median_dHbA1c, color = as.factor(GRP),
     aes(label = label, x = time + 3, y = median_dHbA1c),
     color = "black",
     inherit.aes = FALSE,
-    size = 3
+    size = 5
   ) +
   labs(
     title = "Simulated ΔHbA1c (%) over Time by Group",
