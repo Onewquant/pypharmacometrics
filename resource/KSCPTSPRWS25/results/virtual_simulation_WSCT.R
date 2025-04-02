@@ -100,7 +100,7 @@ results_all
 
 # results_all
 #시각화
-ggplot(results_all, aes(x = time, y = dHbA1c, color = as.factor(GRP), group = UID)) +
+p <- ggplot(results_all, aes(x = time, y = dHbA1c, color = as.factor(GRP), group = UID)) +
   geom_line(size = 1.0, alpha = 0.8) +
   geom_hline(yintercept = -0.5, linetype = "dashed", color = "black", size = 0.8) +
   # annotate("text", x = 50, y = -0.45, label = "Target ΔHbA1c = -0.5", color = "black", size = 5, hjust = 1) +
@@ -108,4 +108,14 @@ ggplot(results_all, aes(x = time, y = dHbA1c, color = as.factor(GRP), group = UI
        x = "Time (weeks)", 
        y = "ΔHbA1c (%)",
        color = "Group") +
-  theme_minimal(base_size = 14)
+  theme_minimal(base_size = 20)
+
+# 파일로 저장
+ggsave(
+  filename = paste0("[WSCT] Simulation (dHbA1c - Subjects).png"),
+  plot = p,
+  width = 10,
+  height = 10,
+  dpi = 300
+)
+

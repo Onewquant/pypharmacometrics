@@ -27,7 +27,7 @@ theta <- c(E0 = 0.025, EMAX = 0.427, EC50 = 59.9, HILL = 7.17)
 omega <- c(0.157, 0.141) # ETA1, ETA2
 sigma <- c(0.00066, 0.00002) # proportional, additive
 
-n_patients_per_group <- 1000
+n_patients_per_group <- 300
 eGFR_ranges <- list(
   "1" = c(90, 120),
   "2" = c(60, 90),

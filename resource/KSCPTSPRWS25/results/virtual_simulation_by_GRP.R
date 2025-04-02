@@ -2,11 +2,10 @@
 library(readr)
 library(dplyr)
 library(ggplot2)
+library(tidyverse)
 
 setwd('C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25/results')
 
-library(deSolve)
-library(tidyverse)
 
 # dUGEc 데이터
 input_data <- read_csv("virtual_patients_for_simulation.csv")
@@ -105,61 +104,37 @@ for (grp in grp_list) {
 results_all <- bind_rows(results_list)
 results_all
 
-# results_all
-#시각화
-# ggplot(results_all, aes(x = time, y = dHbA1c, color = as.factor(GRP))) +
-#   geom_line(size = 1, alpha = 0.8) +
-#   labs(title = "Simulated delta HbA1c (%) over Time by Group",
-#        x = "Time (weeks)", y = "delta HbA1c (%)",
-#        color = "Group") +
-#   theme_minimal()
-
-# ### 📊 요약통계 (Mean, 95% CI)
-# summary_df <- results_all %>%
-#   group_by(time) %>%
-#   summarise(
-#     mean_dHbA1c = mean(dHbA1c, na.rm = TRUE),
-#     lower_CI = quantile(dHbA1c, 0.025, na.rm = TRUE),
-#     upper_CI = quantile(dHbA1c, 0.975, na.rm = TRUE)
-#   )
-# 
-# ### 🎨 시각화
-# ggplot(summary_df, aes(x = time, y = mean_dHbA1c)) +
-#   geom_line(color = "blue", size = 1.2) +
-#   geom_ribbon(aes(ymin = lower_CI, ymax = upper_CI), fill = "blue", alpha = 0.2) +
-#   labs(
-#     title = "Simulated delta HbA1c over Time (GRP = 3)",
-#     x = "Time (weeks)",
-#     y = "ΔHbA1c (%)"
-#   ) +
-#   theme_minimal(base_size = 14)
 
 
-### 📊 그룹별 요약통계
+### 📊 그룹별 요약통계 (median + 5%, 95% percentile)
 summary_df <- results_all %>%
   group_by(GRP, time) %>%
   summarise(
-    mean_dHbA1c = mean(dHbA1c, na.rm = TRUE),
-    lower_CI = quantile(dHbA1c, 0.025, na.rm = TRUE),
-    upper_CI = quantile(dHbA1c, 0.975, na.rm = TRUE),
+    median_dHbA1c = median(dHbA1c, na.rm = TRUE),
+    lower_CI = quantile(dHbA1c, 0.25, na.rm = TRUE),
+    upper_CI = quantile(dHbA1c, 0.75, na.rm = TRUE),
     .groups = "drop"
   )
 
-### 최종 시점에서의 그룹별 mean 값 추출
+### 최종 시점에서의 그룹별 median 값 추출
 last_time <- max(summary_df$time)
 annotation_df <- summary_df %>%
   filter(time == last_time) %>%
-  mutate(label = sprintf("%.2f", mean_dHbA1c))
+  mutate(label = sprintf("%.2f", median_dHbA1c))
 
 ### 🎨 그룹별 CI 음영 + dashed line 시각화
-ggplot(summary_df, aes(x = time, y = mean_dHbA1c, color = as.factor(GRP), fill = as.factor(GRP))) +
-  geom_line(size = 1.2) +
+p <- ggplot(summary_df, aes(x = time, y = median_dHbA1c, color = as.factor(GRP), fill = as.factor(GRP))) +
+  geom_line(size = 1.2) +  # Median line
+  # CI dashed line
+  geom_line(aes(y = lower_CI), linetype = "dashed", size = 0.8, alpha = 0.8) +
+  geom_line(aes(y = upper_CI), linetype = "dashed", size = 0.8, alpha = 0.8) +
+  # CI 음영
   geom_ribbon(aes(ymin = lower_CI, ymax = upper_CI), alpha = 0.2, color = NA) +
   geom_hline(yintercept = -0.5, linetype = "dashed", color = "black", size = 0.8) +
-  # 마지막 시점 mean 값 annotation
+  # 마지막 시점 median 값 annotation
   geom_text(
     data = annotation_df,
-    aes(label = label, x = time + 3, y = mean_dHbA1c),
+    aes(label = label, x = time + 3, y = median_dHbA1c),
     color = "black",
     inherit.aes = FALSE,
     size = 3
@@ -169,7 +144,61 @@ ggplot(summary_df, aes(x = time, y = mean_dHbA1c, color = as.factor(GRP), fill =
     x = "Time (weeks)",
     y = "ΔHbA1c (%)",
     color = "Group",
-    fill = "Group"  ) +
+    fill = "Group"
+  ) +
+  theme_minimal(base_size = 20)
 
-  theme_minimal(base_size = 14)
+# 저장
+ggsave(
+  filename = paste0("[WSCT] Simulation (dHbA1c - virtual_groups).png"),
+  plot = p,
+  width = 10,
+  height = 10,
+  dpi = 300
+)
 
+##########################################
+
+# 
+# 
+# # 그룹별 반복
+# for (grp in unique(summary_df$GRP)) {
+# 
+#   # 해당 그룹 데이터만 추출
+#   grp_df <- summary_df %>% filter(GRP == grp)
+# 
+#   # 해당 그룹 최종 시점 mean값
+#   annotation_df <- grp_df %>%
+#     filter(time == max(time)) %>%
+#     mutate(label = sprintf("%.2f", mean_dHbA1c))
+# 
+#   # 그림 그리기
+#   p <- ggplot(grp_df, aes(x = time, y = mean_dHbA1c)) +
+#     geom_line(color = "royalblue", size = 1.2) +
+#     geom_ribbon(aes(ymin = lower_CI, ymax = upper_CI), alpha = 0.2, fill = "royalblue", color = NA) +
+#     geom_hline(yintercept = -0.5, linetype = "dashed", color = "black", size = 0.8) +
+#     geom_text(
+#       data = annotation_df,
+#       aes(label = label, x = time + 3, y = mean_dHbA1c),
+#       color = "black",
+#       inherit.aes = FALSE,
+#       size = 3
+#     ) +
+#     labs(
+#       title = paste0("Simulated ΔHbA1c (%) - Group ", grp),
+#       x = "Time (weeks)",
+#       y = "ΔHbA1c (%)"
+#     ) +
+#     theme_minimal(base_size = 14)
+# 
+#   # 파일로 저장
+#   ggsave(
+#     filename = paste0("DeltaHbA1c_Group_", grp, ".png"),
+#     plot = p,
+#     width = 10,
+#     height = 7,
+#     dpi = 300
+#   )
+# }
+# 
+# 
