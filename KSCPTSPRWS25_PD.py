@@ -74,9 +74,14 @@ bpd_df = bpd_df.replace('.',np.nan)
 bpd_df['DAY'] = bpd_df['N_DAY'].astype(float)
 bpd_df['N_TIME'] = bpd_df['N_TIME'].astype(float)
 bpd_df['C_Serum GLU'] = bpd_df['C_Serum GLU'].astype(float)
+# mmhba1c_df = bpd_df.copy()
+# mmhba1c_df = mmhba1c_df[(bpd_df['DAY'].isin([7]))].copy()[['ID','GRP','N_Day','HbA1c']].drop_duplicates(['ID','HbA1c']).dropna().reset_index(drop=True)
+# mmhba1c_df = mmhba1c_df[['ID','N_Day','HbA1c']].copy()
+# mmhba1c_df = mmhba1c_df.rename(columns={'ID':'UID', 'HbA1c':'HbA1c_7d'})
 bpd_df = bpd_df[(bpd_df['DAY'].isin([1,7]))&(bpd_df['N_TIME'] <= 24)].copy()
 
-pg_zero_df = bpd_df[bpd_df['N_TIME']==0][['ID','DAY','C_Serum GLU','HbA1c']].rename(columns={'C_Serum GLU':'PG_ZERO'})
+
+pg_zero_df = bpd_df[bpd_df['N_TIME']==0][['ID','DAY','C_Serum GLU','HbA1c']].rename(columns={'C_Serum GLU':'PG_ZERO', 'HbA1c':'HbA1c_base'})
 
 glu_nca_result = tblNCA(concData=bpd_df,key=['ID','DAY'],colTime="N_TIME",colConc='C_Serum GLU',down = "Log",dose=0.1,slopeMode='BEST',colStyle='pw')
 # glu_nca_result.columns
@@ -121,6 +126,8 @@ covar_df = mdprep_conc_df[['ID','UID']+list(mdprep_conc_df.columns)[7:18]].drop_
 upd_daily_df = upd_daily_df.merge(covar_df, on=['UID'],how='left')
 upd_daily_df = upd_daily_df.merge(s_glu_df, on=['UID','N_Day'],how='left')
 upd_daily_df = upd_daily_df.merge(iauc_res_df[['UID','N_Day','AUCTIMEINT','AUClast','Cmax','Tmax']], on=['UID','N_Day','AUCTIMEINT'],how='left')
+# upd_daily_df = upd_daily_df.merge(mmhba1c_df, on=['UID','N_Day'],how='left')
+
 # iauc_res_df.columns
 # upd_daily_df['EFFECT0'] = (upd_daily_df['UGE24']-upd_daily_df['UGEbase'])/upd_daily_df['PG_ZERO']
 upd_daily_df['eGFR'] = upd_daily_df['GFR']
@@ -454,7 +461,14 @@ plt.close()
 nss_df = nss_df.reset_index(drop=True)
 nss_df['dUGEc'] = nss_df[effect_col]
 nss_df['ID'] = nss_df.index
-nss_df[['ID','UID','GRP','eGFR','TBIL','ALT','AUClast','eGFRxTBIL','dUGEc','PG_AVG','PG_ZERO','HbA1c']].to_csv(f"{results_dir_path}/KSCPTSPR25_PD_Endpoint_Sim_data.csv", index=False)
+nss_df[['ID','UID','GRP','eGFR','TBIL','ALT','AUClast','eGFRxTBIL','dUGEc','PG_AVG','PG_ZERO','HbA1c_base','HbA1c_7d']].to_csv(f"{results_dir_path}/KSCPTSPR25_PD_Endpoint_Sim_data.csv", index=False)
+
+
+ss_df = ss_df.reset_index(drop=True)
+ss_df['dUGEc'] = ss_df[effect_col]
+ss_df['ID'] = ss_df.index
+ss_df[['ID','UID','GRP','eGFR','TBIL','ALT','AUClast','eGFRxTBIL','dUGEc','PG_AVG','PG_ZERO','HbA1c_base','HbA1c_7d']].to_csv(f"{results_dir_path}/KSCPTSPR25_PD_Endpoint_Sim_data_MM.csv", index=False)
+
 
 # nss_df['EFFECT0'].median()
 # nss_df['EFFECT1'].median()
