@@ -74,12 +74,12 @@ bpd_df = bpd_df.replace('.',np.nan)
 bpd_df['DAY'] = bpd_df['N_DAY'].astype(float)
 bpd_df['N_TIME'] = bpd_df['N_TIME'].astype(float)
 bpd_df['C_Serum GLU'] = bpd_df['C_Serum GLU'].astype(float)
-# mmhba1c_df = bpd_df.copy()
-# mmhba1c_df = mmhba1c_df[(bpd_df['DAY'].isin([7]))].copy()[['ID','GRP','N_Day','HbA1c']].drop_duplicates(['ID','HbA1c']).dropna().reset_index(drop=True)
-# mmhba1c_df = mmhba1c_df[['ID','N_Day','HbA1c']].copy()
-# mmhba1c_df = mmhba1c_df.rename(columns={'ID':'UID', 'HbA1c':'HbA1c_7d'})
+mmhba1c_df = bpd_df.copy()
+mmhba1c_df = mmhba1c_df[(bpd_df['DAY'].isin([7]))].copy()[['ID','GRP','N_DAY','HbA1c']].drop_duplicates(['ID','HbA1c']).dropna().reset_index(drop=True)
+mmhba1c_df = mmhba1c_df[['ID','N_DAY','HbA1c']].copy()
+mmhba1c_df = mmhba1c_df.rename(columns={'ID':'UID', 'HbA1c':'HbA1c_7d','N_DAY':'N_Day'})
 bpd_df = bpd_df[(bpd_df['DAY'].isin([1,7]))&(bpd_df['N_TIME'] <= 24)].copy()
-
+# bpd_df[(bpd_df['DAY'].isin([7]))]
 
 pg_zero_df = bpd_df[bpd_df['N_TIME']==0][['ID','DAY','C_Serum GLU','HbA1c']].rename(columns={'C_Serum GLU':'PG_ZERO', 'HbA1c':'HbA1c_base'})
 
@@ -126,7 +126,7 @@ covar_df = mdprep_conc_df[['ID','UID']+list(mdprep_conc_df.columns)[7:18]].drop_
 upd_daily_df = upd_daily_df.merge(covar_df, on=['UID'],how='left')
 upd_daily_df = upd_daily_df.merge(s_glu_df, on=['UID','N_Day'],how='left')
 upd_daily_df = upd_daily_df.merge(iauc_res_df[['UID','N_Day','AUCTIMEINT','AUClast','Cmax','Tmax']], on=['UID','N_Day','AUCTIMEINT'],how='left')
-# upd_daily_df = upd_daily_df.merge(mmhba1c_df, on=['UID','N_Day'],how='left')
+upd_daily_df = upd_daily_df.merge(mmhba1c_df, on=['UID'],how='left')
 
 # iauc_res_df.columns
 # upd_daily_df['EFFECT0'] = (upd_daily_df['UGE24']-upd_daily_df['UGEbase'])/upd_daily_df['PG_ZERO']
