@@ -6,6 +6,7 @@ from pynca.tools import *
 # df[df['GRP'].isin([2,4])].reset_index(drop=True).to_csv("C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25/prep_data/KSCPTSPRWS25SINGLE_ConcPrep_SGLT2INH(R).csv", index=False, encoding='utf-8-sig')
 
 results_dir_path = "C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25/results"
+ws_dataset_dir_path = "C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25/sglt2i_dataset"
 
 
 ## 기본정보입력
@@ -31,9 +32,9 @@ conc_df = drugconc_dict['SGLT2INH'].copy()
 conc24_df = conc_df[conc_df['NTIME'] <= 24].copy()
 # conc24_df.columns
 
-
 # 대상자 ID별로 고유한 마커 생성
 gdf = conc24_df.copy()
+gdf[['ID', 'GRP', 'NTIME', 'ATIME', 'CONC']].to_csv(f'{ws_dataset_dir_path}/KSCPTSPRWS25_SGLT2i_PK.csv',index=False)
 unique_ids = gdf['ID'].unique()
 # markers = ['o', 's', 'D', '^', 'v', '<', '>', 'P', 'X', '*', '+', '1', '2', '3', '4', '8']
 # marker_map = {uid: markers[i % len(markers)] for i, uid in enumerate(unique_ids)}
