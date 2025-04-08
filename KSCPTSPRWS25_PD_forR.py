@@ -50,6 +50,8 @@ uge24_df = uge24_df[(uge24_df['N_DAY']==1)].merge(ugebase_df, on=['ID'],how='lef
 
 ## COVAR dataset 정리
 
+# covar_df = pd.read_csv(f'{r_dataset_dir_path}/KSCPTSPRWS25_SGLT2i_COVAR.csv')
+#
 # id_grp_dict = {row['ID']:row['GRP'] for inx, row in pk_res_df[['ID','GRP']].drop_duplicates().iterrows()}
 # covar_df['GRP'] = covar_df['ID'].map(id_grp_dict)
 # covar_df = covar_df[['ID','GRP','AGE', 'SEX', 'HT', 'WT', 'BMI', 'ALB', 'GFR', 'TBIL', 'SODIUM', 'AST', 'ALT']].rename(columns={'GFR':'eGFR'})

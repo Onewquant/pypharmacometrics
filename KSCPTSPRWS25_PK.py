@@ -1,3 +1,5 @@
+import os.path
+
 from tools import *
 from pynca.tools import *
 
@@ -7,7 +9,8 @@ from pynca.tools import *
 
 results_dir_path = "C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25/results"
 ws_dataset_dir_path = "C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25/sglt2i_dataset"
-
+if not os.path.exists(ws_dataset_dir_path):
+    os.mkdir(ws_dataset_dir_path)
 
 ## 기본정보입력
 
