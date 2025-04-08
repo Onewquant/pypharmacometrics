@@ -123,6 +123,8 @@ upd_daily_df = upd_daily_df.drop_duplicates(['UID','N_Day','N_Time'])
 
 # 공변량 붙이기
 covar_df = mdprep_conc_df[['ID','UID']+list(mdprep_conc_df.columns)[7:18]].drop_duplicates(['ID'])
+# covar_df.drop(columns=['ID']).rename(columns={'UID':'ID'}).to_csv(f'C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25/sglt2i_dataset/KSCPTSPRWS25_SGLT2i_COVAR.csv',index=False)
+
 upd_daily_df = upd_daily_df.merge(covar_df, on=['UID'],how='left')
 upd_daily_df = upd_daily_df.merge(s_glu_df, on=['UID','N_Day'],how='left')
 upd_daily_df = upd_daily_df.merge(iauc_res_df[['UID','N_Day','AUCTIMEINT','AUClast','Cmax','Tmax']], on=['UID','N_Day','AUCTIMEINT'],how='left')

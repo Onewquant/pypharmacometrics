@@ -1,5 +1,4 @@
 # install.packages("dplyr")
-# install.packages("openxlsx")
 
 library(ggplot2)
 library(dplyr)
@@ -65,7 +64,6 @@ ggsave(filename = file.path(results_dir_path, "[WSCT] Population Time-Concentrat
 # 비구획 분석(NCA) ----------------------------------------------------
 
 library(readr)
-library(openxlsx)
 library(NonCompart)
 
 nca_result <- tblNCA(gdf, key = c("ID","GRP"), colTime = "ATIME", colConc = "CONC", dose=0.5, concUnit="ug/L", down = "Log")
@@ -115,5 +113,4 @@ for (param in params) {
 }
 
 anova_result_df <- bind_rows(results_list)
-write.xlsx(anova_result_df, file.path(results_dir_path, "[WSCT] ANOVA_PK.xlsx"), rowNames = FALSE)
-
+write.csv(anova_result_df, file.path(results_dir_path, "[WSCT] ANOVA_PK.csv"))
