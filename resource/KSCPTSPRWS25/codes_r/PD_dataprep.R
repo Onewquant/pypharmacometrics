@@ -1,6 +1,7 @@
 library(readr)
 library(dplyr)
 library(ggplot2)
+library(NonCompart)
 
 setwd("C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25")
 input_dir_path <- file.path(getwd(), "sglt2i_dataset")
@@ -65,7 +66,9 @@ pd_res_df <- glu_auc_df %>%
   left_join(covar_df, by = "ID")
 
 # Gen Col
-pd_res_df %>% mutate(PG_avg = as.numeric(AUC_glu) / 24)
+pd_res_df = pd_res_df %>% mutate(dUGEc = (UGE24-UGEbase) / PG_avg)
+pd_res_df = pd_res_df %>% mutate(EFFECT1 = dUGEc)
 
 # 결과 확인
 pd_res_df
+write.csv(pd_res_df, file.path(input_dir_path, "KSCPTSPRWS25_SGLT2i_PD.csv"),row.names = FALSE)
