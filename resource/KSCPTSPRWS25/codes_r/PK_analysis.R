@@ -1,4 +1,4 @@
-# install.packages("dplyr")
+# install.packages(c("dplyr","ggplot2","NonCompart","tidyverse","MASS", "deSolve"))
 
 library(ggplot2)
 library(dplyr)
