@@ -15,17 +15,17 @@ bpd_df <- read_csv(file.path(input_dir_path, "KSCPTSPRWS25_SGLT2i_Blood_PD.csv")
 # Baseline 정보 추출
 bpd_baseline_df <- bpd_df %>%
   filter(N_TIME == 0) %>%
-  select(ID, N_TIME, `C_Serum GLU`, HbA1c) %>%
-  rename(PG_base = `C_Serum GLU`, HbA1c_base = HbA1c)
+  dplyr::select(ID, N_TIME, C_Serum_GLU, HbA1c) %>%
+  rename(PG_base = C_Serum_GLU, HbA1c_base = HbA1c)
 
 # Glucose AUC 계산
-glu_auc_df <- tblNCA(bpd_df, key = c("ID"), colTime = "N_TIME", colConc = "C_Serum GLU", dose=0.5, concUnit="ug/L", down = "Log")
-glu_auc_df <- glu_auc_df %>% select(ID, AUCLST) %>% rename(ID = ID, AUC_glu = AUCLST )
+glu_auc_df <- tblNCA(bpd_df, key = c("ID"), colTime = "N_TIME", colConc = "C_Serum_GLU", dose=0.5, concUnit="ug/L", down = "Log")
+glu_auc_df <- glu_auc_df %>% dplyr::select(ID, AUCLST) %>% rename(ID = ID, AUC_glu = AUCLST )
 glu_auc_df <- glu_auc_df %>% mutate(PG_avg = as.numeric(AUC_glu) / 24)
 
 
 # baseline과 병합
-glu_auc_df <- left_join(glu_auc_df, bpd_baseline_df %>% select(ID, PG_base, HbA1c_base), by = "ID")
+glu_auc_df <- left_join(glu_auc_df, bpd_baseline_df %>% dplyr::select(ID, PG_base, HbA1c_base), by = "ID")
 
 # Urine PD prep ----------------------------------------------------
 
@@ -45,7 +45,7 @@ uge24_df <- upd_df %>%
 ugebase_df <- uge24_df %>%
   filter(N_DAY == -1) %>%
   rename(UGEbase = UGE24, VOLUMEbase = VOLUME24) %>%
-  select(-N_DAY)
+  dplyr::select(-N_DAY)
 
 # Day 1 데이터와 병합
 uge24_df <- uge24_df %>%

@@ -361,7 +361,7 @@ effect = nss_df[effect_col]
 popt, pcov = curve_fit(sigmoid_emax, x_sigemax, effect, p0=[0.02, 0.5, 50, 1])  # 초기값 설정
 
 # 피팅된 파라미터 출력
-popt = np.array([0.025, 0.427, 59.9, 7.17])
+popt = np.array([0.0251, 0.435, 59.6, 7.36])
 E0_fit, Emax_fit, EC50_fit, H_fit = popt
 print(f"E0: {E0_fit:.2f}, Emax: {Emax_fit:.2f}, EC50: {EC50_fit:.2f}, Hill coefficient: {H_fit:.2f}")
 
@@ -403,7 +403,7 @@ plt.ylabel(y, fontsize=14)
 plt.xticks(fontsize=14)
 plt.yticks(fontsize=14)
 # fig_title = f'[WSCT] Sigmoid Emax Model Fit ({x_col} vs {y})\nE0: {E0_fit:.3f}, Emax: {Emax_fit:.3f}, EC50: {EC50_fit:.2f}, Hill coefficient: {H_fit:.2f}\nR-squared: {r_squared:.4f}, RMSE: {rmse:.4f}, AIC: {aic:.2f}'
-fig_title = f'[WSCT] Sigmoid Emax Model Fit ({x_col} vs {y})\nE0: {E0_fit:.3f}, Emax: {Emax_fit:.3f}, EC50: {EC50_fit:.2f}, Hill coefficient: {H_fit:.2f}, OFV: -108.443'
+fig_title = f'[WSCT] Sigmoid Emax Model Fit ({x_col} vs {y})\nE0: {E0_fit:.3f}, Emax: {Emax_fit:.3f}, EC50: {EC50_fit:.2f}, Hill coefficient: {H_fit:.2f}, OFV: -126.849'
 plt.title(fig_title, fontsize=14)
 plt.legend(fontsize=14)
 plt.grid(True)

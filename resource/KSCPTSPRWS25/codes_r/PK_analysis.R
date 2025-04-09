@@ -31,7 +31,7 @@ p_indiv <- ggplot(gdf, aes(x = ATIME, y = CONC, group = ID, color = factor(GRP))
   theme_bw(base_size = 15) +
   theme(legend.position = "right")
 
-ggsave(filename = file.path(results_dir_path, "[WSCT] Individual Time-Concentration Profiles by GRP.png"), plot = p_indiv, width = 15, height = 12, dpi = 300)
+ggsave(filename = file.path(results_dir_path, "[WSCT] Time-Concentration Profiles by GRP (Individual).png"), plot = p_indiv, width = 15, height = 12, dpi = 300)
 
 # 그룹 평균 그래프 ----------------------------------------------------
 
@@ -57,7 +57,7 @@ p_pop <- ggplot(summary_df, aes(x = NTIME, y = mean_CONC, color = factor(GRP), g
   theme_bw(base_size = 15) +
   theme(legend.position = "right")
 
-ggsave(filename = file.path(results_dir_path, "[WSCT] Population Time-Concentration Profiles by GRP.png"),
+ggsave(filename = file.path(results_dir_path, "[WSCT] Time-Concentration Profiles by GRP (Population).png"),
        plot = p_pop, width = 15, height = 12, dpi = 300)
 
 
@@ -68,7 +68,7 @@ library(NonCompart)
 
 nca_result <- tblNCA(gdf, key = c("ID","GRP"), colTime = "ATIME", colConc = "CONC", dose=0.5, concUnit="ug/L", down = "Log")
 nca_result <- nca_result %>% select(ID, GRP, TMAX, CMAX, AUCLST) %>% rename(ID = ID, GRP = GRP, Tmax = TMAX , Cmax = CMAX, AUClast = AUCLST )
-write_csv(nca_result, file.path(results_dir_path, "[WSCT] NCARes_PK.csv"))
+write_csv(nca_result, file.path(results_dir_path, "[WSCT] PK_analysis_data - NCARes.csv"))
 
 # ANOVA 및 GMR ----------------------------------------------------
 
@@ -113,4 +113,4 @@ for (param in params) {
 }
 
 anova_result_df <- bind_rows(results_list)
-write.csv(anova_result_df, file.path(results_dir_path, "[WSCT] ANOVA_PK.csv"))
+write.csv(anova_result_df, file.path(results_dir_path, "[WSCT] PK_analysis_data - ANOVA.csv"))
