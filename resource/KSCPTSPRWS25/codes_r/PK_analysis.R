@@ -8,6 +8,10 @@ setwd("C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25")
 input_dir_path <- file.path(getwd(), "sglt2i_dataset")
 results_dir_path <- file.path(getwd(), "results_r")
 
+# 디렉토리가 없으면 생성
+if (!dir.exists(results_dir_path)) {
+  dir.create(results_dir_path, recursive = TRUE)
+  }
 
 gdf <- as.data.frame(readr::read_csv(file.path(input_dir_path, "KSCPTSPRWS25_SGLT2i_PK.csv")))
 
