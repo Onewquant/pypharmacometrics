@@ -5,8 +5,8 @@ import statsmodels.api as sm
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 
-resource_dir_path = "C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25/resource"
-results_dir_path = "C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25/results"
+resource_dir_path = "/resource/KSCPTSPRWS25/resource"
+results_dir_path = "/resource/KSCPTSPRWS25/results"
 
 ########################################
 ## MAD 분석

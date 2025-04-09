@@ -3,8 +3,8 @@ from tools import *
 ## 기본정보입력
 
 project_dict = {'CKD379':['Empagliflozin','Sitagliptin','Metformin'], 'CKD383':['Empagliflozin','Lobeglitazone','Metformin']}
-modeling_dir_path = "C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/metformin_xr"
-prepconc_dir_path = "C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/metformin_xr/prep_data"
+modeling_dir_path = "/resource/metformin_xr"
+prepconc_dir_path = "/resource/metformin_xr/prep_data"
 
 ## Modeling and Dosing Policy 파일 불러오기
 

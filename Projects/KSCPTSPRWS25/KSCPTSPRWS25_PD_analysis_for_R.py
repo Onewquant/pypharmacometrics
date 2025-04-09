@@ -2,7 +2,7 @@ from tools import *
 from pynca.tools import *
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
-wd_path = "C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25"
+wd_path = "/resource/KSCPTSPRWS25"
 input_dir_path = f"{wd_path}/sglt2i_dataset"
 results_dir_path = f"{wd_path}/results_r"
 

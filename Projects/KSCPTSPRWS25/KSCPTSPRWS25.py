@@ -1,15 +1,15 @@
 from tools import *
 from pynca.tools import *
 
-df = pd.read_csv("C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25/prep_data/KSCPT2025SPRWS_ConcPrep_SGLT2INH(R).csv")
+df = pd.read_csv("/resource/KSCPTSPRWS25/prep_data/KSCPT2025SPRWS_ConcPrep_SGLT2INH(R).csv")
 df[df['GRP'].isin([1,3])].reset_index(drop=True).to_csv("C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25/prep_data/KSCPTSPRWS25MULTI_ConcPrep_SGLT2INH(R).csv", index=False, encoding='utf-8-sig')
 df[df['GRP'].isin([2,4,5])].reset_index(drop=True).to_csv("C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25/prep_data/KSCPTSPRWS25SINGLE_ConcPrep_SGLT2INH(R).csv", index=False, encoding='utf-8-sig')
 
 ## 기본정보입력
 
 project_dict = {'KSCPTSPRWS25MULTI':['SGLT2INH'], 'KSCPTSPRWS25SINGLE':['SGLT2INH']}
-modeling_dir_path = "C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25"
-prepconc_dir_path = "C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25/prep_data"
+modeling_dir_path = "/resource/KSCPTSPRWS25"
+prepconc_dir_path = "/resource/KSCPTSPRWS25/prep_data"
 
 ## Modeling and Dosing Policy 파일 불러오기
 

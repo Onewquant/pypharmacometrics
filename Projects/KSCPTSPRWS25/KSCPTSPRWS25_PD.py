@@ -4,10 +4,10 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 
 project_dict = {'KSCPTSPRWS25MULTI':['SGLT2INH'], 'KSCPTSPRWS25SINGLE':['SGLT2INH']}
-modeling_dir_path = "C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25"
-modeling_prepconc_dir_path = "C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25/modeling_prep_data"
-resource_dir_path = "C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25/resource"
-results_dir_path = "C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25/results"
+modeling_dir_path = "/resource/KSCPTSPRWS25"
+modeling_prepconc_dir_path = "/resource/KSCPTSPRWS25/modeling_prep_data"
+resource_dir_path = "/resource/KSCPTSPRWS25/resource"
+results_dir_path = "/resource/KSCPTSPRWS25/results"
 
 ## AUC 구하기
 
