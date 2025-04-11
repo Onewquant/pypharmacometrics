@@ -121,7 +121,7 @@ to_drop <- colnames(lower)[apply(lower, 2, function(col) any(col >= 0.7, na.rm =
 
 # 5. 제거된 공변량을 제외한 X 구성
 X <- pd_df %>%
-  select(setdiff(total_cand, to_drop)) %>%
+  dplyr::select(setdiff(total_cand, to_drop)) %>%
   mutate(across(everything(), as.numeric))  # 모든 컬럼을 numeric으로
 
 # 6. VIF 계산y_var <- names(X)[1]
@@ -229,17 +229,22 @@ cat(sprintf("Sigmoid Emax fit:\nE0 = %.3f\nEmax = %.3f\nEC50 = %.3f\nHill coeffi
 x_col <- "eGFR"
 y_col <- "EFFECT1"
 
-E0_fit    <- 0.0251
-Emax_fit  <- 0.435
-EC50_fit  <- 59.6
-H_fit     <- 7.36
+# E0_fit    <- 0.0251
+# Emax_fit  <- 0.435
+# EC50_fit  <- 59.6
+# H_fit     <- 7.36
+
+E0_fit    <- 0.0307
+Emax_fit  <- 0.512
+EC50_fit  <- 58.2
+H_fit     <- 7.8
 
 
 # Fitting된 모델 시각화 ------------------------------------------
 
 # 1. 관측값
 observed_df <- pd_df %>%
-  select(all_of(c(x_col, y_col))) %>%
+  dplyr::select(all_of(c(x_col, y_col))) %>%
   rename(x = all_of(x_col), y = all_of(y_col)) %>%
   mutate(x = as.numeric(x), y = as.numeric(y)) %>%
   filter(!is.na(x), !is.na(y))
@@ -254,7 +259,7 @@ fit_df <- data.frame(x = gfr_fit, y = effect_fit)
 fig_title <- glue::glue(
   "[WSCT] Sigmoid Emax Model Fit ({x_col} vs {y_col})\n",
   "E0: {round(E0_fit, 3)}, Emax: {round(Emax_fit, 3)}, EC50: {round(EC50_fit, 2)}, ",
-  "Hill coefficient: {round(H_fit, 2)}, OFV: -126.849"
+  "Hill coefficient: {round(H_fit, 2)}, OFV: -112.05"
 )
 
 # 4. 그래프 그리기

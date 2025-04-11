@@ -66,9 +66,12 @@ pd_res_df <- glu_auc_df %>%
   left_join(covar_df, by = "ID")
 
 # Gen Col
-pd_res_df = pd_res_df %>% mutate(dUGEc = (UGE24-UGEbase) / PG_avg)
+# pd_res_df = pd_res_df %>% mutate(UID = ID)
+# pd_res_df = pd_res_df %>% mutate(ID = row_number())
+pd_res_df = pd_res_df %>% mutate(dUGE = (UGE24-UGEbase))
+pd_res_df = pd_res_df %>% mutate(dUGEc = dUGE / PG_base)
 pd_res_df = pd_res_df %>% mutate(EFFECT1 = dUGEc)
 
 # 결과 확인
-pd_res_df
+print(head(pd_res_df))
 write.csv(pd_res_df, file.path(input_dir_path, "KSCPTSPRWS25_SGLT2i_PD.csv"),row.names = FALSE)

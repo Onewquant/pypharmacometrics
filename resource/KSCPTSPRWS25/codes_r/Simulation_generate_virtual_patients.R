@@ -32,9 +32,12 @@ grp_summary <- input_data %>%
   )
 
 ### 3. 시뮬레이션 설정값
-theta <- c(E0 = 0.0251, EMAX = 0.435, EC50 = 59.6, HILL = 7.36)
-omega <- c(0.0215, 0.0186) # ETA1, ETA2
-sigma <- c(0.00002) # proportional, additive
+
+theta <- c(E0 = 0.0307, EMAX = 0.512, EC50 = 58.2, HILL = 7.8)
+omega <- c(0.0383, 0.0169) # ETA1, ETA2
+sigma <- c(0.00004) # proportional, additive
+
+
 
 n_patients_per_group <- 500
 eGFR_ranges <- list(
