@@ -298,4 +298,4 @@ PredVanco = function(TH, ETA, DATAi)
       IPRE[i] = C1 + C2
     }
   return(IPRE)
-}
+  }
