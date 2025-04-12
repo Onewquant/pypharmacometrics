@@ -1,20 +1,18 @@
 # EBE for TDM
-
 e = environment()
 
-nGrad = function(func, x, nRec)
-{
+nGrad = function(func, x, nRec){
+  
   # multiple gradient function in case of func returns a vector for each x (vector) point
   # Returns a nRec * length(x) matrix of gradients
   # Each row_i is the corresponding gradient of x_i
-  
   n = length(x)
   x1 = vector(length=n)
   x2 = vector(length=n)
   ga = matrix(nrow=nRec, ncol=4)
   gr = matrix(nrow=nRec, ncol=n)
   
-  for (i in 2:n) x1[1] = x2[1] = x[i]
+  for (i in 2:n) x1[i] = x2[i] = x[i]
   
   for (i in 1:n) {
     axi = abs(x[i])
@@ -27,6 +25,7 @@ nGrad = function(func, x, nRec)
       ga[,k] = (func(x2) - func(x1)) / (2*hi)
       hi = hi / 2
     }
+    
     ga[,1] = (ga[,2]*4 - ga[,1]) / 3
     ga[,2] = (ga[,3]*4 - ga[,2]) / 3
     ga[,3] = (ga[,4]*4 - ga[,3]) / 3
@@ -35,24 +34,25 @@ nGrad = function(func, x, nRec)
     ga[,i] = (ga[,2]*64 - ga[,1]) / 63
     x1[i] = x2[i] = x[i]
   }
+  
   return(gr)
-}
+  }
 
-objEta = function(ETA1)
-{
+
+objEta = function(ETA1){
+  
   # External Variable : e$DATAi, e$TH, e$invOH, e$SG
   # External Function : e$PRED
-  
   e$Fi = e$PRED(e$TH, ETAi, e$DATAi)[!is.na(e$DATAi$DV)]
   e$Ri = e$DATAi[!is.na(e$DATAi$DV), "DV"] - e$Fi
   e$Hi = cbind(e$Fi, 1)
   e$Vi = diag(e$Hi %*% e$SG %*% t(e$Hi))
-  sum(log(e$Vi) + e$Ri*e$Ri/e$Vi) + t(ETAi) %*% e$invOM %*% ETA1
-}
+  sum(log(e$Vi) + e$Ri*e$Ri/e$Vi) + t(ETAi) %*% e$invOM %*% ETAi
+  }
 
 
-EBE = function(PRED, DATA1, TH, OM, SG)
-{
+EBE = function(PRED, DATAi, TH, OM, SG){
+  
   e$PRED = PRED
   e$DATAi = DATAi
   e$TH = TH
@@ -81,15 +81,15 @@ EBE = function(PRED, DATA1, TH, OM, SG)
   Res = list(EBEi, SE, COV, Fi, SEy, SDy, Ri)
   names(Res) = c("EBEi", "SE", "COV", "IPRED", "SE.IPRED", "SD.IPRED", "IRES")
   return(Res)
-}
+  }
 
 
 calcPI = function(PRED, DATAi, TH, SG, rEBE, npoints=500)
-{
-  EBEi = rBEB$EBEi
+  {
+  EBEi = rEBE$EBEi
   nEta = length(EBEi)
   COV = rEBE$COV
-  DATi2 = merge(DATAi, data.frame(TIME = seq(0, max(DATAi$TIME), length=npoints)), by="TIME", ~~)
+  DATAi2 = merge(DATAi, data.frame(TIME = seq(0, max(DATAi$TIME), length=npoints)), by="TIME")     # [유추필요] by="TIME", ~~)
   y2 = PRED(TH, EBEi, DATAi2)
   nRec2 = lenth(y2)
   
@@ -107,11 +107,11 @@ calcPI = function(PRED, DATAi, TH, SG, rEBE, npoints=500)
   ypiUL = y2 + 1.96*SDy2
   
   return(data.frame(x, y, y2, yciLL, yciUL, ypiLL, ypiUL))
-}
+  }
 
 
-plotPI = function(PRED, DATAim, TH, SG, rEBE, npoints=500)
-{
+plotPI = function(PRED, DATAi, TH, SG, rEBE, npoints=500){
+  
   Res = calsPI(PRED, DATAi, TH, SG, rEBE, npoints)
   x = Res$x
   y = Res$y
@@ -121,8 +121,8 @@ plotPI = function(PRED, DATAim, TH, SG, rEBE, npoints=500)
   ypiLL = Res$ypiLL
   ypiUL = Res$ypiUL
   dev.new()
-  plot(0, 0, type="n", xlab="Time", ylab="Concentration +/- 2SD", xlim=~~)
-  points(x[:is.na(y)], y[!is.na(y)], pch-16)
+  plot(0, 0, type="n", xlab="Time", ylab="Concentration +/- 2SD", xlim) # [유추필요] xlim= ~~)
+  points(x[!is.na(y)], y[!is.na(y)], pch=16)
   lines(x, y2, lty=1)
 # polygon(c(x, rev(x)), c(ypiLL, rev(ypiUL)), col=#111111)
 # polygon(c(x, rev(x)), c(yciLL, rev(yciUL)), col=#222222)
@@ -132,7 +132,7 @@ plotPI = function(PRED, DATAim, TH, SG, rEBE, npoints=500)
   lines(x, ypiUL, lty=2, col="blue")
   abline(h=c(5,15,25,35, lty=2))
   return(Res)
-}
+  }
 
 
 
@@ -178,8 +178,8 @@ addDATAi = function(DATAi, TIME, AMT, RATE, II, ADDL)
 }
 
 
-expandDATA = function(DATAo)
-{
+expandDATA = function(DATAo){
+  
   eDATAi =data.frame()
   Added = vector()
   for (i in 1:nrow(DATAo)) {
@@ -207,7 +207,7 @@ expandDATA = function(DATAo)
   Added <<- AddOrder
   eDATAi = eDATAi[order(eDATAi$TIME),]
   
-  CovCol = setdiff(colnames(eDATAi), c("ID","TIME","AMT","RATE","II","ADDL","DV","MDV",~~))
+  CovCol = setdiff(colnames(eDATAi), c("ID","TIME","AMT","RATE","II","ADDL","DV","MDV")) # [유추필요] ,"DV","MDV",~~))
   for (i in 2:nrow(eDATAi)) {
     if (AddOrder[i] == TRUE) eDATAi[i, CovCol] = eDATAi[i -1, CovCol]
   }
@@ -216,8 +216,8 @@ expandDATA = function(DATAo)
 }
 
 
-PredVanco = function(TH, ETA, DATAi)
-{
+PredVanco = function(TH, ETA, DATAi){
+  
   V1 = TH[2]*exp(ETA[2])
   V2 = TH[3]*exp(ETA[3])
   Q = TH[4]*exp(ETA[4])
@@ -241,7 +241,7 @@ PredVanco = function(TH, ETA, DATAi)
     AlpBe = K10 + K12 + K21
     AlmBe = K10*K21
     Det4 = sqrt(AlpBe*AlpBe - 4*AlmBe)
-    Alpha = (AlpBe + Det4) / 2
+    Alpha = (AlpBe + Det4)/2
     Beta = (AlpBe - Det4)/2
     Divisor = V1*(Alpha - Beta)
     cTime = DATAi[i, "TIME"]
@@ -268,8 +268,8 @@ PredVanco = function(TH, ETA, DATAi)
         C2 = (eC2 + pC2)*exp(-Beta*(dTime - pDur))
         Conc = rbind(Conc, c(C1, C2))
         inf = FALSE
-      }
-      else if (inf == TRUE) { # Infusion has not finished. Use last infusion information
+        }
+      } else if (inf == TRUE) { # Infusion has not finished. Use last infusion information
       if (cTime <= pTime + pDur) {
         infC1 = pRate*(Alpha - K21)/Divisor*(1 - exp(Alpha*dTime))/Alpha
         infC2 = pRate*(K21 - Beta)/Divisor*(1 - exp(Beta*dTime))/Beta
