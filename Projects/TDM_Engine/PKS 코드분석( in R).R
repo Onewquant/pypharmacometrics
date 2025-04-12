@@ -121,7 +121,7 @@ plotPI = function(PRED, DATAi, TH, SG, rEBE, npoints=500){
   ypiLL = Res$ypiLL
   ypiUL = Res$ypiUL
   dev.new()
-  plot(0, 0, type="n", xlab="Time", ylab="Concentration +/- 2SD", xlim) # [유추필요] xlim= ~~)
+  plot(0, 0, type="n", xlab="Time", ylab="Concentration +/- 2SD", xlim=c(min(x), max(x)), ylim=, xlim=c(min(y), max(y))) # [유추필요] xlim= ~~)
   points(x[!is.na(y)], y[!is.na(y)], pch=16)
   lines(x, y2, lty=1)
 # polygon(c(x, rev(x)), c(ypiLL, rev(ypiUL)), col=#111111)
