@@ -3,7 +3,7 @@ library(dplyr)
 library(ggplot2)
 library(NonCompart)
 
-setwd("C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25")
+# setwd("C:/Users/ilma0/downloads/KSCPTSPRWS25")
 input_dir_path <- file.path(getwd(), "sglt2i_dataset")
 results_dir_path <- file.path(getwd(), "results_r")
 
@@ -98,7 +98,6 @@ ggsave(filename = file.path(results_dir_path, paste0(fig_title, ".png")),
 
 # Covariates VIF --------------------------------------------------------
 
-# install.packages("car")
 library(car)
 
 # 1. 공변량 리스트

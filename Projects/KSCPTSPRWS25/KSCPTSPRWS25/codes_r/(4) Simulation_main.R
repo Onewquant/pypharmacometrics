@@ -6,7 +6,7 @@ library(dplyr)
 library(ggplot2)
 library(tidyverse)
 
-setwd('C:/Users/ilma0/PycharmProjects/pypharmacometrics/resource/KSCPTSPRWS25')
+# setwd("C:/Users/ilma0/downloads/KSCPTSPRWS25")
 input_dir_path <- file.path(getwd(), "sglt2i_dataset")
 results_dir_path <- file.path(getwd(), "results_r")
 
