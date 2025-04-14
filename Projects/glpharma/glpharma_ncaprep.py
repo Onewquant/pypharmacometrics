@@ -4,7 +4,12 @@ from pynca.tools import *
 result_type = 'Phoenix'
 result_type = 'R'
 
+prj_name = 'GLPHARMA'
+ip_name = 'W2406'
 prj_dir = 'Projects/glpharma/resource'
+output_dir = f"{prj_dir}/results"
+if not os.path.exists(output_dir):
+    os.mkdir(output_dir)
 
 df = pd.read_csv(f'{prj_dir}/glpharma_CONC.csv')
 seq_df = pd.read_csv(f'{prj_dir}/glpharma_SEQUENCE.csv')
@@ -12,14 +17,18 @@ seq_df = pd.read_csv(f'{prj_dir}/glpharma_SEQUENCE.csv')
 df = df.drop(columns=['No.']).melt(id_vars=['DRUG','PERIOD','NTIME'], var_name='ID', value_name='CONC')
 seq_df = seq_df.T.iloc[1:].reset_index(drop=False).rename(columns={'index':'ID',0:'SEQUENCE'})
 
-
 df = df.merge(seq_df, on=['ID'], how='left')
-
+df['DOSE'] = 150
+df['ATIME'] = df['NTIME']
 # 채혈 되지 않은 대상자 분석에서 제외
 df = df[df['CONC']!='-'].sort_values(['DRUG','ID','NTIME'],ascending=[False,True,True],ignore_index=True)
 
 
-df = df[['ID','DRUG','NTIME','CONC','PERIOD','SEQUENCE']].reset_index(drop=True)
+result_cols = ['ID','DRUG','DOSE','ATIME','NTIME','CONC','PERIOD','SEQUENCE']
+unit_row_dict = {'DOSE': 'mg', 'NTIME': 'h', 'ATIME': 'h', 'CONC': 'ug/mL'}
+
+df = df[result_cols].reset_index(drop=True)
+
 
 
 
@@ -55,9 +64,9 @@ for inx, row in df.iterrows():
 # raise ValueError
 if result_type == 'Phoenix':
     df['CONC'] = df['CONC'].map(lambda x: str(x) if not np.isnan(x) else '.')
-    prep_df = df[['ID', 'DOSE', 'NTIME', 'ATIME', 'CONC', 'PERIOD', 'FEEDING', 'DRUG']]
+    prep_df = df[result_cols]
 
-    unit_row_dict = {'DOSE': 'mg', 'NTIME': 'h', 'ATIME': 'h', 'CONC': 'ng/mL'}
+
     additional_row = dict()
     for c in list(prep_df.columns):
         try:
@@ -66,10 +75,10 @@ if result_type == 'Phoenix':
             additional_row[c] = ''
     prep_df = pd.concat([pd.DataFrame([additional_row], index=['', ]), prep_df])
 elif result_type == 'R':
-    prep_df = prep_df.dropna()
+    prep_df = df.dropna()
 
-prep_df = prep_df[['ID', 'DOSE', 'NTIME', 'ATIME', 'CONC', 'PERIOD', 'FEEDING', 'DRUG']].sort_values(['DRUG','ID','PERIOD','NTIME'])
+prep_df = prep_df[result_cols].sort_values(['DRUG','ID','PERIOD','NTIME'])
 
-result_file_name = f"CKD383_ConcPrep_({result_type}).csv"
+result_file_name = f"{prj_name}_ConcPrep_{ip_name}_{result_type}.csv"
 result_file_path = f"{output_dir}/{result_file_name}"
 prep_df.to_csv(result_file_path, header=True, index=False)
