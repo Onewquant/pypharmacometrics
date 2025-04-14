@@ -3,7 +3,7 @@ library(dplyr)
 library(ggplot2)
 library(NonCompart)
 
-# setwd("C:/Users/ilma0/downloads/KSCPTSPRWS25")
+# setwd("C:/Users/[user_name]/downloads/KSCPTSPRWS25")
 input_dir_path <- file.path(getwd(), "sglt2i_dataset")
 results_dir_path <- file.path(getwd(), "results_r")
 

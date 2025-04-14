@@ -1,5 +1,3 @@
-# Simulation Data Prep---------------------------------
-
 library(dplyr)
 library(MASS)
 library(readr)
