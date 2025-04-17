@@ -2,7 +2,7 @@ library(shiny)
 
 ui = fluidPage(
   titlePanel("Vancomycin TDM (Under Test)"),
-  sidebarlayout(
+  sidebarLayout(
     sidebarPanel(
       fileInput("file1","Choose CSV file",
                 accept=c("text/csv",
@@ -29,11 +29,26 @@ ui = fluidPage(
 
 server = function(input, output, session){
   
+  # getDATAi = reactive({
+  #   req(input$file1)
+  #   DATAi = expandDATA(convDT(read.csv(input$file1$datapath, na.strings = c("",".","NA"), as.is =TRUE)))
+  #   updateNumericInput(session, "TIME", value=ceiling(max(DATAi[,"TIME"])))
+  #   DATAi[,c("ID","TIME","AMT","RATE","DV","MDV","SEX","AGE","BWT","SCR","CLCR")]
+  # })
+
   getDATAi = reactive({
     req(input$file1)
-    DATAi = expandDATA(convDT(read.csv(input$file1$datapath, na.strings = c("",".","NA"), as.is =TRUE)))
-    updateNumericInput(session, "TIME", value=ceiling(max(DATAi[,"TIME"])))
-    DATAi[,c("ID","TIME","AMT","RATE","DV","MDV","SEX","AGE","BWT","SCR","CLCR")]
+    raw_data <- read.csv(input$file1$datapath, na.strings = c("", ".", "NA"), as.is = TRUE)
+    data_prepped <- convDT(raw_data)
+
+    # 데이터에 ADDL 컬럼이 있고, 값이 실제로 > 0인 경우만 확장 적용
+    if ("ADDL" %in% names(data_prepped) && any(!is.na(data_prepped$ADDL) & data_prepped$ADDL > 0)) {
+      data_prepped <- expandDATA(data_prepped)
+    }
+
+    data_prepped <- data_prepped[order(data_prepped$ID, data_prepped$TIME), ]
+    updateNumericInput(session, "TIME", value = ceiling(max(data_prepped$TIME)))
+    return(data_prepped[, c("ID","TIME","AMT","RATE","DV","MDV","SEX","AGE","BWT","SCR","CLCR")])
   })
   
   getEBE = reactive({
@@ -51,7 +66,7 @@ server = function(input, output, session){
   })
   
   output$contents = renderTable({
-    DATAi = getDATAi
+    DATAi = getDATAi()
     return(DATAi)
   })
   
@@ -66,7 +81,7 @@ server = function(input, output, session){
     PI = getPI()
     minX = min(PI$x)
     maxX = max(PI$x)
-    if (input$range[1] := minX | input$range[2] := maxX) {
+    if (input$range[1] != minX | input$range[2] != maxX) {
       xlm = input$range
     } else{
       xlm = c(minX, maxX)
@@ -89,7 +104,8 @@ OM = matrix(c( 0.10855133849022583,       -1.52445093837639736E-002,  -0.1969818
                -1.52445093837639736E-002, 3.01016276351715687E-003,   2.31285256338822770E-002,   -6.61597586201947800E-003,
                -0.19698189309256298,      2.31285256338822770E-002,   1.0420667710781930,         -0.19223488058085114,
                0.11914555131547180,       -6.61597586201947800E-003,  -0.19223488058085114,       0.416
-               ))
+               ), nrow = 4, byrow = TRUE)
+
 SG = matrix(c(0.14019731106615912^2, 0.00000000,
               0.00000000,            1.8662549226759475^2), nrow=2)
 
