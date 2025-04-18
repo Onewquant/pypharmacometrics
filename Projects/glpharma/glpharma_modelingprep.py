@@ -24,6 +24,6 @@ covar_cols=['DRUG']
 add_covar_df=pd.DataFrame(columns=['UID'])
 uid_on=True
 term_dict={'TIME': 'ATIME', 'TAD': 'NTIME', 'DV': 'CONC', 'ID': 'ID'}
-formatting_data_nca_to_nonmem(drugconc_dict=drugconc_dict, dspol_df=dspol_df, uid_cols=uid_cols, modeling_dir_path=modeling_dir_path, covar_cols=covar_cols, add_covar_df=pd.DataFrame(columns=['UID']), uid_on=True)
+formatting_data_nca_to_nonmem(drugconc_dict=drugconc_dict, dspol_df=dspol_df, uid_cols=uid_cols, modeling_dir_path=modeling_dir_path, covar_cols=covar_cols, add_covar_df=add_covar_df, uid_on=True)
 
 
