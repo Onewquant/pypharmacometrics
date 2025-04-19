@@ -72,7 +72,7 @@ server = function(input, output, session){
     })
   })
   
-  # calcTDM(PredVanco, DATAi, TH, SG, rEBE, 50, 1000, 1000, 12, 10) # AC: Additional Counts
+  # PI = calcTDM(PredVanco, DATAi, TH, SG, rEBE, 50, 1000, 1000, 12, 10) # AC: Additional Counts
   
   output$contents = renderTable({
     DATAi = getDATAi()
