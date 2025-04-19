@@ -206,6 +206,7 @@ calcTDM = function(PRED, DATAi, TH, SG, rEBE, TIME, AMT, RATE, II, ADDL, npoints
   
   DATAi = addDATAi(DATAi, TIME, AMT, RATE, II, ADDL)
   rTab = calcPI(PRED, DATAi, TH, SG, rEBE, npoints)
+  # rTab = data.frame(x, y, y2, yciLL, yciUL, ypiLL, ypiUL)
   return(rTab)
 }
 
@@ -350,7 +351,7 @@ PredVanco = function(TH, ETA, DATAi){
         eC2 = pRate*(K21 - Beta)/Divisor*(1-exp(-Beta*rDur))/Beta
         pC1 = Conc[i - 1, "C1"]*exp(-Alpha*rDur)
         pC2 = Conc[i - 1, "C2"]*exp(-Beta*rDur)
-        C1 = (eC1 + pC1) * exp(-Alpha*(cTime - pTime - spDur))
+        C1 = (eC1 + pC1) * exp(-Alpha*(cTime - pTime - pDur))
         C2 = (eC2 + pC2) * exp(-Beta*(cTime - pTime - pDur))
         Conc = rbind(Conc, c(C1, C2))
         inf = FALSE
