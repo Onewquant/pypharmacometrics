@@ -72,6 +72,8 @@ server = function(input, output, session){
     })
   })
   
+  # calcTDM(PredVanco, DATAi, TH, SG, rEBE, 50, 1000, 1000, 12, 10) # AC: Additional Counts
+  
   output$contents = renderTable({
     DATAi = getDATAi()
     return(DATAi)
@@ -83,6 +85,9 @@ server = function(input, output, session){
     maxX = max(DATAi[,"TIME"]) + input$II*input$ADDL
     sliderInput("range","Time Range", min=minX, max=ceiling(maxX), value = c(minX,maxX))
   })
+  
+  # minX = min(DATAi[,"TIME"])
+  # maxX = max(DATAi[,"TIME"]) + 12*10
   
   output$plot = renderPlot({
     PI = getPI()
@@ -112,6 +117,12 @@ OM = matrix(c( 0.10855133849022583,       -1.52445093837639736E-002,  -0.1969818
                -0.19698189309256298,      2.31285256338822770E-002,   1.0420667710781930,         -0.19223488058085114,
                0.11914555131547180,       -6.61597586201947800E-003,  -0.19223488058085114,       0.416
                ), nrow = 4, byrow = TRUE)
+
+# OM = matrix(c( 0.10855133849022583,       -1.52445093837639736E-002,  -0.19698189309256298,       0.11914555131547180,
+#                -1.52445093837639736E-002, 3.01016276351715687E-003,   2.31285256338822770E-002,   -6.61597586201947800E-003,
+#                -0.19698189309256298,      2.31285256338822770E-002,   1.0420667710781930,         -0.19223488058085114,
+#                0.11914555131547180,       -6.61597586201947800E-003,  -0.19223488058085114,       0.6
+# ), nrow = 4, byrow = TRUE)
 
 SG = matrix(c(0.14019731106615912^2, 0.00000000,
               0.00000000,            1.8662549226759475^2), nrow=2)

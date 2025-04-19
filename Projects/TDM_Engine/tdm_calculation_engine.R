@@ -6,6 +6,12 @@ mGrad = function(func, x, nRec){
   # multiple gradient function in case of func returns a vector for each x (vector) point
   # Returns a nRec * length(x) matrix of gradients
   # Each row_i is the corresponding gradient of x_i
+  
+  
+  # func = PREDij
+  # x = EBEi
+  # nRec = length(Fi)
+  
   n = length(x)
   x1 = vector(length=n)
   x2 = vector(length=n)
@@ -31,7 +37,7 @@ mGrad = function(func, x, nRec){
     ga[,3] = (ga[,4]*4 - ga[,3]) / 3
     ga[,1] = (ga[,2]*16 - ga[,1]) / 15
     ga[,2] = (ga[,3]*16 - ga[,2]) / 15
-    ga[,i] = (ga[,2]*64 - ga[,1]) / 63
+    gr[,i] = (ga[,2]*64 - ga[,1]) / 63
     x1[i] = x2[i] = x[i]
   }
   
@@ -69,11 +75,11 @@ EBE = function(PRED, DATAi, TH, OM, SG){
   # )
   # 
   # TH = c(3.8135955291021233, 39.889510090195238, 44.981835351176571, 2.0055189192561507)         # CL, V1, V2, Q?
-  OM = matrix(c( 0.10855133849022583,       -1.52445093837639736E-002,  -0.19698189309256298,       0.11914555131547180,
-                 -1.52445093837639736E-002, 3.01016276351715687E-003,   2.31285256338822770E-002,   -6.61597586201947800E-003,
-                 -0.19698189309256298,      2.31285256338822770E-002,   1.0420667710781930,         -0.19223488058085114,
-                 0.11914555131547180,       -6.61597586201947800E-003,  -0.19223488058085114,       0.416
-  ), nrow = 4, byrow = TRUE)
+  # OM = matrix(c( 0.10855133849022583,       -1.52445093837639736E-002,  -0.19698189309256298,       0.11914555131547180,
+  #                -1.52445093837639736E-002, 3.01016276351715687E-003,   2.31285256338822770E-002,   -6.61597586201947800E-003,
+  #                -0.19698189309256298,      2.31285256338822770E-002,   1.0420667710781930,         -0.19223488058085114,
+  #                0.11914555131547180,       -6.61597586201947800E-003,  -0.19223488058085114,       0.416
+  # ), nrow = 4, byrow = TRUE)
   # 
   # SG = matrix(c(0.14019731106615912^2, 0.00000000,
   #               0.00000000,            1.8662549226759475^2), nrow=2)
@@ -92,7 +98,7 @@ EBE = function(PRED, DATAi, TH, OM, SG){
   EBEi = r0$par
   COV = 2*solve(r0$hessian)
   SE = sqrt(diag(COV))
-  Fi = PRED(TH, EBEi, DATAi)
+  Fi = PRED(TH, EBEi, DATAi)      # IPRED
   Ri = DATAi[!is.na(DATAi$DV),"DV"] - Fi[!is.na(DATAi$DV)]
   nRec = length(Fi)
   
@@ -112,10 +118,14 @@ EBE = function(PRED, DATAi, TH, OM, SG){
 
 calcPI = function(PRED, DATAi, TH, SG, rEBE, npoints=500)
   {
+  
+  # PRED, DATAi, TH, SG, rEBE, npoints
+  
+  
   EBEi = rEBE$EBEi
   nEta = length(EBEi)
   COV = rEBE$COV
-  DATAi2 = merge(DATAi, data.frame(TIME = seq(0, max(DATAi$TIME), length=npoints)), by="TIME")     # [유추필요] by="TIME", ~~)
+  DATAi2 = merge(DATAi, data.frame(TIME = seq(0, max(DATAi$TIME), length=npoints)), by="TIME", all = TRUE)     # [유추필요] by="TIME", ~~)
   y2 = PRED(TH, EBEi, DATAi2)
   nRec2 = length(y2)
   
@@ -186,6 +196,14 @@ plotPI = function(PRED, DATAi, TH, SG, rEBE, npoints=500){
 
 calcTDM = function(PRED, DATAi, TH, SG, rEBE, TIME, AMT, RATE, II, ADDL, npoints=500)
 {
+  # TIME = 50
+  # AMT = 1000
+  # RATE = 1000
+  # II = 12
+  # ADDL = 10
+  # npoints=500
+  
+  
   DATAi = addDATAi(DATAi, TIME, AMT, RATE, II, ADDL)
   rTab = calcPI(PRED, DATAi, TH, SG, rEBE, npoints)
   return(rTab)
@@ -209,7 +227,7 @@ convDT = function(DATAi)
 }
 
 
-addDATAi = function(DATAi, TIME, AMT, RATE, II, ADDL)
+addDATAi = function(DATAi, TIME, AMT, RATE, II, ADDL)      # 기존 데이터에 TDM 하려는 input 값을 반영한 rows 붙여줌(그래프 그릴 수 있도록)
 {
   lRow = DATAi[nrow(DATAi),]
 
@@ -225,28 +243,6 @@ addDATAi = function(DATAi, TIME, AMT, RATE, II, ADDL)
   }
   return(DATAi)
 }
-
-# addDATAi = function(DATAi, TIME, AMT, RATE, II, ADDL) {
-#   lRow = DATAi[nrow(DATAi), ]
-#   
-#   if (is.null(ADDL) || is.na(ADDL || ADDL==0)) {
-#     nADD = 0
-#   } else {
-#     nADD = ADDL
-#   }
-#   
-#   for (i in 0:nADD) {
-#     aRow = lRow
-#     aRow["TIME"] = TIME + i * II
-#     aRow["AMT"]  = AMT
-#     aRow["RATE"] = RATE
-#     aRow["DV"]   = NA
-#     aRow["MDV"]  = 1
-#     DATAi = rbind(DATAi, aRow)
-#   }
-#   
-#   return(DATAi)
-# }
 
 
 expandDATA = function(DATAo){
