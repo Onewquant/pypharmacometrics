@@ -38,23 +38,30 @@ server = function(input, output, session){
 
   getDATAi = reactive({
     req(input$file1)
+    
+    # raw_data = read.csv("C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/TDM_Engine/sample_vanco_loading_maintenance.csv", na.strings = c("", ".", "NA"), as.is = TRUE)
     raw_data <- read.csv(input$file1$datapath, na.strings = c("", ".", "NA"), as.is = TRUE)
-    data_prepped <- convDT(raw_data)
+    data_prepped <- convDT(raw_data)           # TIME 컬럼 붙여줌 (numerical time으로)
 
     # 데이터에 ADDL 컬럼이 있고, 값이 실제로 > 0인 경우만 확장 적용
     if ("ADDL" %in% names(data_prepped) && any(!is.na(data_prepped$ADDL) & data_prepped$ADDL > 0)) {
       data_prepped <- expandDATA(data_prepped)
     }
 
-    data_prepped <- data_prepped[order(data_prepped$ID, data_prepped$TIME), ]
-    updateNumericInput(session, "TIME", value = ceiling(max(data_prepped$TIME)))
-    return(data_prepped[, c("ID","TIME","AMT","RATE","DV","MDV","SEX","AGE","BWT","SCR","CLCR")])
+    data_prepped <- data_prepped[order(data_prepped$ID, data_prepped$TIME), ]                          # ID, TIME 으로 정렬
+    updateNumericInput(session, "TIME", value = ceiling(max(data_prepped$TIME)))                       # shiny session에서 INPUT 에 최대 시간보다 크도록 설정
+    return(data_prepped[, c("ID","TIME","AMT","RATE","DV","MDV","SEX","AGE","BWT","SCR","CLCR")])      # prep data 반환
   })
+  
+  
+  # DATAi = (data_prepped[, c("ID","TIME","AMT","RATE","DV","MDV","SEX","AGE","BWT","SCR","CLCR")])
   
   getEBE = reactive({
     DATAi = getDATAi()
     EBE(PredVanco, DATAi, TH, OM, SG)
   })
+  
+  # rEBE = EBE(PredVanco, DATAi, TH, OM, SG)
   
   getPI = reactive({
     DATAi = getDATAi()
