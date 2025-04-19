@@ -125,7 +125,7 @@ calcPI = function(PRED, DATAi, TH, SG, rEBE, npoints=500)
   EBEi = rEBE$EBEi
   nEta = length(EBEi)
   COV = rEBE$COV
-  DATAi2 = merge(DATAi, data.frame(TIME = seq(0, max(DATAi$TIME), length=npoints)), by="TIME", all = TRUE)     # [유추필요] by="TIME", ~~)
+  DATAi2 = merge(DATAi, data.frame(TIME = seq(0, max(DATAi$TIME), length=npoints)), by="TIME", all = TRUE)
   y2 = PRED(TH, EBEi, DATAi2)
   nRec2 = length(y2)
   
@@ -285,6 +285,11 @@ expandDATA = function(DATAo){
 
 
 PredVanco = function(TH, ETA, DATAi){
+  
+  # TH
+  # ETA = EBEi
+  # DATAi = DATAi2
+  
 
   V1 = TH[2]*exp(ETA[2])
   V2 = TH[3]*exp(ETA[3])
@@ -339,8 +344,8 @@ PredVanco = function(TH, ETA, DATAi){
         }
       } else if (inf == TRUE) { # Infusion has not finished. Use last infusion information
       if (cTime <= pTime + pDur) {
-        infC1 = pRate*(Alpha - K21)/Divisor*(1 - exp(Alpha*dTime))/Alpha
-        infC2 = pRate*(K21 - Beta)/Divisor*(1 - exp(Beta*dTime))/Beta
+        infC1 = pRate*(Alpha - K21)/Divisor*(1 - exp(-Alpha*dTime))/Alpha
+        infC2 = pRate*(K21 - Beta)/Divisor*(1 - exp(-Beta*dTime))/Beta
         C1 = Conc[i-1, "C1"]*exp(-Alpha*dTime) + infC1
         C2 = Conc[i-1, "C2"]*exp(-Beta*dTime) + infC2
         Conc = rbind(Conc, c(C1, C2))
@@ -367,113 +372,3 @@ PredVanco = function(TH, ETA, DATAi){
     }
   return(IPRE)
   }
-
-# PredVanco = function(TH, ETA, DATAi) {
-#   V1 = TH[2] * exp(ETA[2])
-#   V2 = TH[3] * exp(ETA[3])
-#   Q  = TH[4] * exp(ETA[4])
-#   K12 = Q / V1
-#   K21 = Q / V2
-#   
-#   IPRE = rep(NA, nrow(DATAi))  # 미리 NA로 초기화
-#   inf = FALSE
-#   Conc = data.frame(C1 = 0, C2 = 0)
-#   
-#   pCLCR = min(DATAi[1, "CLCR"], 150)
-#   
-#   for (i in 2:nrow(DATAi)) {
-#     CLCR = min(DATAi[i, "CLCR"], 150)
-#     if (is.na(CLCR)) {
-#       CLCR = pCLCR
-#     } else {
-#       pCLCR = CLCR
-#     }
-#     
-#     TVCL = TH[1] * CLCR / 100
-#     CL = TVCL * exp(ETA[1])
-#     K10 = CL / V1
-#     
-#     AlpBe = K10 + K12 + K21
-#     AlmBe = K10 * K21
-#     Det4_expr = AlpBe^2 - 4 * AlmBe
-#     
-#     # 안정성 체크
-#     if (!is.finite(Det4_expr) || Det4_expr < 0 || !is.finite(CL) || !is.finite(K10)) {
-#       warning(paste("❌ Invalid root or clearance at row", i, "| CLCR:", CLCR, "| ETA:", paste(ETA, collapse = ",")))
-#       return(rep(NA, nrow(DATAi)))
-#     }
-#     
-#     Det4 = sqrt(Det4_expr)
-#     Alpha = (AlpBe + Det4) / 2
-#     Beta  = (AlpBe - Det4) / 2
-#     Divisor = V1 * (Alpha - Beta)
-#     
-#     if (!is.finite(Divisor) || Divisor == 0) {
-#       warning(paste("❌ Invalid divisor at row", i, "| Divisor:", Divisor))
-#       return(rep(NA, nrow(DATAi)))
-#     }
-#     
-#     cTime = DATAi[i, "TIME"]
-#     dTime = cTime - DATAi[i - 1, "TIME"]
-#     
-#     if (!is.na(DATAi[i - 1, "AMT"]) && DATAi[i - 1, "AMT"] > 0) {
-#       pTime = DATAi[i - 1, "TIME"]
-#       pAMT  = DATAi[i - 1, "AMT"]
-#       pRate = DATAi[i - 1, "RATE"]
-#       pDur  = pAMT / pRate
-#       
-#       if (dTime <= pDur) {
-#         infC1 = pRate * (Alpha - K21) / Divisor * (1 - exp(-Alpha * dTime)) / Alpha
-#         infC2 = pRate * (K21 - Beta) / Divisor * (1 - exp(-Beta * dTime)) / Beta
-#         C1 = Conc[i - 1, "C1"] * exp(-Alpha * dTime) + infC1
-#         C2 = Conc[i - 1, "C2"] * exp(-Beta * dTime) + infC2
-#         Conc = rbind(Conc, c(C1, C2))
-#         inf = TRUE
-#       } else {
-#         eC1 = pRate * (Alpha - K21) / Divisor * (1 - exp(-Alpha * pDur)) / Alpha
-#         eC2 = pRate * (K21 - Beta) / Divisor * (1 - exp(-Beta * pDur)) / Beta
-#         pC1 = Conc[i - 1, "C1"] * exp(-Alpha * pDur)
-#         pC2 = Conc[i - 1, "C2"] * exp(-Beta * pDur)
-#         C1 = (eC1 + pC1) * exp(-Alpha * (dTime - pDur))
-#         C2 = (eC2 + pC2) * exp(-Beta * (dTime - pDur))
-#         Conc = rbind(Conc, c(C1, C2))
-#         inf = FALSE
-#       }
-#       
-#     } else if (inf == TRUE) {
-#       if (cTime <= pTime + pDur) {
-#         infC1 = pRate * (Alpha - K21) / Divisor * (1 - exp(-Alpha * dTime)) / Alpha
-#         infC2 = pRate * (K21 - Beta) / Divisor * (1 - exp(-Beta * dTime)) / Beta
-#         C1 = Conc[i - 1, "C1"] * exp(-Alpha * dTime) + infC1
-#         C2 = Conc[i - 1, "C2"] * exp(-Beta * dTime) + infC2
-#         Conc = rbind(Conc, c(C1, C2))
-#         inf = TRUE
-#       } else {
-#         rDur = pTime + pDur - DATAi[i - 1, "TIME"]
-#         eC1 = pRate * (Alpha - K21) / Divisor * (1 - exp(-Alpha * rDur)) / Alpha
-#         eC2 = pRate * (K21 - Beta) / Divisor * (1 - exp(-Beta * rDur)) / Beta
-#         pC1 = Conc[i - 1, "C1"] * exp(-Alpha * rDur)
-#         pC2 = Conc[i - 1, "C2"] * exp(-Beta * rDur)
-#         C1 = (eC1 + pC1) * exp(-Alpha * (cTime - pTime - pDur))
-#         C2 = (eC2 + pC2) * exp(-Beta * (cTime - pTime - pDur))
-#         Conc = rbind(Conc, c(C1, C2))
-#         inf = FALSE
-#       }
-#       
-#     } else {
-#       C1 = Conc[i - 1, "C1"] * exp(-Alpha * dTime)
-#       C2 = Conc[i - 1, "C2"] * exp(-Beta * dTime)
-#       Conc = rbind(Conc, c(C1, C2))
-#       inf = FALSE
-#     }
-#     
-#     if (!is.finite(C1 + C2)) {
-#       warning(paste("❌ Non-finite prediction at row", i, "→ C1+C2 not finite"))
-#       return(rep(NA, nrow(DATAi)))
-#     }
-#     
-#     IPRE[i] = C1 + C2
-#   }
-#   
-#   return(IPRE)
-# }
