@@ -68,7 +68,7 @@ server = function(input, output, session){
     rEBE = getEBE()
     input$goButton
     isolate({
-      calcTDM(PredVanco, DATAi, TH, SG, rEBE, input$TIME, input$AMT, input$RATE, input$II, input$AC) # AC: Additional Counts
+      calcTDM(PredVanco, DATAi, TH, SG, rEBE, input$TIME, input$AMT, input$RATE, input$II, input$ADDL) # AC: Additional Counts
     })
   })
   
