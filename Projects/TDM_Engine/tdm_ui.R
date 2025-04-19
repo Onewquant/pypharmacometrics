@@ -78,7 +78,6 @@ server = function(input, output, session){
     DATAi = getDATAi()
     return(DATAi)
   })
-  
   output$xlim_slider = renderUI({
     DATAi = getDATAi()
     minX = min(DATAi[,"TIME"])

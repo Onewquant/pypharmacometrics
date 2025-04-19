@@ -117,8 +117,6 @@ def calcPI(PRED, DATAi, TH, SG, rEBE, npoints=500):
         "ypiUL": y2 + 1.96 * SDy2,
     })
 
-import numpy as np
-import pandas as pd
 
 def convDT(DATAi):
     # 'DATE' 컬럼이 있는 경우만 변환
