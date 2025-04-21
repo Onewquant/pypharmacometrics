@@ -56,6 +56,9 @@ def objEta(ETAi):
 
 
 def EBE(PRED, DATAi, TH, OM, SG):
+
+    # PRED = PredVanco
+
     e.PRED = PRED
     e.DATAi = DATAi.copy()
     e.TH = TH
@@ -64,9 +67,9 @@ def EBE(PRED, DATAi, TH, OM, SG):
     e.nEta = OM.shape[0]
     e.invOM = inv(OM)
 
-    res = minimize(objEta, x0=np.zeros(e.nEta), method="BFGS", options={'disp': False})
+    res = minimize(objEta, x0=np.zeros(e.nEta), method="BFGS", options={'disp': False})  ########## 요라인만 약간 다른값
     EBEi = res.x
-    COV = 2 * inv(res.hess_inv)
+    COV = 2 * res.hess_inv
     SE = np.sqrt(np.diag(COV))
     Fi = PRED(TH, EBEi, DATAi)
     Ri = DATAi.loc[~DATAi['DV'].isna(), 'DV'].values - Fi[~DATAi['DV'].isna()]
@@ -89,7 +92,7 @@ def EBE(PRED, DATAi, TH, OM, SG):
     }
 
 
-def calcPI(PRED, DATAi, TH, SG, rEBE, npoints=500):
+def calcPI(PRED, DATAi, TH, SG, rEBE, npoints=500):  ########## 확인필요
     EBEi = rEBE["EBEi"]
     COV = rEBE["COV"]
     max_time = DATAi["TIME"].max()
@@ -127,7 +130,8 @@ def convDT(DATAi):
         DATAi = DATAi.drop(columns=["DATE", "SDT"])
     return DATAi
 
-def addDATAi(DATAi, TIME, AMT, RATE, II, ADDL):
+
+def addDATAi(DATAi, TIME, AMT, RATE, II, ADDL):  ########## 확인필요
     lRow = DATAi.iloc[[-1]].copy()
     nADD = ADDL + 1
     for i in range(nADD):
@@ -140,7 +144,7 @@ def addDATAi(DATAi, TIME, AMT, RATE, II, ADDL):
         DATAi = pd.concat([DATAi, aRow], ignore_index=True)
     return DATAi
 
-def expandDATA(DATAo):
+def expandDATA(DATAo):  ########## 조금 다르게 수정해봤는데, 수정한 것이 맞을지 확인 필요
     eDATAi = pd.DataFrame(columns=DATAo.columns)
     Added_flags = []
 
@@ -155,12 +159,13 @@ def expandDATA(DATAo):
             for j in range(1, nADD + 1):
                 new_row = row.copy()
                 new_row["TIME"] = cTIME + j * cII
+                new_row['II'] = cII
+                new_row['ADDL'] = 0
                 eDATAi = pd.concat([eDATAi, new_row.to_frame().T], ignore_index=True)
                 Added_flags.append(True)
+            eDATAi.at[i,'ADDL'] = 0
         Added_flags.append(False)
 
-    eDATAi["II"] = np.nan
-    eDATAi["ADDL"] = np.nan
     eDATAi = eDATAi.sort_values("TIME").reset_index(drop=True)
 
     CovCols = [col for col in eDATAi.columns if col not in ["ID", "TIME", "AMT", "RATE", "II", "ADDL", "DV", "MDV"]]
@@ -171,6 +176,7 @@ def expandDATA(DATAo):
 
 
 def PredVanco(TH, ETA, DATAi):
+    # ETA = OM
     V1 = TH[1] * np.exp(ETA[1])
     V2 = TH[2] * np.exp(ETA[2])
     Q = TH[3] * np.exp(ETA[3])
@@ -254,7 +260,7 @@ def PredVanco(TH, ETA, DATAi):
     return np.array(IPRE)
 
 
-def calcTDM(PRED, DATAi, TH, SG, rEBE, TIME, AMT, RATE, II, ADDL, npoints=500):
+def calcTDM(PRED, DATAi, TH, SG, rEBE, TIME, AMT, RATE, II, ADDL, npoints=500):  ########## 확인필요
     """
     Add future dosing events to DATAi and calculate prediction interval (PI).
 
