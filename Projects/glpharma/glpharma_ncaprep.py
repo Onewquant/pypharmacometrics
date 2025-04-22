@@ -2,7 +2,7 @@ from tools import *
 from pynca.tools import *
 
 result_type = 'Phoenix'
-result_type = 'R'
+# result_type = 'R'
 
 prj_name = 'GLPHARMA'
 ip_name = 'W2406'
@@ -14,12 +14,15 @@ if not os.path.exists(output_dir):
 df = pd.read_csv(f'{prj_dir}/glpharma_CONC.csv')
 seq_df = pd.read_csv(f'{prj_dir}/glpharma_SEQUENCE.csv')
 
-df = df.drop(columns=['No.']).melt(id_vars=['DRUG','PERIOD','NTIME'], var_name='ID', value_name='CONC')
+df = df.drop(columns=['No.']).melt(id_vars=['PERIOD','NTIME'], var_name='ID', value_name='CONC')
 seq_df = seq_df.T.iloc[1:].reset_index(drop=False).rename(columns={'index':'ID',0:'SEQUENCE'})
 
 df = df.merge(seq_df, on=['ID'], how='left')
 df['DOSE'] = 150
 df['ATIME'] = df['NTIME']
+df['DRUG'] = ''
+df['DRUG'] = np.where((((df['PERIOD']==1)&(df['SEQUENCE']==1))|((df['PERIOD']==2)&(df['SEQUENCE']==2))), 'R', 'T')
+
 # 채혈 되지 않은 대상자 분석에서 제외
 df = df[df['CONC']!='-'].sort_values(['DRUG','ID','NTIME'],ascending=[False,True,True],ignore_index=True)
 
