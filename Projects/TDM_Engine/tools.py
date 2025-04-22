@@ -23,6 +23,15 @@ e = EBEEnvironment()
 
 
 def mGrad(func, x, nRec):
+
+    # func = PRED
+    # x = EBEi
+    # nRec = len(y2)
+
+    # func = PredVanco
+    # x = np.array([ 0.45030954, -0.06429413, -0.70336727,  0.49293616])
+    # nRec = 505
+
     n = len(x)
     gr = np.zeros((nRec, n))
     for i in range(n):
@@ -93,12 +102,16 @@ def EBE(PRED, DATAi, TH, OM, SG):
 
 
 def calcPI(PRED, DATAi, TH, SG, rEBE, npoints=500):  ########## 확인필요
+
+    # DATAi_augmented = addDATAi(DATAi.copy(), TIME, AMT, RATE, II, ADDL)
+    # rTab = calcPI(PRED, DATAi_augmented, TH, SG, rEBE, npoints)
+
     EBEi = rEBE["EBEi"]
     COV = rEBE["COV"]
     max_time = DATAi["TIME"].max()
     pred_times = np.linspace(0, max_time, npoints)
     DATAi2 = pd.merge(pd.DataFrame({"TIME": pred_times}), DATAi, on="TIME", how="outer").sort_values("TIME")
-    y2 = PRED(TH, EBEi, DATAi2)
+    y2 = PRED(TH, EBEi, DATAi2)  ############################### 여기가 제대로 안나오고 있음 !!!
 
     def PREDij(ETA): return PRED(TH, ETA, DATAi2)
 
@@ -176,7 +189,24 @@ def expandDATA(DATAo):  ########## 조금 다르게 수정해봤는데, 수정�
 
 
 def PredVanco(TH, ETA, DATAi):
+
     # ETA = OM
+    # TH, ETA = EBEi, DATAi2  <- 이 input으로 할때 제대로 안나오고 다 na 값이 나온다..
+
+    """
+    # DATAi2.to_csv("./Projects/TDM_Engine/DATAi2.csv",index=False)
+
+    TH = np.array([
+        3.8135955291021233,
+        39.889510090195238,
+        44.981835351176571,
+        2.0055189192561507
+    ])
+    DATAi2 = pd.read_csv("./Projects/TDM_Engine/DATAi2.csv")
+    ETA = np.array([0.45030954, -0.06429413, -0.70336727,  0.49293616])
+
+    """
+
     V1 = TH[1] * np.exp(ETA[1])
     V2 = TH[2] * np.exp(ETA[2])
     Q = TH[3] * np.exp(ETA[3])
@@ -261,6 +291,17 @@ def PredVanco(TH, ETA, DATAi):
 
 
 def calcTDM(PRED, DATAi, TH, SG, rEBE, TIME, AMT, RATE, II, ADDL, npoints=500):  ########## 확인필요
+
+    """
+    PRED = PredVanco
+    TIME=50
+    AMT=1000
+    RATE=1000
+    II=12
+    ADDL=10
+    npoints=500
+    """
+
     """
     Add future dosing events to DATAi and calculate prediction interval (PI).
 

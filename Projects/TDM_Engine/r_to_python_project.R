@@ -117,6 +117,7 @@ EBE = function(PRED, DATAi, TH, OM, SG){
 }
 
 
+
 objEta = function(ETAi){
   
   # External Variable : e$DATAi, e$TH, e$invOH, e$SG
@@ -218,5 +219,136 @@ PredVanco = function(TH, ETA, DATAi){
 }
 
 
+
+addDATAi = function(DATAi, TIME, AMT, RATE, II, ADDL)      # 기존 데이터에 TDM 하려는 input 값을 반영한 rows 붙여줌(그래프 그릴 수 있도록)
+{
+  lRow = DATAi[nrow(DATAi),]
+  
+  nADD = ADDL + 1
+  for (i in 1:nADD) {
+    aRow = lRow
+    aRow[,"TIME"] = TIME + (i - 1)*II
+    aRow[,"AMT"]  = AMT
+    aRow[,"RATE"] = RATE
+    aRow[,"DV"]   = NA
+    aRow[,"MDV"]  = 1
+    DATAi = rbind(DATAi, aRow)
+  }
+  return(DATAi)
+}
+
+
+calcPI = function(PRED, DATAi, TH, SG, rEBE, npoints=500)
+{
+  
+  # PRED, DATAi, TH, SG, rEBE, npoints
+  
+  
+  EBEi = rEBE$EBEi
+  nEta = length(EBEi)
+  COV = rEBE$COV
+  DATAi2 = merge(DATAi, data.frame(TIME = seq(0, max(DATAi$TIME), length=npoints)), by="TIME", all = TRUE)
+  y2 = PRED(TH, EBEi, DATAi2)
+  nRec2 = length(y2)
+  
+  # PREDij = function(ETA) PRED(TH, ETA, DATAi2)
+  # gr2 = mGrad(PREDij, EBEi, nRec2)   # gr is a (nRec x nEta) matrix of gradients.
+  # VF2 = diag(gr2 %*% COV %*% t(gr2)) # Transpose of gr is switched, because, gr is a matrix ~~
+  # SEy2 = sqrt(VF2)
+  # SDy2 = sqrt(VF2 + VF2*SG[1,1] + y2*y2*SG[1,1] + SG[2,2])
+  
+  
+  # 예측 확인
+  cat("✅ y2 range: ", range(y2, na.rm = TRUE), "\n")
+  
+  PREDij = function(ETA) PRED(TH, ETA, DATAi2)
+  gr2 = mGrad(PREDij, EBEi, nRec2)
+  
+  if (any(is.na(gr2))) {
+    warning("❌ Gradient (gr2) contains NA values.")
+    return(NULL)
+  }
+  
+  VF2 = diag(gr2 %*% COV %*% t(gr2))
+  cat("✅ VF2 range: ", range(VF2, na.rm = TRUE), "\n")
+  
+  SEy2 = sqrt(VF2)
+  SDy2 = sqrt(VF2 + VF2 * SG[1, 1] + y2^2 * SG[1, 1] + SG[2, 2])
+  
+  cat("✅ SDy2 range: ", range(SDy2, na.rm = TRUE), "\n")
+  
+  
+  
+  x = DATAi2$TIME
+  y = DATAi2$DV
+  yciLL = y2 - 1.96*SEy2
+  yciUL = y2 + 1.96*SEy2
+  ypiLL = y2 - 1.96*SDy2
+  ypiUL = y2 + 1.96*SDy2
+  
+  return(data.frame(x, y, y2, yciLL, yciUL, ypiLL, ypiUL))
+}
+
+
+plotPI = function(PRED, DATAi, TH, SG, rEBE, npoints=500){
+  
+  Res = calsPI(PRED, DATAi, TH, SG, rEBE, npoints)
+  x = Res$x
+  y = Res$y
+  y2 = Res$y2
+  yciLL = Res$yciLL
+  yciUL = Res$yciUL
+  ypiLL = Res$ypiLL
+  ypiUL = Res$ypiUL
+  dev.new()
+  plot(0, 0, type="n", xlab="Time", ylab="Concentration +/- 2SD", xlim=c(min(x), max(x)), ylim=c(min(y), max(y))) # [유추필요] xlim= ~~)
+  points(x[!is.na(y)], y[!is.na(y)], pch=16)
+  lines(x, y2, lty=1)
+  # polygon(c(x, rev(x)), c(ypiLL, rev(ypiUL)), col=#111111)
+  # polygon(c(x, rev(x)), c(yciLL, rev(yciUL)), col=#222222)
+  lines(x, yciLL, lty=2, col="red")
+  lines(x, yciLL, lty=2, col="red")
+  lines(x, ypiUL, lty=2, col="blue")
+  lines(x, ypiUL, lty=2, col="blue")
+  abline(h=c(5,15,25,35, lty=2))
+  return(Res)
+}
+
+
+
+calcTDM = function(PRED, DATAi, TH, SG, rEBE, TIME, AMT, RATE, II, ADDL, npoints=500)
+{
+  # TIME = 50
+  # AMT = 1000
+  # RATE = 1000
+  # II = 12
+  # ADDL = 10
+  # npoints=500
+  
+  
+  DATAi = addDATAi(DATAi, TIME, AMT, RATE, II, ADDL)
+  rTab = calcPI(PRED, DATAi, TH, SG, rEBE, npoints)
+  # rTab = data.frame(x, y, y2, yciLL, yciUL, ypiLL, ypiUL)
+  return(rTab)
+}
+
+
+
+
+rEBE = EBE(PredVanco, DATAi, TH, OM, SG)
+
+
+TIME = 50
+AMT = 1000
+RATE = 1000
+II = 12
+ADDL = 10
+npoints=500
+
+
+augmented_DATAi = addDATAi(DATAi, TIME, AMT, RATE, II, ADDL)
+rTab = calcPI(PRED, augmented_DATAi, TH, SG, rEBE, npoints)
+
+# PI = calcTDM(PredVanco, DATAi, TH, SG, rEBE, 50, 1000, 1000, 12, 10) # AC: Additional Counts
 
 
