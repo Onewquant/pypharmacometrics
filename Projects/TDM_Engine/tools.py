@@ -101,10 +101,11 @@ def EBE(PRED, DATAi, TH, OM, SG):
     }
 
 
-def calcPI(PRED, DATAi, TH, SG, rEBE, npoints=500):  ########## 확인필요
+def calcPI(PRED, DATAi, TH, SG, rEBE, npoints=500):  ########## 요부분에서 result df의 각 row가 2배로 나옴. 에러수정 필요
 
     # DATAi_augmented = addDATAi(DATAi.copy(), TIME, AMT, RATE, II, ADDL)
     # rTab = calcPI(PRED, DATAi_augmented, TH, SG, rEBE, npoints)
+    # PRED = PredVanco
 
     EBEi = rEBE["EBEi"]
     COV = rEBE["COV"]
@@ -190,8 +191,8 @@ def expandDATA(DATAo):  ########## 조금 다르게 수정해봤는데, 수정�
 
 def PredVanco(TH, ETA, DATAi):
 
-    # ETA = OM
-    # TH, ETA = EBEi, DATAi2  <- 이 input으로 할때 제대로 안나오고 다 na 값이 나온다..
+    # ETA = EBEi
+    # TH, ETA = EBEi, DATAi2  <- 2배로 복제되어 나온다.
 
     """
     # DATAi2.to_csv("./Projects/TDM_Engine/DATAi2.csv",index=False)
