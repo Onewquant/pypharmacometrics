@@ -196,13 +196,17 @@ def PredVanco(TH, ETA, DATAi):
     """
     # DATAi2.to_csv("./Projects/TDM_Engine/DATAi2.csv",index=False)
 
+
+    import numpy as np
+    import pandas as pd
+
     TH = np.array([
         3.8135955291021233,
         39.889510090195238,
         44.981835351176571,
         2.0055189192561507
     ])
-    DATAi2 = pd.read_csv("./Projects/TDM_Engine/DATAi2.csv")
+    DATAi = pd.read_csv("./Projects/TDM_Engine/DATAi2.csv")
     ETA = np.array([0.45030954, -0.06429413, -0.70336727,  0.49293616])
 
     """
@@ -220,6 +224,8 @@ def PredVanco(TH, ETA, DATAi):
     pCLCR = min(DATAi.iloc[0]["CLCR"], 150)
 
     for i in range(1, len(DATAi)):
+        # if i==2: break
+
         row = DATAi.iloc[i]
         prev = DATAi.iloc[i - 1]
         CLCR = min(row["CLCR"], 150) if not pd.isna(row["CLCR"]) else pCLCR
@@ -260,10 +266,10 @@ def PredVanco(TH, ETA, DATAi):
                 C2 = (eC2 + pC2) * np.exp(-Beta * (dTime - pDur))
                 inf = False
         elif inf:
-            pTime = prev["TIME"]
-            pAMT = prev["AMT"]
-            pRate = prev["RATE"]
-            pDur = pAMT / pRate
+            # pTime = prev["TIME"]
+            # pAMT = prev["AMT"]
+            # pRate = prev["RATE"]
+            # pDur = pAMT / pRate
             if cTime <= pTime + pDur:
                 infC1 = pRate * (Alpha - K21) / Divisor * (1 - np.exp(-Alpha * dTime)) / Alpha
                 infC2 = pRate * (K21 - Beta) / Divisor * (1 - np.exp(-Beta * dTime)) / Beta
