@@ -119,7 +119,9 @@ EBE = function(PRED, DATAi, TH, OM, SG){
 calcPI = function(PRED, DATAi, TH, SG, rEBE, npoints=500)
   {
   
-  # PRED, DATAi, TH, SG, rEBE, npoints
+  # PRED, DATAi, TH, SG, rEBE
+  # npoints=500
+  # PRED = PredVanco
   
   
   EBEi = rEBE$EBEi
@@ -290,6 +292,10 @@ PredVanco = function(TH, ETA, DATAi){
   # ETA = EBEi
   # DATAi = DATAi2
   
+  # DATAi = read.csv("C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/TDM_Engine/DATAi2.csv", na.strings = c("", ".", "NA"), as.is = TRUE)
+  # TH = c(3.8135955291021233, 39.889510090195238, 44.981835351176571, 2.0055189192561507)         # CL, V1, V2, Q?
+  # ETA = c(0.45030954, -0.06429413, -0.70336727,  0.49293616)
+  
 
   V1 = TH[2]*exp(ETA[2])
   V2 = TH[3]*exp(ETA[3])
@@ -302,6 +308,11 @@ PredVanco = function(TH, ETA, DATAi){
   Conc = data.frame(C1=0, C2=0)
   pCLCR = min(DATAi[1,"CLCR"], 150)
   for (i in 2:nrow(DATAi)) {
+    # i=2
+    # if (i==3) {
+    #   break
+    # }
+    
     CLCR = min(DATAi[i,"CLCR"], 150)
     if (is.na(CLCR)) {
       CLCR = pCLCR
