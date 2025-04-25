@@ -348,7 +348,7 @@ npoints=500
 
 augmented_DATAi = addDATAi(DATAi, TIME, AMT, RATE, II, ADDL)
 rTab = calcPI(PRED, augmented_DATAi, TH, SG, rEBE, npoints)
-
+tail(rTab)
 # PI = calcTDM(PredVanco, DATAi, TH, SG, rEBE, 50, 1000, 1000, 12, 10) # AC: Additional Counts
 
 

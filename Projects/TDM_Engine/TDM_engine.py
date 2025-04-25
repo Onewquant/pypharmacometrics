@@ -1,6 +1,6 @@
 from Projects.TDM_Engine.tools import *
 import matplotlib.pyplot as plt
-
+import seaborn as sns
 
 # Typical parameters (THETA): CL, V1, V2, Q
 TH = np.array([
@@ -51,31 +51,34 @@ rEBE = EBE(PredVanco, DATAi, TH, OM, SG)
 PI = calcTDM(PredVanco, DATAi, TH, SG, rEBE, TIME=50, AMT=1000, RATE=1000, II=12, ADDL=10)
 
 # 8. 시각화
-plt.figure(figsize=(10, 6))
-xlm = [PI["x"].min(), PI["x"].max()]
 
-plt.plot([], [], ' ', label='Vancomycin TDM Prediction')
-plt.xlim(xlm)
-plt.ylim([PI["ypiLL"].min(), PI["ypiUL"].max()])
-plt.xlabel("Time")
-plt.ylabel("Concentration ± 2SD")
+# 스타일 지정 (선택)
+sns.set(style="whitegrid")
+
+# 그래프 그리기
+plt.figure(figsize=(10, 6))
 
 # 관측치
 mask_obs = ~PI["y"].isna()
-plt.scatter(PI["x"][mask_obs], PI["y"][mask_obs], color='black', s=40, label='Observed')
+sns.scatterplot(x=PI["x"][mask_obs], y=PI["y"][mask_obs], color='black', s=40, label='Observed')
 
 # 예측치 및 신뢰구간
-plt.plot(PI["x"], PI["y2"], label='Prediction (mean)', linewidth=2)
-plt.plot(PI["x"], PI["yciLL"], linestyle='--', color='red', label='95% CI lower')
-plt.plot(PI["x"], PI["yciUL"], linestyle='--', color='red', label='95% CI upper')
-plt.plot(PI["x"], PI["ypiLL"], linestyle=':', color='blue', label='95% PI lower')
-plt.plot(PI["x"], PI["ypiUL"], linestyle=':', color='blue', label='95% PI upper')
+sns.lineplot(x="x", y="y2", data=PI, color='dimgrey', label='Prediction (mean)', linewidth=2, alpha=0.5)
+sns.lineplot(x="x", y="yciLL", data=PI, linestyle='--', color='indianred', label='95% CI lower', alpha=0.5)
+sns.lineplot(x="x", y="yciUL", data=PI, linestyle='--', color='indianred', label='95% CI upper', alpha=0.5)
+sns.lineplot(x="x", y="ypiLL", data=PI, linestyle=':', color='royalblue', label='95% PI lower', alpha=0.5)
+sns.lineplot(x="x", y="ypiUL", data=PI, linestyle=':', color='royalblue', label='95% PI upper', alpha=0.5)
 
 # 기준선
 for y in [5, 15, 25, 35]:
     plt.axhline(y=y, linestyle='--', color='gray', linewidth=0.8)
 
-plt.legend()
+# 축 및 레이블 설정
+plt.xlim(PI["x"].min(), PI["x"].max())
+plt.ylim([PI["ypiLL"].min(), PI["ypiUL"].max()])
+plt.xlabel("Time")
+plt.ylabel("Concentration ± 2SD")
 plt.title("Vancomycin Concentration Prediction ± 2SD")
+plt.legend()
 plt.tight_layout()
 plt.show()
