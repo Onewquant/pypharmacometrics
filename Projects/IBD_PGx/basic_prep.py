@@ -51,7 +51,7 @@ for finx, fpath in enumerate(order_files):
     dose_df['ETC_INFO'] = dose_df['처방지시비고'].copy()
     dose_df['DRUG'] = dose_df['처방지시'].map(lambda x: re.search(regex_pattern, x, flags=re.IGNORECASE).group().lower().replace('(','').replace(')',''))
 
-    dose_df[['ID','NAME','DATETIME','DRUG','ETC_INFO']]
+    # dose_df[['ID','NAME','DATETIME','DRUG','ETC_INFO']]
 
     # dose_df['DRUG'].map(lambda x:x.split(' : ')[0]).unique()
     drug_order_set = drug_order_set.union(set(dose_df['DRUG'].drop_duplicates()))
