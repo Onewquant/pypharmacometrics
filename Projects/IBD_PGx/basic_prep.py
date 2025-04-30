@@ -15,10 +15,17 @@ if not os.path.exists(output_dir):
 drug_order_set = set()
 
 order_files = glob.glob(f'{resource_dir}/order/IBD_PGx_order(*).xlsx')
-for finx, fpath in enumerate(order_files):
+dose_result_df = list()
+wierd_result_df = list()
+for finx, fpath in enumerate(order_files): #break
 
     pid = fpath.split('(')[-1].split('_')[0]
     pname = fpath.split('_')[-1].split(')')[0]
+
+    print(f"({finx}) {pname} / {pid}")
+
+    if pid in ("15322168", "19739357", "34835292", "37366865"):       # order 파일 다시 수집 필요
+        continue
 
     fdf = pd.read_excel(fpath)
 
@@ -50,14 +57,26 @@ for finx, fpath in enumerate(order_files):
     dose_df['DATETIME'] = dose_df[['DT1','DT2']].min(axis=1)
     dose_df['ETC_INFO'] = dose_df['처방지시비고'].copy()
     dose_df['DRUG'] = dose_df['처방지시'].map(lambda x: re.search(regex_pattern, x, flags=re.IGNORECASE).group().lower().replace('(','').replace(')',''))
+    dose_df['DOSE'] = dose_df['처방지시'].map(lambda x: re.findall(r'\d+',x.split('▣')[-1].split('mg')[0].split('Remsima')[-1].split('Humira')[-1].split(' ')[-1].strip())[0] if " [SC] " not in x else x.split('▣')[-1].split('mg')[0].strip())
+    wierd_result_df.append(dose_df['DOSE'].map(lambda x:True if 'Remsima' in x else False))
 
-    # dose_df[['ID','NAME','DATETIME','DRUG','ETC_INFO']]
+    dose_result_df.append(dose_df[['ID','NAME','DATETIME','DRUG','DOSE','ETC_INFO']].copy())
 
-    # dose_df['DRUG'].map(lambda x:x.split(' : ')[0]).unique()
-    drug_order_set = drug_order_set.union(set(dose_df['DRUG'].drop_duplicates()))
-    # dose_df = dose_df[dose_df]
+    # drug_order_set = drug_order_set.union(set(dose_df['처방지시'].map(lambda x:''.join(x.split(':')[0].replace('  ',' ').split(') ')[1:]).replace('[원내]','').replace('[D/C]','').replace('[보류]','').replace('[반납]','').replace('[Em] ','').strip()).drop_duplicates()))
 
-
+dose_result_df = pd.concat(dose_result_df, ignore_index=True)
+dose_result_df.to_csv(f"{output_dir}/dose_df.csv", encoding='utf-8-sig')
+wierd_result_df = pd.concat(wierd_result_df)
+wierd_result_df
+# ot_list = list()
+# for inx_ot, order_text in enumerate(drug_order_set):
+#     if '[SC]' not in order_text:
+#         ot_list.append(order_text)
+#         continue
+#
+# for inx_ot, order_text in enumerate(ot_list):
+#     print(f"({inx_ot}) {order_text}")
+# len(order_text)
 
 # ['비고','처방지시', '발행처', '발행의', '수납', '약국/검사', '주사시행처', 'Acting', '변경의']
 #
