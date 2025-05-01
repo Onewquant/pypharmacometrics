@@ -40,6 +40,7 @@ for finx, fpath in enumerate(order_files): #break
     dose_df['ID'] = pid
     dose_df['NAME'] = pname
 
+    # if pname=='김옥순': raise ValueError
 
     #### 약국_검사가 NA인 것은 제외하고 진행함 (추후 필요시 추가)
 
@@ -57,17 +58,18 @@ for finx, fpath in enumerate(order_files): #break
     dose_df['DATETIME'] = dose_df[['DT1','DT2']].min(axis=1)
     dose_df['ETC_INFO'] = dose_df['처방지시비고'].copy()
     dose_df['DRUG'] = dose_df['처방지시'].map(lambda x: re.search(regex_pattern, x, flags=re.IGNORECASE).group().lower().replace('(','').replace(')',''))
-    dose_df['DOSE'] = dose_df['처방지시'].map(lambda x: re.findall(r'\d+',x.split('▣')[-1].split('mg')[0].split('Remsima')[-1].split('Humira')[-1].split(' ')[-1].strip())[0] if " [SC] " not in x else x.split('▣')[-1].split('mg')[0].strip())
-    wierd_result_df.append(dose_df['DOSE'].map(lambda x:True if 'Remsima' in x else False))
+    dose_df['ROUTE'] = dose_df['처방지시'].map(lambda x: 'IV' if " [SC] " not in x else 'SC')
+    dose_df['DOSE'] = dose_df['처방지시'].map(lambda x: re.findall(r'\d+',x.split('▣')[-1].split('mg')[0].split('Remsima')[-1].split('Humira')[-1].split(' ')[-1].strip())[0] if " [SC] " not in x else x.split('(Infliximab)')[-1].split('(Adalimumab)')[-1].split('▣')[-1].split('mg')[0].split(':')[0].split(' [SC] ')[0].strip())
+    dose_df['PERIOD'] = dose_df['처방지시'].map(lambda x: 'x1' if " [SC] " not in x else x.split(' [SC] ')[-1].split(':')[0].strip())
 
-    dose_result_df.append(dose_df[['ID','NAME','DATETIME','DRUG','DOSE','ETC_INFO']].copy())
+    # dose_df.loc[3203,'처방지시']
+    dose_result_df.append(dose_df[['ID','NAME','DATETIME','DRUG','DOSE','ROUTE','PERIOD','ETC_INFO']].copy())
 
     # drug_order_set = drug_order_set.union(set(dose_df['처방지시'].map(lambda x:''.join(x.split(':')[0].replace('  ',' ').split(') ')[1:]).replace('[원내]','').replace('[D/C]','').replace('[보류]','').replace('[반납]','').replace('[Em] ','').strip()).drop_duplicates()))
 
 dose_result_df = pd.concat(dose_result_df, ignore_index=True)
-dose_result_df.to_csv(f"{output_dir}/dose_df.csv", encoding='utf-8-sig')
-wierd_result_df = pd.concat(wierd_result_df)
-wierd_result_df
+dose_result_df.to_csv(f"{output_dir}/dose_df.csv", encoding='utf-8-sig', index=False)
+
 # ot_list = list()
 # for inx_ot, order_text in enumerate(drug_order_set):
 #     if '[SC]' not in order_text:
