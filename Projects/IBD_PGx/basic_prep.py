@@ -24,8 +24,8 @@ for finx, fpath in enumerate(order_files): #break
 
     print(f"({finx}) {pname} / {pid}")
 
-    if pid in ("15322168", "19739357", "34835292", "37366865"):       # order 파일 다시 수집 필요
-        continue
+    # if pid in ("15322168", "19739357", "34835292", "37366865", "21618097", "36898756", "36975211", "37858047"):       # lab, order 파일 다시 수집 필요
+    #     continue
 
     fdf = pd.read_excel(fpath)
 

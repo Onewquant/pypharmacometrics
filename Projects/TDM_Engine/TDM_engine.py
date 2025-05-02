@@ -43,7 +43,7 @@ data_prepped = data_prepped.sort_values(by=["ID", "TIME"]).reset_index(drop=True
 
 # 5. 필요한 열만 추출
 DATAi = data_prepped[["ID", "TIME", "AMT", "RATE", "DV", "MDV", "SEX", "AGE", "BWT", "SCR", "CLCR"]].copy()
-
+# DATAi.replace(np.nan,'.').to_csv("C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/TDM_Engine/vanco_tdm_sample_prep_data.csv", index=False)
 # 6. EBE 추정
 rEBE = EBE(PredVanco, DATAi, TH, OM, SG)
 
