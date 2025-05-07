@@ -12,9 +12,9 @@ if not os.path.exists(output_dir):
     os.mkdir(output_dir)
 
 ## Orders
-cumlab_set = set()
+lab_set = set()
 
-conc_files = glob.glob(f'{resource_dir}/cumlab/IBD_PGx_cumlab(*).xlsx')
+conc_files = glob.glob(f'{resource_dir}/lab/IBD_PGx_lab(*).xlsx')
 conc_result_df = list()
 for finx, fpath in enumerate(conc_files): #break
 
@@ -32,12 +32,15 @@ for finx, fpath in enumerate(conc_files): #break
 
     # cumlab_set = cumlab_set.union(set(fdf['Lab'].unique()))
     # [c for c in cumlab_set if ('infliximab' in c.lower()) or ('adalimumab' in c.lower())]
+    # lab_set = lab_set.union(set(fdf['검사명'].unique()))
+    # [c for c in lab_set if ('infliximab' in c.lower()) or ('adalimumab' in c.lower())]
 
     # 'Infliximab 정량: 재검한 결과입니다.'
     # 'Infliximab Quantification'
     # 'Adalimumab Quantification'
 
-    conc_df = fdf[fdf['Lab'].isin(['Adalimumab Quantification','Infliximab Quantification','Infliximab 정량: 재검한 결과입니다.'])].copy()
+    # conc_df.columns
+    conc_df = fdf[fdf['검사명'].isin(['Adalimumab Quantification','Infliximab Quantification'])].copy()
     #
     #
     # fdf = fdf[~fdf['Acting'].isna()].copy()
@@ -47,13 +50,13 @@ for finx, fpath in enumerate(conc_files): #break
     #
     conc_df['ID'] = pid
     conc_df['NAME'] = pname
-    conc_df['DRUG'] = conc_df['Lab'].map(lambda x:x.split(' ')[0].lower())
-    conc_df['CONC'] = conc_df['Value'].map(lambda x:float(x.split('*')[0].replace('<','').replace('>','').strip()) if str(x)!='nan' else np.nan)
+    conc_df['DRUG'] = conc_df['검사명'].map(lambda x:x.split(' ')[0].lower())
+    conc_df['CONC'] = conc_df['검사결과'].map(lambda x:float(x.split('*')[0].split('Infliximab 정량:')[0].replace('<','').replace('◑','').replace('>','').strip()) if str(x)!='nan' else np.nan)
     conc_df = conc_df[~conc_df['CONC'].isna()].copy()
-    conc_df['DATETIME'] = conc_df['DT']
+    conc_df['DATETIME'] = conc_df[['보고일','오더일']].max(axis=1)
 
     conc_result_df.append(conc_df[['ID','NAME','DATETIME','DRUG','CONC']])
-    conc_result_df['ID'].drop_duplicates()
+    # conc_result_df['ID'].drop_duplicates()
     # # if pname=='김옥순': raise ValueError
     #
     # #### 약국_검사가 NA인 것은 제외하고 진행함 (추후 필요시 추가)
@@ -82,7 +85,7 @@ for finx, fpath in enumerate(conc_files): #break
     # drug_order_set = drug_order_set.union(set(dose_df['처방지시'].map(lambda x:''.join(x.split(':')[0].replace('  ',' ').split(') ')[1:]).replace('[원내]','').replace('[D/C]','').replace('[보류]','').replace('[반납]','').replace('[Em] ','').strip()).drop_duplicates()))
 
 conc_result_df = pd.concat(conc_result_df, ignore_index=True)
-conc_result_df.to_csv(f"{output_dir}/conc_df.csv", encoding='utf-8-sig', index=False)
+conc_result_df.to_csv(f"{output_dir}/conc_df(lab).csv", encoding='utf-8-sig', index=False)
 
 # ot_list = list()
 # for inx_ot, order_text in enumerate(drug_order_set):

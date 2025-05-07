@@ -14,7 +14,7 @@ if not os.path.exists(output_dir):
 ## Orders
 cumlab_set = set()
 
-conc_files = glob.glob(f'{resource_dir}/lab/IBD_PGx_lab(*).xlsx')
+conc_files = glob.glob(f'{resource_dir}/cumlab/IBD_PGx_cumlab(*).xlsx')
 conc_result_df = list()
 for finx, fpath in enumerate(conc_files): #break
 
@@ -23,15 +23,16 @@ for finx, fpath in enumerate(conc_files): #break
 
     print(f"({finx}) {pname} / {pid}")
 
-    # if pid in ("15322168", "19739357", "34835292", "37366865", "21618097", "36898756", "36975211", "37858047"):       # lab, order 파일 다시 수집 필요
+    # if pid in ("14188505", "17677819", "21169146", "21201336", "24028105", "24106625", "25269024", "29702679", "34560125", "34734236", "36325931"):       # cumlab 파일 다시 수집 필요
     #     continue
-
+    # if pid in ("36898756"):       # lab 파일 다시 수집 필요 / 34665842 -> lab 파일에 중복되어 있으니 삭제요망
+    #     continue
     fdf = pd.read_excel(fpath)
 
     # fdf.columns
 
-    cumlab_set = cumlab_set.union(set(fdf['검사명'].unique()))
-    [c for c in cumlab_set if ('infliximab' in c.lower()) or ('adalimumab' in c.lower())]
+    # cumlab_set = cumlab_set.union(set(fdf['Lab'].unique()))
+    # [c for c in cumlab_set if ('infliximab' in c.lower()) or ('adalimumab' in c.lower())]
 
     # 'Infliximab 정량: 재검한 결과입니다.'
     # 'Infliximab Quantification'
@@ -53,7 +54,7 @@ for finx, fpath in enumerate(conc_files): #break
     conc_df['DATETIME'] = conc_df['DT']
 
     conc_result_df.append(conc_df[['ID','NAME','DATETIME','DRUG','CONC']])
-    conc_result_df['ID'].drop_duplicates()
+    # conc_result_df['ID'].drop_duplicates()
     # # if pname=='김옥순': raise ValueError
     #
     # #### 약국_검사가 NA인 것은 제외하고 진행함 (추후 필요시 추가)
@@ -82,7 +83,7 @@ for finx, fpath in enumerate(conc_files): #break
     # drug_order_set = drug_order_set.union(set(dose_df['처방지시'].map(lambda x:''.join(x.split(':')[0].replace('  ',' ').split(') ')[1:]).replace('[원내]','').replace('[D/C]','').replace('[보류]','').replace('[반납]','').replace('[Em] ','').strip()).drop_duplicates()))
 
 conc_result_df = pd.concat(conc_result_df, ignore_index=True)
-conc_result_df.to_csv(f"{output_dir}/conc_df.csv", encoding='utf-8-sig', index=False)
+conc_result_df.to_csv(f"{output_dir}/conc_df(cum_lab).csv", encoding='utf-8-sig', index=False)
 
 # ot_list = list()
 # for inx_ot, order_text in enumerate(drug_order_set):
