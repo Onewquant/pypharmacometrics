@@ -84,7 +84,7 @@ for finx, fpath in enumerate(conc_files): #break
 
     # drug_order_set = drug_order_set.union(set(dose_df['처방지시'].map(lambda x:''.join(x.split(':')[0].replace('  ',' ').split(') ')[1:]).replace('[원내]','').replace('[D/C]','').replace('[보류]','').replace('[반납]','').replace('[Em] ','').strip()).drop_duplicates()))
 
-conc_result_df = pd.concat(conc_result_df, ignore_index=True)
+conc_result_df = pd.concat(conc_result_df, ignore_index=True).drop_duplicates(['ID','DATETIME','DRUG','CONC'])
 conc_result_df.to_csv(f"{output_dir}/conc_df(lab).csv", encoding='utf-8-sig', index=False)
 
 # ot_list = list()
