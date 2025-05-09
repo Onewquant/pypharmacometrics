@@ -30,8 +30,8 @@ for finx, fpath in enumerate(cumlab_files): #break
     with open(fpath, mode='r', encoding='euc-kr') as f:
         raw_cum_lab = f.read()
 
-        raw_cum_lab_text = raw_cum_lab.strip().replace('\r\n*', '*').replace('\r\nPositive', 'Positive').replace('\r\nEquivocal', 'Equivocal').replace('재검한 결과입니다.\r\n', '재검한 결과입니다.')
-        cumlab_frag_df = pd.DataFrame([c.split('\t') for c in raw_cum_lab_text.split('\r\n')]).copy()
+        raw_cum_lab_text = raw_cum_lab.strip().replace('\n*', '*').replace('\nPositive', 'Positive').replace('\nEquivocal', 'Equivocal').replace('재검한 결과입니다.\n', '재검한 결과입니다.')
+        cumlab_frag_df = pd.DataFrame([c.split('\t') for c in raw_cum_lab_text.split('\n')]).copy()
         cumlab_frag_df = cumlab_frag_df.T.copy()
         cumlab_frag_cols = ['DT'] + [c.split('\t')[0] for c in cumlab_frag_df.iloc[0, 1:]]
         cumlab_frag_df = cumlab_frag_df.iloc[2:, :].copy()
@@ -39,15 +39,12 @@ for finx, fpath in enumerate(cumlab_files): #break
         if '' in cumlab_frag_cols:
             cumlab_frag_df = cumlab_frag_df.drop('', axis=1)
 
-        cumlab_frag_df = pd.melt(cumlab_frag_df.dropna(axis=1, how='all').reset_index(drop=True), id_vars=['DT'], var_name='Lab', value_name='Value')
-
+        fdf = pd.melt(cumlab_frag_df.dropna(axis=1, how='all').reset_index(drop=True), id_vars=['DT'], var_name='Lab', value_name='Value')
+        fdf['Value'] = fdf['Value'].replace({'':np.nan, None: np.nan})
+        fdf.to_excel(f"{resource_dir}/cumlab_추가/IBD_PGx_cumlab({pid}_{pname}).xlsx")
         # print(cumlab_frag_df.columns)
         # print(cumlab_frag_df.iloc[0])
 
-        cum_lab_df.append(cumlab_frag_df)
-
-
-    fdf = pd.read_excel(fpath)
 
     # fdf.columns
 
@@ -69,11 +66,14 @@ for finx, fpath in enumerate(cumlab_files): #break
     conc_df['ID'] = pid
     conc_df['NAME'] = pname
     conc_df['DRUG'] = conc_df['Lab'].map(lambda x:x.split(' ')[0].lower())
-    conc_df['CONC'] = conc_df['Value'].map(lambda x:float(x.split('*')[0].replace('<','').replace('>','').strip()) if str(x)!='nan' else np.nan)
+    conc_df['Value'].unique()
+    conc_df['CONC'] = conc_df['Value'].map(lambda x:float(x.split('*')[0].replace('<','').replace('>','').strip()) if str(x) not in ['nan','None',''] else np.nan)
     conc_df = conc_df[~conc_df['CONC'].isna()].copy()
     conc_df['DATETIME'] = conc_df['DT']
 
-    conc_result_df.append(conc_df[['ID','NAME','DATETIME','DRUG','CONC']])
+    conc_df[['ID', 'NAME', 'DATETIME', 'DRUG', 'CONC']]
+
+    # conc_result_df.append(conc_df[['ID','NAME','DATETIME','DRUG','CONC']])
     # conc_result_df['ID'].drop_duplicates()
     # # if pname=='김옥순': raise ValueError
     #
