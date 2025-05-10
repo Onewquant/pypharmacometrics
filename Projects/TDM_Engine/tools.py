@@ -296,8 +296,7 @@ def PredVanco(TH, ETA, DATAi):
 
     return np.array(IPRE)
 
-
-def calcTDM(PRED, DATAi, TH, SG, rEBE, TIME, AMT, RATE, II, ADDL, npoints=500):  ########## 확인필요
+def auto_calcTDM(PRED, DATAi, TH, SG, rEBE, TIME, AMT, RATE, II=24, ADDL=10, npoints=500, pks_params={'peak_sampling_time':1.0,}):  ########## 확인필요
 
     """
     PRED = PredVanco
@@ -328,14 +327,16 @@ def calcTDM(PRED, DATAi, TH, SG, rEBE, TIME, AMT, RATE, II, ADDL, npoints=500): 
     Returns:
         DataFrame with time, observed DV, model predictions and intervals
     """
-    # Add future dosing to the dataset
-    DATAi_augmented = addDATAi(DATAi.copy(), TIME, AMT, RATE, II, ADDL)
 
-    # Calculate prediction interval after adding the new doses
-    rTab = calcPI(PRED, DATAi_augmented, TH, SG, rEBE, npoints)
+    """
+    # (1) T_half 구하기 위한 함수
+    # (2) 현 용법시 TDM result dict 반환함수 (Input: T_half + 위의 모든 input / Output: TDM 결과 params)
+    # (3) 변경용법시 TDM result dict 반환함수 (Input: T_half + 위의 모든 input / Output: TDM 결과 params)
+    # (2), (3) 은 같은 함수로 구현
+    """
 
     # Deside time_point for steady-state
-    DATAi_forss = DATAi.sort_values(['ID','TIME'])
+    DATAi_forss = DATAi.sort_values(['ID', 'TIME'])
     ld_time = DATAi_forss.iloc[-1]['TIME']
     ld_CLcr = DATAi_forss['CLCR'].dropna().iloc[-1]
 
@@ -358,16 +359,250 @@ def calcTDM(PRED, DATAi, TH, SG, rEBE, TIME, AMT, RATE, II, ADDL, npoints=500): 
     lambda1 = 0.5 * (A + np.sqrt(A ** 2 - 4 * B))
     lambda2 = 0.5 * (A - np.sqrt(A ** 2 - 4 * B))
 
-    # terminal half-life
+    # Terminal half-life
     t_half_terminal = np.log(2) / min(lambda1, lambda2)
 
+    ## Interpretation (현용법 / 변경용법의 therapeutic target 도달 적정성 판단 (적절한 Regimen 추천 알고리즘 추가필요) ###########
+
+    if PRED==PredVanco:
+        cur_AMT = DATAi['AMT'].dropna().iloc[-1]
+        cur_II = DATAi[DATAi['MDV']==1]['TIME'].diff().iloc[-1]
+        cur_AUC24 = (cur_AMT * 24 / cur_II) / CL
+
+        if (cur_AUC24 < 410) or (cur_AUC24 > 610):
+            Regimen_changed = {'STATE':True}
+
+            target_AUC24 = 500
+            regimen_cand_df = list()
+            for II_cand in [6, 8, 12, 24, 48]:
+                for AMT_cand in list(range(50,1200,10)):
+                    regimen_cand_df.append({"DOSE": AMT_cand, "INTERVAL": II_cand, "AUC24": (AMT_cand * 24 / II_cand) / CL})
+            regimen_cand_df = pd.DataFrame(regimen_cand_df)
+            regimen_cand_df = regimen_cand_df[(regimen_cand_df['AUC24'] > 430)&(regimen_cand_df['AUC24'] < 570)].copy()
+            regimen_cand_df = regimen_cand_df[(regimen_cand_df['DOSE'] < 1000)].copy()
+            regimen_cand_df = regimen_cand_df[(regimen_cand_df['INTERVAL'].isin([8,12,24]))].copy()
+            regimen_cand_df = regimen_cand_df.sort_values(['INTERVAL', 'DOSE'],ascending=[False,True], ignore_index=True)
+
+            Regimen_changed.update(dict(regimen_cand_df[regimen_cand_df['AUC24']>=regimen_cand_df['AUC24'].median()].iloc[0]))
+            AMT = Regimen_changed['DOSE']
+            II = Regimen_changed['INTERVAL']
+        else:
+            Regimen_changed = {'STATE': False, 'DOSE': np.nan, 'INTERVAL': np.nan, 'AUC24': np.nan}
+
+    ## [현용법 유지시] 추가 Dosing 반영하여 Data augmentation
+
+
+
+    ## [변경용법 사용시] 추가 Dosing 반영하여 Data augmentation
+
+    # 입력한 추가시간 (interval x 추가 dose)가 steady-state를 나타내기에 부족할 때 -> ADDL 더 추가해서 그리도록
+    if (5 * t_half_terminal) / (ADDL * II) < 0.4:
+        ADDL_aug = int(round((5*t_half_terminal)/(0.4 * II), -1))
+    else:
+        ADDL_aug = ADDL
+
+    # Add future dosing to the dataset
+    DATAi_augmented = addDATAi(DATAi.copy(), TIME, AMT, RATE, II, ADDL_aug)
+
+    # Calculate prediction interval after adding the new doses
+    rTab = calcPI(PRED, DATAi_augmented, TH, SG, rEBE, npoints)
+
+    # Steady-state
     ss_time = ld_time + 5 * t_half_terminal
-    rTab_ss = rTab[rTab['x'] > ss_time].copy()
+    ss_dosing = DATAi_augmented[DATAi_augmented['TIME'] >= ss_time].copy()
+    ss_rTab = rTab[rTab['x'] >= ss_time].copy()
 
-    # TDM 주요 결과 반환
-    tdm_summary_dict = dict()
+    ## TDM 주요 결과 반환
 
-    peak_conc = rTab_ss['y2'].max()
-    trough_conc = rTab_ss['y2'].min()
+    # Cmax_ss, Cavg_ss, Cmin_ss 계산
+    # peak_sampling_time=0
+    peak_sampling_time = pks_params['peak_sampling_time']
+    dose_times = ss_dosing["TIME"].sort_values().values
+
+    # 결과 저장용 리스트
+    results = []
+
+    # 각 투여 간격 구간에서 Cmax, Cmin 계산
+    for i in range(len(dose_times) - 1):
+        start_time = dose_times[i]
+        end_time = dose_times[i + 1]
+
+        # 해당 구간의 ss_rTab rows 추출
+        if (start_time + peak_sampling_time) > end_time:
+            raise ValueError("SS 구간 dosing 후 peak_sampling_time이 다음 dosing 시간을 넘습니다.")
+        mask = (ss_rTab["x"] >= start_time+peak_sampling_time) & (ss_rTab["x"] < end_time)
+        subset = ss_rTab.loc[mask, "y2"]
+
+        # NaN 제외하고 Cmax, Cmin 계산
+        subset_clean = subset.dropna()
+        if not subset_clean.empty:
+            cmax = subset_clean.max()
+            cmin = subset_clean.min()
+        else:
+            cmax = None
+            cmin = None
+
+        results.append({
+            "interval_start": start_time,
+            "peak_sampling": start_time+peak_sampling_time,
+            "interval_end": end_time,
+            "Cmax": cmax,
+            "Cmin": cmin
+        })
+
+    cmax_cmin_df = pd.DataFrame(results)
+    # from ace_tools import display_dataframe_to_user
+    # display_dataframe_to_user("Steady-State Cmax/Cmin by Dosing Interval", cmax_cmin_df)
+
+    peak_conc = cmax_cmin_df['Cmax'].median()
+    trough_conc = cmax_cmin_df['Cmin'].median()
+
+    pk_params_dict = {'Vd_ss':V1+V2, 'Total_CL':CL, 'T_half_terminal':t_half_terminal,}
+    cur_regimen_dict = dict()
+    fut_regimen_dict = dict()
+
+    tdm_summary_dict = {'Dose':AMT,'Interval':II, 'Cmax_ss':peak_conc, 'Cmin_ss':trough_conc, 'AUC24':AUC24}
+
+    return rTab
+
+
+def calcTDM(PRED, DATAi, TH, SG, rEBE, TIME, AMT, RATE, II, ADDL, npoints=500, pks_params={'peak_sampling_time':1.0,}):  ########## 확인필요
+
+    """
+    PRED = PredVanco
+    TIME=50
+    AMT=1000
+    RATE=1000
+    II=12
+    ADDL=10
+    npoints=500
+    """
+
+    """
+    Add future dosing events to DATAi and calculate prediction interval (PI).
+
+    Parameters:
+        PRED: function for PK prediction (e.g., PredVanco)
+        DATAi: input DataFrame with subject data
+        TH: typical parameters
+        SG: residual error covariance matrix
+        rEBE: output from EBE(), including EBEi and COV
+        TIME: time of next dose
+        AMT: dose amount
+        RATE: infusion rate
+        II: interdose interval
+        ADDL: number of additional doses
+        npoints: number of time points for interpolation
+
+    Returns:
+        DataFrame with time, observed DV, model predictions and intervals
+    """
+
+    # Deside time_point for steady-state
+    DATAi_forss = DATAi.sort_values(['ID', 'TIME'])
+    ld_time = DATAi_forss.iloc[-1]['TIME']
+    ld_CLcr = DATAi_forss['CLCR'].dropna().iloc[-1]
+
+    ETA = rEBE['EBEi']
+
+    # 입력값
+    V1 = TH[1] * np.exp(ETA[1])
+    V2 = TH[2] * np.exp(ETA[2])
+    Q = TH[3] * np.exp(ETA[3])
+    CL = (TH[0] * ld_CLcr / 100) * np.exp(ETA[0])
+
+    # 구획 간 이동속도
+    K10 = CL / V1
+    K12 = Q / V1
+    K21 = Q / V2
+
+    # Eigenvalue 계산
+    A = K10 + K12 + K21
+    B = K10 * K21
+    lambda1 = 0.5 * (A + np.sqrt(A ** 2 - 4 * B))
+    lambda2 = 0.5 * (A - np.sqrt(A ** 2 - 4 * B))
+
+    # Terminal half-life
+    t_half_terminal = np.log(2) / min(lambda1, lambda2)
+
+    ## Interpretation (현용법 / 변경용법의 therapeutic target 도달 적정성 판단 (적절한 Regimen 추천 알고리즘 추가필요) ###########
+
+    cur_AMT = DATAi['AMT'].dropna().iloc[-1]
+    cur_II = DATAi[DATAi['MDV']==1]['TIME'].diff().iloc[-1]
+    cur_AUC24 = (cur_AMT * 24 / cur_II) / CL
+
+    ## [현용법 유지시] 추가 Dosing 반영하여 Data augmentation
+
+
+
+    ## [변경용법 사용시] 추가 Dosing 반영하여 Data augmentation
+
+    # 입력한 추가시간 (interval x 추가 dose)가 steady-state를 나타내기에 부족할 때 -> ADDL 더 추가해서 그리도록
+    if (5 * t_half_terminal) / (ADDL * II) < 0.4:
+        ADDL_aug = int(round((5*t_half_terminal)/(0.4 * II), -1))
+    else:
+        ADDL_aug = ADDL
+
+    # Add future dosing to the dataset
+    DATAi_augmented = addDATAi(DATAi.copy(), TIME, AMT, RATE, II, ADDL_aug)
+
+    # Calculate prediction interval after adding the new doses
+    rTab = calcPI(PRED, DATAi_augmented, TH, SG, rEBE, npoints)
+
+    # Steady-state
+    ss_time = ld_time + 5 * t_half_terminal
+    ss_dosing = DATAi_augmented[DATAi_augmented['TIME'] >= ss_time].copy()
+    ss_rTab = rTab[rTab['x'] >= ss_time].copy()
+
+    ## TDM 주요 결과 반환
+
+    # Cmax_ss, Cavg_ss, Cmin_ss 계산
+    # peak_sampling_time=0
+    peak_sampling_time = pks_params['peak_sampling_time']
+    dose_times = ss_dosing["TIME"].sort_values().values
+
+    # 결과 저장용 리스트
+    results = []
+
+    # 각 투여 간격 구간에서 Cmax, Cmin 계산
+    for i in range(len(dose_times) - 1):
+        start_time = dose_times[i]
+        end_time = dose_times[i + 1]
+
+        # 해당 구간의 ss_rTab rows 추출
+        if (start_time + peak_sampling_time) > end_time:
+            raise ValueError("SS 구간 dosing 후 peak_sampling_time이 다음 dosing 시간을 넘습니다.")
+        mask = (ss_rTab["x"] >= start_time+peak_sampling_time) & (ss_rTab["x"] < end_time)
+        subset = ss_rTab.loc[mask, "y2"]
+
+        # NaN 제외하고 Cmax, Cmin 계산
+        subset_clean = subset.dropna()
+        if not subset_clean.empty:
+            cmax = subset_clean.max()
+            cmin = subset_clean.min()
+        else:
+            cmax = None
+            cmin = None
+
+        results.append({
+            "interval_start": start_time,
+            "peak_sampling": start_time+peak_sampling_time,
+            "interval_end": end_time,
+            "Cmax": cmax,
+            "Cmin": cmin
+        })
+
+    cmax_cmin_df = pd.DataFrame(results)
+    # from ace_tools import display_dataframe_to_user
+    # display_dataframe_to_user("Steady-State Cmax/Cmin by Dosing Interval", cmax_cmin_df)
+
+    peak_conc = cmax_cmin_df['Cmax'].median()
+    trough_conc = cmax_cmin_df['Cmin'].median()
+
+    pk_params_dict = {'Vd_ss':V1+V2, 'Total_CL':CL, 'T_half_terminal':t_half_terminal,}
+    cur_regimen_dict = dict()
+    fut_regimen_dict = dict()
+
+    tdm_summary_dict = {'Dose':AMT,'Interval':II, 'Cmax_ss':peak_conc, 'Cmin_ss':trough_conc, 'AUC24':AUC24}
 
     return rTab
