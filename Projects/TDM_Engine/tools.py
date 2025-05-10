@@ -334,4 +334,40 @@ def calcTDM(PRED, DATAi, TH, SG, rEBE, TIME, AMT, RATE, II, ADDL, npoints=500): 
     # Calculate prediction interval after adding the new doses
     rTab = calcPI(PRED, DATAi_augmented, TH, SG, rEBE, npoints)
 
+    # Deside time_point for steady-state
+    DATAi_forss = DATAi.sort_values(['ID','TIME'])
+    ld_time = DATAi_forss.iloc[-1]['TIME']
+    ld_CLcr = DATAi_forss['CLCR'].dropna().iloc[-1]
+
+    ETA = rEBE['EBEi']
+
+    # 입력값
+    V1 = TH[1] * np.exp(ETA[1])
+    V2 = TH[2] * np.exp(ETA[2])
+    Q = TH[3] * np.exp(ETA[3])
+    CL = (TH[0] * ld_CLcr / 100) * np.exp(ETA[0])
+
+    # 구획 간 이동속도
+    K10 = CL / V1
+    K12 = Q / V1
+    K21 = Q / V2
+
+    # Eigenvalue 계산
+    A = K10 + K12 + K21
+    B = K10 * K21
+    lambda1 = 0.5 * (A + np.sqrt(A ** 2 - 4 * B))
+    lambda2 = 0.5 * (A - np.sqrt(A ** 2 - 4 * B))
+
+    # terminal half-life
+    t_half_terminal = np.log(2) / min(lambda1, lambda2)
+
+    ss_time = ld_time + 5 * t_half_terminal
+    rTab_ss = rTab[rTab['x'] > ss_time].copy()
+
+    # TDM 주요 결과 반환
+    tdm_summary_dict = dict()
+
+    peak_conc = rTab_ss['y2'].max()
+    trough_conc = rTab_ss['y2'].min()
+
     return rTab
