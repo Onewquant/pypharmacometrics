@@ -53,9 +53,9 @@ for finx, fpath in enumerate(conc_files): #break
     conc_df['DRUG'] = conc_df['검사명'].map(lambda x:x.split(' ')[0].lower())
     conc_df['CONC'] = conc_df['검사결과'].map(lambda x:float(x.split('*')[0].split('Infliximab 정량:')[0].replace('<','').replace('◑','').replace('>','').strip()) if str(x)!='nan' else np.nan)
     conc_df = conc_df[~conc_df['CONC'].isna()].copy()
-    conc_df['DATETIME'] = conc_df[['보고일','오더일']].max(axis=1)
+    # conc_df[] = conc_df[['보고일','오더일']].max(axis=1)
 
-    conc_result_df.append(conc_df[['ID','NAME','DATETIME','DRUG','CONC']])
+    conc_result_df.append(conc_df[['ID','NAME','보고일','오더일','DRUG','CONC']])
     # conc_result_df['ID'].drop_duplicates()
     # # if pname=='김옥순': raise ValueError
     #
@@ -84,7 +84,7 @@ for finx, fpath in enumerate(conc_files): #break
 
     # drug_order_set = drug_order_set.union(set(dose_df['처방지시'].map(lambda x:''.join(x.split(':')[0].replace('  ',' ').split(') ')[1:]).replace('[원내]','').replace('[D/C]','').replace('[보류]','').replace('[반납]','').replace('[Em] ','').strip()).drop_duplicates()))
 
-conc_result_df = pd.concat(conc_result_df, ignore_index=True).drop_duplicates(['ID','DATETIME','DRUG','CONC'])
+conc_result_df = pd.concat(conc_result_df, ignore_index=True).drop_duplicates(['ID','보고일','오더일','DRUG','CONC'])
 conc_result_df.to_csv(f"{output_dir}/conc_df(lab).csv", encoding='utf-8-sig', index=False)
 
 # ot_list = list()

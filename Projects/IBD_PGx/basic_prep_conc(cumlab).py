@@ -53,6 +53,9 @@ for finx, fpath in enumerate(conc_files): #break
     conc_df = conc_df[~conc_df['CONC'].isna()].copy()
     conc_df['DATETIME'] = conc_df['DT']
 
+    if pid == '35028484':  # lab 기록과 맞추기 위해 순서변경
+        conc_df = pd.concat([conc_df.iloc[0:2,:], conc_df.iloc[-1:, :], conc_df.iloc[-2:-1, :]])
+
     conc_result_df.append(conc_df[['ID','NAME','DATETIME','DRUG','CONC']])
     # conc_result_df['ID'].drop_duplicates()
     # # if pname=='김옥순': raise ValueError

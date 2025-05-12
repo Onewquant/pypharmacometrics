@@ -24,8 +24,8 @@ for finx, fpath in enumerate(order_files): #break
 
     print(f"({finx}) {pname} / {pid}")
 
-    # if pid in ("15322168", "19739357", "34835292", "37366865", "21618097", "36898756", "36975211", "37858047"):       # lab, order 파일 다시 수집 필요
-    #     continue
+    if pid in ("15322168", "19739357", "34835292", "37366865", "21618097", "36898756", "36975211", "37858047"):       # lab, order 파일 다시 수집 필요
+        continue
 
     fdf = pd.read_excel(fpath)
 
@@ -35,7 +35,6 @@ for finx, fpath in enumerate(order_files): #break
     fdf = fdf[~fdf['Acting'].isna()].copy()
     dose_df = fdf[fdf['처방지시'].map(lambda x: (('adalimumab' in x.lower()) or ('infliximab' in x.lower())) and ('quantification' not in x.lower()))].copy()
     dose_df['처방지시비고'] = dose_df['처방지시'].map(lambda x:x.split(' : ')[-1] if len(x.split(' : '))>1 else '')
-
 
     dose_df['ID'] = pid
     dose_df['NAME'] = pname
@@ -67,7 +66,7 @@ for finx, fpath in enumerate(order_files): #break
 
     # drug_order_set = drug_order_set.union(set(dose_df['처방지시'].map(lambda x:''.join(x.split(':')[0].replace('  ',' ').split(') ')[1:]).replace('[원내]','').replace('[D/C]','').replace('[보류]','').replace('[반납]','').replace('[Em] ','').strip()).drop_duplicates()))
 
-dose_result_df = pd.concat(dose_result_df, ignore_index=True)
+dose_result_df = pd.concat(dose_result_df, ignore_index=True).sort_values(['ID','DATETIME'])
 dose_result_df.to_csv(f"{output_dir}/dose_df.csv", encoding='utf-8-sig', index=False)
 
 # ot_list = list()
