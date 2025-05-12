@@ -51,7 +51,7 @@ rEBE = EBE(PredVanco, DATAi, TH, OM, SG)
 PI = calcTDM(PredVanco, DATAi, TH, SG, rEBE, TIME=50, AMT=1000, RATE=1000, II=12, ADDL=10)
 
 # 8. TDM 작성에 필수적인 결과정리
-PI['y']
+# PI['y']
 
 # 9. 시각화
 
