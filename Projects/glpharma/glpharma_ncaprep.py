@@ -2,7 +2,7 @@ from tools import *
 from pynca.tools import *
 
 result_type = 'Phoenix'
-# result_type = 'R'
+result_type = 'R'
 
 prj_name = 'GLPHARMA'
 ip_name = 'W2406'
@@ -20,14 +20,15 @@ seq_df = seq_df.T.iloc[1:].reset_index(drop=False).rename(columns={'index':'ID',
 df = df.merge(seq_df, on=['ID'], how='left')
 df['DOSE'] = 150
 df['ATIME'] = df['NTIME']
-df['DRUG'] = ''
-df['DRUG'] = np.where((((df['PERIOD']==1)&(df['SEQUENCE']==1))|((df['PERIOD']==2)&(df['SEQUENCE']==2))), 'R', 'T')
+df['DRUG'] = ip_name
+df['TRT'] = ''
+df['TRT'] = np.where((((df['PERIOD']==1)&(df['SEQUENCE']==1))|((df['PERIOD']==2)&(df['SEQUENCE']==2))), 'R', 'T')
 
 # 채혈 되지 않은 대상자 분석에서 제외
-df = df[df['CONC']!='-'].sort_values(['DRUG','ID','NTIME'],ascending=[False,True,True],ignore_index=True)
+df = df[df['CONC']!='-'].sort_values(['TRT','ID','NTIME'],ascending=[False,True,True],ignore_index=True)
 
 
-result_cols = ['ID','DRUG','DOSE','ATIME','NTIME','CONC','PERIOD','SEQUENCE']
+result_cols = ['ID','DRUG','TRT','DOSE','ATIME','NTIME','CONC','PERIOD','SEQUENCE']
 unit_row_dict = {'DOSE': 'mg', 'NTIME': 'h', 'ATIME': 'h', 'CONC': 'ug/mL'}
 
 df = df[result_cols].reset_index(drop=True)
@@ -37,7 +38,7 @@ df = df[result_cols].reset_index(drop=True)
 
 
 first_float_index_dict = dict()
-for inx, frag_df in df.groupby(['ID','DRUG']):
+for inx, frag_df in df.groupby(['ID','TRT']):
     first_index = frag_df.index[0]
     first_float_index = -1
     for finx, row in frag_df.iterrows():
@@ -51,7 +52,7 @@ for inx, frag_df in df.groupby(['ID','DRUG']):
     first_float_index_dict.update({f"{inx[0]}_{inx[1]}" : (first_index ,first_float_index)})
 
 for inx, row in df.iterrows():
-    key = f"{row['ID']}_{row['DRUG']}"
+    key = f"{row['ID']}_{row['TRT']}"
 
     if (first_float_index_dict[key][0]<=inx) and (first_float_index_dict[key][1] > inx) and (row['CONC'] in ['BQL','ND']):
         df.at[inx,'CONC'] = 0.0
@@ -80,7 +81,7 @@ if result_type == 'Phoenix':
 elif result_type == 'R':
     prep_df = df.dropna()
 
-prep_df = prep_df[result_cols].sort_values(['DRUG','ID','PERIOD','NTIME'])
+prep_df = prep_df[result_cols].sort_values(['TRT','ID','PERIOD','NTIME'])
 
 result_file_name = f"{prj_name}_ConcPrep_{ip_name}_{result_type}.csv"
 result_file_path = f"{output_dir}/{result_file_name}"

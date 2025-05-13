@@ -27,3 +27,7 @@ term_dict={'TIME': 'ATIME', 'TAD': 'NTIME', 'DV': 'CONC', 'ID': 'ID'}
 formatting_data_nca_to_nonmem(drugconc_dict=drugconc_dict, dspol_df=dspol_df, uid_cols=uid_cols, modeling_dir_path=modeling_dir_path, covar_cols=covar_cols, add_covar_df=add_covar_df, uid_on=True)
 
 
+modeling_dir_path = "C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/glpharma/resource"
+df = pd.read_csv(f"{modeling_dir_path}/modeling_prep_data/MDP_C2A1E1_W2406.csv")
+df['']
+
