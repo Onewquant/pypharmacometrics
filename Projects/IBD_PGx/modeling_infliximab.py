@@ -8,6 +8,7 @@ resource_dir = f'{prj_dir}/resource'
 output_dir = f"{prj_dir}/results"
 
 induction_df = pd.read_excel(f"{resource_dir}/IBD-PGx_induction_date.xlsx")
+# induction_df.sort_values(['EMR ID']).to_csv(f"{resource_dir}/IBD-PGx_induction_date.csv",encoding='utf-8-sig',index=False)
 induction_df = induction_df.rename(columns={'EMR ID':'ID','name':'NAME','induction_start_date':'IND_START_DATE','IBD type':'IBD_TYPE'})
 induction_df['IND_START_DATE'] = induction_df['IND_START_DATE'].astype(str).replace('NaT','')
 

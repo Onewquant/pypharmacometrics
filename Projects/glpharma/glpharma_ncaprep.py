@@ -54,8 +54,10 @@ for inx, frag_df in df.groupby(['ID','TRT']):
 for inx, row in df.iterrows():
     key = f"{row['ID']}_{row['TRT']}"
 
-    if (first_float_index_dict[key][0]<=inx) and (first_float_index_dict[key][1] > inx) and (row['CONC'] in ['BQL','ND']):
+    if (first_float_index_dict[key][0]<=inx) and (first_float_index_dict[key][1] > inx) and (row['CONC'] in ['ND']):
         df.at[inx,'CONC'] = 0.0
+    elif (first_float_index_dict[key][0]<=inx) and (first_float_index_dict[key][1] > inx) and (row['CONC'] in ['BQL']):
+        df.at[inx,'CONC'] = np.nan
     elif (row['NTIME'] != 0) and (row['CONC'] in ['BQL','ND']):
         df.at[inx, 'CONC'] = np.nan
     elif (row['NTIME'] != 0) and (row['CONC'] not in ['BQL','ND']):
@@ -67,6 +69,7 @@ for inx, row in df.iterrows():
 
 # raise ValueError
 if result_type == 'Phoenix':
+    df = df[~df['CONC'].isna()].reset_index(drop=True)
     df['CONC'] = df['CONC'].map(lambda x: str(x) if not np.isnan(x) else '.')
     prep_df = df[result_cols]
 

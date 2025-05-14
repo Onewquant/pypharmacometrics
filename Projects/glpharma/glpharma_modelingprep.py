@@ -19,8 +19,8 @@ drugconc_dict=get_drug_conc_data_dict_of_multiple_projects(project_dict, prepcon
 
 ## NONMEM 형식으로 Dataprep
 
-uid_cols = ['DRUG']
-covar_cols=['DRUG']
+uid_cols = ['TRT']
+covar_cols=['TRT']
 add_covar_df=pd.DataFrame(columns=['UID'])
 uid_on=True
 term_dict={'TIME': 'ATIME', 'TAD': 'NTIME', 'DV': 'CONC', 'ID': 'ID'}

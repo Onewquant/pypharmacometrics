@@ -51,7 +51,10 @@ def time_to_conc_graph_ckd(gdf, sid_list, drug, hue, result_file_dir_path, hue_o
         # last_tag = 'sample'+str(tuple(sid_list)).replace(",)",")").replace("'","")
         last_tag = 'sample'
         time_col = 'NTIME'
-    filename = f'{mode}_{drug}_{last_tag}'
+
+    # filename = f'{mode}_{drug}_{last_tag}'
+    filename = f'{mode}_{drug}_{last_tag}_2'
+    # filename = f'{mode}_{drug}_{last_tag}_1'
 
     act_gdf = gdf[gdf['ID'].isin(sid_list)].copy()
 
@@ -116,7 +119,7 @@ def time_to_conc_graph_ckd(gdf, sid_list, drug, hue, result_file_dir_path, hue_o
     # plt.xlim(-1,30)
 
     plt.xticks(np.arange(-1, 4, step=1), fontsize=18)
-    plt.xlim(-1, 4)
+    plt.xlim(-0.2, 4)
 
     if drug=='W2406':
         if yscale=='linear':
@@ -144,7 +147,7 @@ hue = 'TRT'
 hue_order = ['T','R']
 estimator=np.mean
 
-for yscale in ['linear','log']:
+for yscale in ['linear',]:
     for drug in drug_list:
         # if (drug!='Metformin'):
         #     continue
@@ -159,15 +162,15 @@ for yscale in ['linear','log']:
         plt.clf()
         plt.close()
 
-        ## Individual
-
-        for sid in gdf['ID'].unique():
-
-            time_to_conc_graph_ckd(gdf=gdf, sid_list=[sid,], drug=drug, hue=hue, result_file_dir_path=result_file_dir_path, hue_order=hue_order, estimator=estimator, yscale=yscale, save_fig=True)
-
-            plt.cla()
-            plt.clf()
-            plt.close()
+        # ## Individual
+        #
+        # for sid in gdf['ID'].unique():
+        #
+        #     time_to_conc_graph_ckd(gdf=gdf, sid_list=[sid,], drug=drug, hue=hue, result_file_dir_path=result_file_dir_path, hue_order=hue_order, estimator=estimator, yscale=yscale, save_fig=True)
+        #
+        #     plt.cla()
+        #     plt.clf()
+        #     plt.close()
 
 ############################
 
