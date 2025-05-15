@@ -61,6 +61,7 @@ def calculate_time(group):
     base_time = base_time_row.iloc[0]['DATETIME']
     group['TIME'] = (group['DATETIME'] - base_time).dt.total_seconds() / 3600
     return group
+
 def remove_late_conc(group):
     # MDV가 0인 데이터만 필터링
     conc_rows = group[group['MDV'] == 0]
@@ -75,35 +76,16 @@ def remove_late_conc(group):
 
     # limit_time을 초과한 모든 데이터 삭제
     return group[group['TIME'] <= limit_time]
-def add_initial_row(group):
-    # 첫 번째 행에 추가할 데이터 생성
-    initial_row = pd.DataFrame({
-        'ID': [group['ID'].iloc[0]],
-        'TIME': [0.0],
-        'DV': [0.0],
-        'MDV': [0],
-        'CMT': [1],
-        'AMT': ['.'],
-        'RATE': ['.']
-    })
-
-    # 원본 그룹 앞에 첫 번째 행을 추가
-    group = pd.concat([initial_row, group], ignore_index=True)
-    return group
-# def get_latest_lab_result(row, lab_df):
-#     sub = lab_df[lab_df["ID"] == row["ID"]]
-#     sub = sub[sub["DATETIME"] <= row["DATETIME"]]
-#     if sub.empty:
-#         return pd.Series({code: None for code in lab_codes})
-#
-#     sub = sub.sort_values("DATETIME", ascending=False)
-#     latest = sub.groupby("LAB_CODE").first()
-#
-#     result = {code: latest.loc[code, "VALUE"] if code in latest.index else None for code in lab_codes}
-#     return pd.Series(result)
 
 pd.to_datetime(md_df['DATETIME'], errors='coerce')
 md_df = md_df.sort_values(['ID', 'DATETIME'], ignore_index=True)
+
+
+# MDV가 0인 'ID' 제거: 투약 없는 데이터 제거
+md_df['MDV'] = md_df['MDV'].replace('.',0).astype(int)
+id_all_0 = md_df.groupby('ID')['MDV'].apply(lambda x: (x == 0).all())
+id_to_remove = id_all_0[id_all_0].index
+md_df = md_df[~md_df['ID'].isin(id_to_remove)].copy()
 
 # --- TIME 계산 (위의 코드에서 TIME 계산) ---
 # 먼저 TIME을 계산
@@ -115,21 +97,37 @@ md_df = md_df.groupby('ID', as_index=False).apply(calculate_time).copy()
 # 'ID' 열이 확실히 사라지지 않도록 'groupby'에서 as_index=False 사용
 md_df = md_df.groupby('ID', as_index=False).apply(remove_late_conc).copy()
 
-
 # 각 ID에 대해 `DV=0`, `MDV=0`, `TIME=0` 추가
-md_df = md_df.groupby('ID', as_index=False).apply(add_initial_row).copy()
+zero_md_df = md_df.groupby(['ID'], as_index=False).agg({'DATETIME':'min'})
+zero_dict = {'DV':0.0,'MDV':'.','CMT':1,'AMT':'.','RATE':'.','TIME':0.0}
+for k, v in zero_dict.items():
+    zero_md_df[k] = v
+md_df = pd.concat([zero_md_df, md_df],ignore_index=True)
 
+# Data sorting
+md_df = md_df.sort_values(by=['ID', 'TIME', 'MDV'], ascending=[True, True, False]).drop_duplicates(['ID','TIME','DV','MDV','AMT'])
 
-# MDV가 0인 'ID' 제거: 투약 없는 데이터 제거
-md_df['MDV'] = md_df['MDV'].replace('.',0).astype(int)
-id_all_0 = md_df.groupby('ID')['MDV'].apply(lambda x: (x == 0).all())
-id_to_remove = id_all_0[id_all_0].index
-md_df = md_df[~md_df['ID'].isin(id_to_remove)].copy()
+# 투약 간격이 일정치 않은 사람들 확인위해 따로 저장
+irreg_interval_df = list()
+for inx, df_frag in (md_df[md_df['MDV']==1]).groupby(['ID']):
+    eval_ds = df_frag['TIME'].diff().dropna()
+    cb_ratio = eval_ds/(eval_ds.shift(1).bfill())
+    ac_ratio = (eval_ds.shift(-1).ffill())/eval_ds
+    time_interval_peak_exist = (cb_ratio/ac_ratio > 3).sum()
+    if time_interval_peak_exist > 0:
+        irreg_interval_df.append(inx)
 
-md_df = md_df.sort_values(by=['ID', 'TIME', 'MDV'], ascending=[True, True, True]).reset_index(drop=True)
+irreg_interval_list = md_df[md_df['ID'].isin(irreg_interval_df)].reset_index(drop=True)
+irreg_interval_list.to_csv(f'{prj_dir}/resource/irreg_df.csv', index=False)
+
+"""
+# (1) Dose 없이 농도측정이 먼저 나오는 사람들이 있다
+# (2) 쌩뚱맞은 첫 Dose 한참 이후 갑자기 Dose 나오는 사람들 있다 (TIME > 500 등등)
+"""
 
 final_cols = ['ID', 'TIME', 'DV', 'MDV', 'CMT', 'AMT', 'RATE']
 md_df = md_df[final_cols]
+
 
 # df_id 데이터에 성별을 M/F로 맵핑, AGE, SEX, HT, WT 계산
 id_df.rename(columns={'성별': 'SEX', '당시나이': 'AGE', '몸무게': 'WT', '키': 'HT','등록번호':'ID','검사일':'DATETIME'}, inplace=True)
