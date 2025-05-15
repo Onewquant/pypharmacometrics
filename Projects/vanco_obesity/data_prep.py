@@ -133,7 +133,7 @@ md_df = md_df[final_cols]
 
 # df_id 데이터에 성별을 M/F로 맵핑, AGE, SEX, HT, WT 계산
 id_df.rename(columns={'성별': 'SEX', '당시나이': 'AGE', '몸무게': 'WT', '키': 'HT','등록번호':'ID','검사일':'DATETIME'}, inplace=True)
-id_df["ID"] = id_df["ID"].astype(str)
+id_df["ID"] = id_df["ID"].astype(int)
 id_df["DATETIME"] = pd.to_datetime(id_df["DATETIME"], errors="coerce")
 id_df['SEX'] = id_df['SEX'].map({'M': 1, 'F': 0})
 
@@ -148,7 +148,7 @@ id_df['LBM'] = np.where(
 
 # 날짜
 lab_df.rename(columns={'등록번호':'ID','검사일자':'DATETIME','검사코드':'LAB_CODE','검사명':'LAB','검사결과':"VALUE"},inplace=True)
-lab_df["ID"] = lab_df["ID"].astype(str)
+lab_df["ID"] = lab_df["ID"].astype(int)
 lab_df["DATETIME"] = pd.to_datetime(lab_df["DATETIME"], errors="coerce")
 lab_df["LAB"] = lab_df["LAB"].map(lambda x:x.split('(')[0].strip())
 lab_df["VALUE"] = lab_df["VALUE"].map(lambda x:str(x).replace('>','').replace('<','').split(' (')[0].strip()).replace('-',np.nan).replace('+/-',np.nan)
@@ -165,6 +165,7 @@ lab_rename_dict = dict([(row['LAB_CODE'],row['LAB']) for inx, row in lab_df[['LA
 mlab_df = lab_df.merge(id_df[['ID','DATETIME']].rename(columns={'DATETIME':'TDM_DT'}), on=['ID'], how='left')
 nearTDM_lab_df = mlab_df[mlab_df['DATETIME'] <= mlab_df['TDM_DT']].sort_values(['ID','DATETIME']).groupby(['ID','LAB'], as_index=False).agg({'DATETIME':'last','VALUE':'last'})
 nearTDM_lab_df = nearTDM_lab_df.pivot(index=['ID'],columns=['LAB'],values='VALUE')
+nearTDM_lab_df = nearTDM_lab_df.reset_index(drop=False)
 nearTDM_lab_df.index.name = None
 nearTDM_lab_df.columns.name = None
 
@@ -174,7 +175,9 @@ nearTDM_lab_df.columns.name = None
 # idlab_df.rename(columns=lab_rename_dict, inplace=True)
 
 # md_df와 df_idlab을 'ID' 기준으로 병합
-final_df = pd.merge(md_df, nearTDM_lab_df, how='left', on=['ID'])
+final_df = md_df.merge(nearTDM_lab_df, how='left', on=['ID']).merge(id_df[['ID','H']], how='left', on=['ID'])
+# nearTDM_lab_df['ID'].iloc[0]
+# md_df['ID'].iloc[0]
 final_df.columns
 
 # 중복 컬럼 제거
