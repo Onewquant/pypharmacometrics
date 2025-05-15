@@ -121,7 +121,7 @@ irreg_interval_list = md_df[md_df['ID'].isin(irreg_interval_df)].reset_index(dro
 irreg_interval_list.to_csv(f'{prj_dir}/resource/irreg_df.csv', index=False)
 
 """
-# (1) Dose 없이 농도측정이 먼저 나오는 사람들이 있다
+# (1) Dose 없이 DV가 0이 아닌 측정 데이터가 먼저 나오는 사람들이 있다 (TIME < 0)
 # (2) 쌩뚱맞은 첫 Dose 한참 이후 갑자기 Dose 나오는 사람들 있다 (TIME > 500 등등)
 """
 
