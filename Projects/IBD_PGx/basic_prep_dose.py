@@ -29,17 +29,25 @@ for finx, fpath in enumerate(order_files): #break
     # if pid in ("15322168", "19739357", "34835292", "37366865", "21618097", "36898756", "36975211", "37858047"):       # lab, order 파일 다시 수집 필요
     #     continue
 
-    # if pid in ("34835292","37366865"):       # lab, order 파일 다시 수집 필요
+    # if pid in ("34835292","37366865"):       # lab, order 파일 다시 수집 필요 (EMR에 infliximab 혹은 adalimumab 자체가 안 보임)
     #     continue
 
+    # if pid in ("34835292", "37366865", "26309684","26675590", "26875965","27141223","30013487", "35322270", "37590846", "37858047"):       # lab, order 파일 다시 수집 필요
+    #     if pid=="37858047":
+    #         raise ValueError
+    #
+    if pid in ('37366865',):       # lab, order 파일 다시 수집 필요
+        continue
+
+    # ['37366865']  # infliximab quantification은 있는데, dose는 없음. 확인 요망
 
     fdf = pd.read_excel(fpath)
 
     # fdf.columns
-
+    # fdf.to_csv(f"{resource_dir}/error_dose_df.csv", encoding='utf-8-sig', index=False)
 
     fdf = fdf[~fdf['Acting'].isna()].copy()
-    dose_df = fdf[fdf['처방지시'].map(lambda x: (('adalimumab' in x.lower()) or ('infliximab' in x.lower())) and ('quantification' not in x.lower()))].copy()
+    dose_df = fdf[fdf['처방지시'].map(lambda x: (('adalimumab' in x.lower()) or ('infliximab' in x.lower()) or ('ustekinumab' in x.lower())) and ('quantification' not in x.lower()))].copy()
     dose_df['처방지시비고'] = dose_df['처방지시'].map(lambda x:x.split(' : ')[-1] if len(x.split(' : '))>1 else '')
 
     dose_df['ID'] = pid
@@ -55,7 +63,7 @@ for finx, fpath in enumerate(order_files): #break
 
     #### 성분명이 IBD Biologics 인 경우만으로 필터링 (Infliximab, Adalimumab)
 
-    regex_pattern = r'\(infliximab|adalimumab\)'
+    regex_pattern = r'\(infliximab|\(adalimumab'
     dose_df = dose_df[dose_df['처방지시'].map(lambda x: bool(re.search(regex_pattern, x, flags=re.IGNORECASE)))].copy()
 
     dose_df['DT1'] = dose_df['약국_검사'].map(lambda x:x.split(']   ')[0].split('[')[-1].replace(' ','T'))
@@ -76,7 +84,7 @@ for finx, fpath in enumerate(order_files): #break
 
 dose_result_df = pd.concat(dose_result_df, ignore_index=True).sort_values(['ID','DATETIME'])
 dose_result_df.to_csv(f"{output_dir}/dose_df.csv", encoding='utf-8-sig', index=False)
-
+dose_result_df.drop_duplicates(['ID'], ignore_index=True)
 # ot_list = list()
 # for inx_ot, order_text in enumerate(drug_order_set):
 #     if '[SC]' not in order_text:
