@@ -15,13 +15,27 @@ induction_df['IND_START_DATE'] = induction_df['IND_START_DATE'].astype(str).repl
 # totlab_df = pd.read_csv(f"{output_dir}/conc_df(lab).csv")
 # cumlab_df = pd.read_csv(f"{output_dir}/conc_df(cum_lab).csv")
 # lab_df = pd.concat([cumlab_df, totlab_df[['오더일','보고일']]], axis=1)
-# lab_df['DATETIME'] = lab_df['DATETIME'].map(lambda x:x.replace(' ','T'))
+# lab_df['접수일'] = lab_df['DATETIME'].map(lambda x:x.split(' ')[0])
+# lab_df['접수시간'] = lab_df['DATETIME'].map(lambda x:x.split(' ')[1])
+# receipt_list = list()
+# for inx, row in lab_df.iterrows():
+#     if (datetime.strptime(row['보고일'],'%Y-%m-%d')-datetime.strptime(row['오더일'],'%Y-%m-%d')).days > 14:
+#         date_str = min(row['보고일'],row['접수일'])
+#         receipt_list.append(date_str+f"T{row['접수시간']}")
+#     else:
+#         if np.abs((datetime.strptime(row['오더일'],'%Y-%m-%d')-datetime.strptime(row['접수일'],'%Y-%m-%d')).days) <= 14:
+#             date_str = min(row['오더일'], min(row['보고일'], row['접수일']))
+#         else:
+#             date_str = max(row['보고일'],row['접수일'])
+#         receipt_list.append(date_str+f"T{row['접수시간']}")
+# lab_df['DATETIME'] = receipt_list
+# # lab_df['DATETIME'] = lab_df['DATETIME'].map(lambda x:x.re place(' ','T'))
 # lab_df = lab_df.sort_values(['ID','DATETIME'])
 # lab_df.to_csv(f"{output_dir}/conc_df.csv", encoding='utf-8-sig', index=False)
 
 # lab_df[(lab_df['CONC']!=lab_df['CONC_cumlab'])|(lab_df['DRUG']!=lab_df['DRUG_cumlab'])][['DRUG','CONC','DRUG_cumlab','CONC_cumlab']]
 lab_df = pd.read_csv(f"{output_dir}/conc_df.csv")
-lab_df[lab_df['ID']==11788526]
+# lab_df[lab_df['ID']==11788526]
 # lab_df.columns
 # lab_df['DRUG']
 lab_df = lab_df.rename(columns={'CONC':'DV'})
@@ -131,14 +145,14 @@ for inx, row in ind_cons_df.iterrows():
         zero_conc_row['DUR'] = '.'
         ind_df_frag = pd.concat([zero_conc_row, ind_df_frag]).sort_values(['ID','DATETIME'], ignore_index=True)
 
-    if row['ID']==11788526:
-        bef_df = ind_df_frag.iloc[:4,:].copy()
-        aft_df1 = ind_df_frag.iloc[4:5,:].copy()
-        aft_df2 = ind_df_frag.iloc[5:,:].copy()
-        aft_df1['DATETIME'] = '2022-05-10T12:18'
-        aft_df2['DATETIME'] = '2022-05-10T12:16'
-        ind_df_frag = pd.concat([bef_df, aft_df2, aft_df1]).sort_values(['ID','DATETIME'], ignore_index=True)
-        # raise ValueError
+    # if row['ID']==11788526:
+    #     bef_df = ind_df_frag.iloc[:4,:].copy()
+    #     aft_df1 = ind_df_frag.iloc[4:5,:].copy()
+    #     aft_df2 = ind_df_frag.iloc[5:,:].copy()
+    #     aft_df1['DATETIME'] = '2022-05-10T12:18'
+    #     aft_df2['DATETIME'] = '2022-05-10T12:16'
+    #     ind_df_frag = pd.concat([bef_df, aft_df2, aft_df1]).sort_values(['ID','DATETIME'], ignore_index=True)
+    #     # raise ValueError
 
 
     ind_date_str = ind_df_frag['DATETIME'].iloc[0]
@@ -182,9 +196,7 @@ ind_modeling_cols = ['ID','TIME','WKTIME','DWKTIME','DV','MDV','AMT','DUR','CMT'
 inf_ind_df = inf_ind_df[ind_modeling_cols].copy()
 ada_ind_df = ada_ind_df[ind_modeling_cols].copy()
 
-inf_ind_df[inf_ind_df['ID']==1][['TIME','DATETIME','DV','AMT','UID','NAME']]
 
-lab_df
 
 
 
