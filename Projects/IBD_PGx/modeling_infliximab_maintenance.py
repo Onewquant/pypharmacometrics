@@ -111,7 +111,7 @@ for inx, row in ind_cons_df.iterrows():
     # if row['ID']==10875838:
     #     raise ValueError
     ind_df_frag = id_df[(id_df['DATE'] >= end_date)].sort_values(['DATETIME'], ignore_index=True)
-    first_dv_inx = ind_df_frag[ind_df_frag['MDV']=='.'].iloc[0].name
+    first_dv_inx = ind_df_frag[ind_df_frag['MDV']=='.'].iloc[0].name   ###################### 에러남. 확인 요망
     ind_df_frag = ind_df_frag[ind_df_frag.index >= first_dv_inx]
     if (len(ind_df_frag['MDV'].unique())<=1):
         no_indconc_df.append(pd.DataFrame([row]))
