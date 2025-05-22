@@ -21,6 +21,7 @@ induction_df['IND_START_DATE'] = induction_df['IND_START_DATE'].astype(str).repl
 
 # lab_df[(lab_df['CONC']!=lab_df['CONC_cumlab'])|(lab_df['DRUG']!=lab_df['DRUG_cumlab'])][['DRUG','CONC','DRUG_cumlab','CONC_cumlab']]
 lab_df = pd.read_csv(f"{output_dir}/conc_df.csv")
+lab_df[lab_df['ID']==11788526]
 # lab_df.columns
 # lab_df['DRUG']
 lab_df = lab_df.rename(columns={'CONC':'DV'})
