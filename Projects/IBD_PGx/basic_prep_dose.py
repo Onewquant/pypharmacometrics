@@ -18,6 +18,7 @@ order_files = glob.glob(f'{resource_dir}/order/IBD_PGx_order(*).xlsx')
 dose_result_df = list()
 wierd_result_df = list()
 result_cols = ['ID','NAME','DATETIME','DRUG','DOSE','ROUTE','ACTING','PERIOD','ETC_INFO']
+no_dup_cols = [c for c in result_cols if c!='NAME']
 for finx, fpath in enumerate(order_files): #break
 
     pid = fpath.split('(')[-1].split('_')[0]
@@ -39,6 +40,11 @@ for finx, fpath in enumerate(order_files): #break
 
     if pid in ('37366865',):       # lab, order 파일 다시 수집 필요
         continue
+
+    # if pid not in ('17638960',):
+    #     continue
+    #     if pid in ('17638960',):
+    #         raise ValueError
 
     # ['37366865']  # infliximab quantification은 있는데, dose는 없음. 확인 요망
     # ['12541876']  # 2020년도 쪽 누락 (EMR 기록과 다름)  - 재수집 필요
@@ -81,8 +87,13 @@ for finx, fpath in enumerate(order_files): #break
     # fdf.columns
     # fdf.to_csv(f"{outcome_dir}/error_dose_df.csv", encoding='utf-8-sig', index=False)
 
-    fdf = fdf[~fdf['Acting'].isna()].copy()
     dose_df = fdf[fdf['처방지시'].map(lambda x: (('adalimumab' in x.lower()) or ('infliximab' in x.lower()) or ('ustekinumab' in x.lower())) and ('quantification' not in x.lower()))].copy()
+    # dose_df.iloc[0]['처방지시']
+    # dose_df.iloc[1]['처방지시']
+    # dose_df.iloc[2]
+
+    dose_df = dose_df[(~dose_df['Acting'].isna())].copy()
+
     dose_df['처방지시비고'] = dose_df['처방지시'].map(lambda x:x.split(' : ')[-1] if len(x.split(' : '))>1 else '')
 
     dose_df['ID'] = pid
@@ -94,7 +105,7 @@ for finx, fpath in enumerate(order_files): #break
 
     # dose_df[dose_df['약국_검사'].isna() & dose_df['처방지시'].map(lambda x: '(infliximab)' in x.lower())].to_excel(f"{output_dir}/test.xlsx",index=False)
     # dose_df[~dose_df['약국_검사'].isna() & dose_df['처방지시'].map(lambda x: '(infliximab)' in x.lower())].to_excel(f"{output_dir}/test2.xlsx",index=False)
-    dose_df = dose_df[~dose_df['약국_검사'].isna()].copy()
+    dose_df = dose_df[(~dose_df['약국_검사'].isna())].copy()
 
     #### 성분명이 IBD Biologics 인 경우만으로 필터링 (Infliximab, Adalimumab)
 
@@ -118,7 +129,8 @@ for finx, fpath in enumerate(order_files): #break
             except: dose_val = re.findall(r'\d+',x.split('mg')[0].split('Remsima')[-1].split('Humira')[-1].split('Stelara')[-1].split(' ')[-1].strip())[0]
             dose_series.append(dose_val)
         else:
-            dose_val = x.split('(Infliximab')[-1].split('(Adalimumab')[-1].split('(Ustekinumab')[-1].replace(') ','')[-1].split('▣')[-1].split('srg')[0].split('via')[0].split('mg')[0].split(':')[0].split(' [SC] ')[0].strip()
+            try: dose_val = re.findall(r'\d+',x.split('mg')[1].split('Remsima')[-1].split('Humira')[-1].split('Stelara')[-1].split(' ')[-1].strip())[0]
+            except: dose_val = x.split('(Infliximab')[-1].split('(Adalimumab')[-1].split('(Ustekinumab')[-1].split('▣')[-1].split('srg')[0].split('via')[0].split('mg')[0].split(':')[0].split(' [SC] ')[0].strip()
             dose_series.append(dose_val)
     dose_df['DOSE'] = dose_series
 
@@ -127,7 +139,8 @@ for finx, fpath in enumerate(order_files): #break
     dose_df['PERIOD'] = dose_df['처방지시'].map(lambda x: 'x1' if " [SC] " not in x else x.split(' [SC] ')[-1].split(':')[0].strip())
     # dose_df.to_csv(f"{output_dir}/dose_df_lhj.csv", encoding='utf-8-sig', index=False)
     # dose_df.loc[3203,'처방지시']
-    dose_result_df.append(dose_df[result_cols].drop_duplicates())
+
+    dose_result_df.append(dose_df[result_cols].drop_duplicates(no_dup_cols))
 
     # drug_order_set = drug_order_set.union(set(dose_df['처방지시'].map(lambda x:''.join(x.split(':')[0].replace('  ',' ').split(') ')[1:]).replace('[원내]','').replace('[D/C]','').replace('[보류]','').replace('[반납]','').replace('[Em] ','').strip()).drop_duplicates()))
 
