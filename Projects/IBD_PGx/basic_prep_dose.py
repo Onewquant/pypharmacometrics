@@ -133,7 +133,7 @@ for finx, fpath in enumerate(order_files): #break
             except: dose_val = x.split('(Infliximab')[-1].split('(Adalimumab')[-1].split('(Ustekinumab')[-1].split('▣')[-1].split('srg')[0].split('via')[0].split('mg')[0].split(':')[0].split(' [SC] ')[0].strip()
             dose_series.append(dose_val)
     dose_df['DOSE'] = dose_series
-
+    # dose_df['DOSE'] = dose_df['DOSE'].map({'1 pen': 40, '2 pen': 80, '2 pen': 160})
     # (1) [원내] Remsima 100mg inj (Infliximab Korea) ...
     dose_df['ACTING'] = dose_df['Acting']
     dose_df['PERIOD'] = dose_df['처방지시'].map(lambda x: 'x1' if " [SC] " not in x else x.split(' [SC] ')[-1].split(':')[0].strip())
