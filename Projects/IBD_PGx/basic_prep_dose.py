@@ -125,17 +125,37 @@ for finx, fpath in enumerate(order_files): #break
     for dose_inx, dose_row in dose_df.iterrows():
         x = dose_row['처방지시']
         if (" [SC] " not in x):
-            try: dose_val = re.findall(r'\d+',x.split('mg')[1].split('Remsima')[-1].split('Humira')[-1].split('Stelara')[-1].split(' ')[-1].strip())[0]
-            except: dose_val = re.findall(r'\d+',x.split('mg')[0].split('Remsima')[-1].split('Humira')[-1].split('Stelara')[-1].split(' ')[-1].strip())[0]
+            # raise ValueError
+            try: dose_val = int(re.findall(r'\d+mg',x)[1].replace('mg','').strip())
+            except:
+                dose_val = int(re.findall(r'\d+mg', x)[0].replace('mg', '').strip()) * int(re.findall(r'\d+ via', x)[0].replace('via', '').strip())
+            # dose_val = re.findall(r'\d+',x.split('mg')[0].split('Remsima')[-1].split('Humira')[-1].split('Stelara')[-1].split(' ')[-1].strip())[0]
+            # raise ValueError
             dose_series.append(dose_val)
         else:
-            try: dose_val = re.findall(r'\d+',x.split('mg')[1].split('Remsima')[-1].split('Humira')[-1].split('Stelara')[-1].split(' ')[-1].strip())[0]
-            except: dose_val = x.split('(Infliximab')[-1].split('(Adalimumab')[-1].split('(Ustekinumab')[-1].split('▣')[-1].split('srg')[0].split('via')[0].split('mg')[0].split(':')[0].split(' [SC] ')[0].strip()
+            try: dose_val = int(re.findall(r'\d+mg',x)[1].replace('mg','').strip())
+            except:
+                if '(Ustekinumab' in x:
+                    # raise ValueError
+                    dose_val = int(re.findall(r'\d+mg',x)[0].replace('mg','').strip()) * int(re.findall(r'\d+ srg',x)[0].replace('srg','').strip())
+                elif '(Adalimumab' in x:
+                    # raise ValueError
+                    # if 'ml pen' in x:
+                    #     x = x.replace('ml pen','ml 1 pen')
+                    try: pen_count = int(re.findall(r'\d+ pen',x)[0].replace('pen','').strip())
+                    except: pen_count = int(re.findall(r'\d+ srg',x)[0].replace('srg','').strip())
+                    dose_val = int(re.findall(r'\d+mg',x)[0].replace('mg','').strip()) * pen_count
+                    # raise ValueError
+                else:
+                    raise ValueError
+                    dose_val = x.split('(Infliximab')[-1].split('(Adalimumab')[-1].split('(Ustekinumab')[-1].split('▣')[-1].split('srg')[0].split('via')[0].split('mg')[0].split(':')[0].split(' [SC] ')[0].strip()
             dose_series.append(dose_val)
+    # raise ValueError
     dose_df['DOSE'] = dose_series
     # dose_df['DOSE'] = dose_df['DOSE'].map({'1 pen': 40, '2 pen': 80, '2 pen': 160})
     # (1) [원내] Remsima 100mg inj (Infliximab Korea) ...
     dose_df['ACTING'] = dose_df['Acting']
+
     dose_df['PERIOD'] = dose_df['처방지시'].map(lambda x: 'x1' if " [SC] " not in x else x.split(' [SC] ')[-1].split(':')[0].strip())
     # dose_df.to_csv(f"{output_dir}/dose_df_lhj.csv", encoding='utf-8-sig', index=False)
     # dose_df.loc[3203,'처방지시']
@@ -144,8 +164,96 @@ for finx, fpath in enumerate(order_files): #break
 
     # drug_order_set = drug_order_set.union(set(dose_df['처방지시'].map(lambda x:''.join(x.split(':')[0].replace('  ',' ').split(') ')[1:]).replace('[원내]','').replace('[D/C]','').replace('[보류]','').replace('[반납]','').replace('[Em] ','').strip()).drop_duplicates()))
 
+
 dose_result_df = pd.concat(dose_result_df, ignore_index=True).sort_values(['ID','DATETIME'], ascending=[True,False])
+
+
+## DATETIME 추가 조정
+dt_series = list()
+for inx, row in dose_result_df.iterrows():
+    if 'Y' in row['ACTING']:
+        ymdt_patterns = re.findall(r"[\d][\d][\d][\d]-[\d][\d]-[\d][\d] [\d][\d]:[\d][\d]",row['ACTING'])
+        if len(ymdt_patterns)>0:
+            new_dt = ymdt_patterns[0].replace(' ','T')
+        else:
+            time_patterns = re.findall(r"[\d][\d]:[\d][\d]",row['ACTING'])
+            new_dt = row['DATETIME'].split('T')[0] + 'T' + time_patterns[0]
+        dt_series.append(new_dt)
+    else:
+        dt_series.append(row['DATETIME'])
+
+dose_result_df['DATETIME'] = dt_series
+
+## PERIOD 추가 조정
+
+dose_result_df['PERIOD'] = dose_result_df['PERIOD'].map(lambda x:x.replace('2주 간격 유지용량 ','').replace('#1 ','').replace('3/20 ','').replace('매주 ','').replace(' X1 Day','').replace('1회 ','').replace('/wk ','/1wks').replace('x1 ','1'))
+
+
+## H, C, Z는 제거
+
+dose_result_df = dose_result_df[dose_result_df['ACTING'].map(lambda x: False if (('H' in x) or ('Z' in x) or ('C' in x)) else True)].reset_index(drop=True)
+dose_result_df = dose_result_df.sort_values(['ID','DATETIME'], ascending=[True,False], ignore_index=True)
+
+## 처방비고 반영 및 기타 정리
+
+# 2주 뒤에 맞기 반영
+
+ETC_INFO_cond = (dose_result_df['ETC_INFO']=='2주 뒤에 자가로 2개 맞으세요.')
+PERIOD_cond = list()
+PERIOD_added_list1 = ['2주 뒤에 맞으세요 ','2주 뒤에 자가 접종 ','2주 뒤 ','2주 뒤에 자가로 2개 맞으세요. '] + ["오늘 2amp, 내일 2mp 맞으세요 "]
+for inx, period_str in enumerate(dose_result_df['PERIOD']):
+    period_tf = False
+    for comment in PERIOD_added_list1:
+        if comment in period_str:
+            period_tf=True
+    PERIOD_cond.append(period_tf)
+PERIOD_cond = pd.Series(PERIOD_cond)
+
+change_df = dose_result_df[ETC_INFO_cond|PERIOD_cond].copy()
+for inx, row in change_df.iterrows():
+    # dose_result_df.iloc[inx]
+    dose_result_df.at[inx,'DATETIME'] = (datetime.strptime(dose_result_df.at[inx,'DATETIME'],'%Y-%m-%dT%H:%M') + timedelta(days=14)).strftime('%Y-%m-%dT%H:%M')
+    dose_result_df.at[inx,'ETC_INFO'] = '처방비고 반영완료'
+dose_result_df = dose_result_df.sort_values(['ID','DATETIME'], ascending=[True,False], ignore_index=True)
+
+# Dose 나눠서 이틀에 맞기
+
+ETC_INFO_cond = dose_result_df['ETC_INFO'].isin(['금일 주사실에서 2개 맞고 가고 그 다음날 자가로 2개 더 맞으세요.','금일 두 개, 내일 두 개 맞으세요.','하루에 2개씩 이틀에 나눠 맞으세요','금일 2개, 내일 2개 맞으세요.','금일 2개, 내일 2개','금일 주사실에서 2개 맞고 가고 그 다음날 자가로 2개 더 맞으세요. '])
+PERIOD_cond = list()
+PERIOD_added_list2 = ['오늘 2개, 내일 2개 맞으세요 ', '금일 2개, 내일 2개 맞으세요 ', '금일 2개, 내일 2개 맞으세요. ','주사실에서 2개 맞고 가고 그 다음날 자가로 2개 더 맞으세요. ']
+for inx, period_str in enumerate(dose_result_df['PERIOD']):
+    period_tf = False
+    for comment in PERIOD_added_list2:
+        if comment in period_str:
+            period_tf=True
+    PERIOD_cond.append(period_tf)
+PERIOD_cond = pd.Series(PERIOD_cond)
+
+change_df = dose_result_df[ETC_INFO_cond|PERIOD_cond].copy()
+change_df['DATETIME'] = change_df['DATETIME'].map(lambda x:(datetime.strptime(x, '%Y-%m-%dT%H:%M') + timedelta(days=1)).strftime('%Y-%m-%dT%H:%M'))
+change_df['DOSE'] = (change_df['DOSE']/2).map(int)
+change_df['ETC_INFO'] = '처방비고 반영완료'
+for inx, row in change_df.iterrows():
+    # dose_result_df.iloc[inx]
+    dose_result_df.at[inx, 'DOSE'] = int(dose_result_df.at[inx, 'DOSE']/2)
+    dose_result_df.at[inx, 'ETC_INFO'] = '처방비고 반영완료'
+dose_result_df = pd.concat([dose_result_df,change_df]).reset_index(drop=True)
+
+# Period에 들어있는 추가 글자 제거
+
+for c in PERIOD_added_list1 + PERIOD_added_list2 + [' 컨펌 후 투여',' 맞던 날짜대로',' [D]','금일 ', '매 주']:
+    dose_result_df['PERIOD'] = dose_result_df['PERIOD'].map(lambda x:x.replace(c,''))
+for c in ['1주 1회','ut dict ','ut dict','prn ']:
+    dose_result_df['PERIOD'] = dose_result_df['PERIOD'].replace(c,'x1')
+dose_result_df['PERIOD'] = dose_result_df['PERIOD'].map(lambda x:x.replace('  ',' '))
+
+dose_result_df = dose_result_df.sort_values(['ID','DATETIME'], ascending=[True,False], ignore_index=True)
 dose_result_df.to_csv(f"{output_dir}/dose_df.csv", encoding='utf-8-sig', index=False)
+
+
+# 남은 것: 월요일 투약 처리하기 / #2 ~
+
+
 # dose_result_df.drop_duplicates(['ID'], ignore_index=True)
 # ot_list = list()
 # for inx_ot, order_text in enumerate(drug_order_set):
