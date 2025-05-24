@@ -241,18 +241,17 @@ dose_result_df = pd.concat([dose_result_df,change_df]).reset_index(drop=True)
 
 # Period에 들어있는 추가 글자 제거
 
-for c in PERIOD_added_list1 + PERIOD_added_list2 + [' 컨펌 후 투여',' 맞던 날짜대로',' [D]','금일 ', '매 주']:
+for c in PERIOD_added_list1 + PERIOD_added_list2 + [' 컨펌 후 투여',' 맞던 날짜대로',' [D]','금일 ', '매 주','3주 간격 ']:
     dose_result_df['PERIOD'] = dose_result_df['PERIOD'].map(lambda x:x.replace(c,''))
 for c in ['1주 1회','ut dict ','ut dict','prn ']:
     dose_result_df['PERIOD'] = dose_result_df['PERIOD'].replace(c,'x1')
-dose_result_df['PERIOD'] = dose_result_df['PERIOD'].map(lambda x:x.replace('  ',' '))
+dose_result_df['PERIOD'] = dose_result_df['PERIOD'].map(lambda x:x.replace('  ',' ').replace('X',' X').replace('  ',' '))
 
 dose_result_df = dose_result_df.sort_values(['ID','DATETIME'], ascending=[True,False], ignore_index=True)
 dose_result_df.to_csv(f"{output_dir}/dose_df.csv", encoding='utf-8-sig', index=False)
 
 
-# 남은 것: 월요일 투약 처리하기 / #2 ~
-
+# 남은 것: 월요일 투약 처리하기 / #2 ~ / 각 사람들 투약 간격 잘 맞는지 눈으로 확인(당일 맞는것 포함해서 약을 주는 건지)
 
 # dose_result_df.drop_duplicates(['ID'], ignore_index=True)
 # ot_list = list()
