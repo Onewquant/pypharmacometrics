@@ -240,7 +240,7 @@ inf_maint_df['IBD_TYPE'] = inf_maint_df['IBD_TYPE'].map({'CD':1,'UC':2})
 ada_maint_df['IBD_TYPE'] = ada_maint_df['IBD_TYPE'].map({'CD':1,'UC':2})
 inf_maint_df = inf_maint_df[ind_modeling_cols].copy()
 ada_maint_df = ada_maint_df[ind_modeling_cols].copy()
-ada_maint_df['AMT'] = ada_maint_df['AMT'].map({'1 pen':40,'2 pen':80, '2 pen':160})
+# ada_maint_df['AMT'] = ada_maint_df['AMT'].map({'1 pen':40,'2 pen':80, '2 pen':160})
 
 inf_maint_df.to_csv(f'{output_dir}/infliximab_maintenance_df.csv',index=False, encoding='utf-8-sig')
 ada_maint_df.to_csv(f'{output_dir}/adalimumab_maintenance_df.csv',index=False, encoding='utf-8-sig')

@@ -196,16 +196,19 @@ ind_modeling_cols = ['ID','TIME','WKTIME','DWKTIME','DV','MDV','AMT','DUR','CMT'
 inf_ind_df = inf_ind_df[ind_modeling_cols].copy()
 ada_ind_df = ada_ind_df[ind_modeling_cols].copy()
 
-
-
-
-
 inf_ind_df.to_csv(f'{output_dir}/infliximab_induction_datacheck.csv',index=False, encoding='utf-8-sig')
 ada_ind_df.to_csv(f'{output_dir}/adalimumab_induction_datacheck.csv',index=False, encoding='utf-8-sig')
+
+# Covariates
 
 ind_modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','IBD_TYPE']
 inf_ind_df['IBD_TYPE'] = inf_ind_df['IBD_TYPE'].map({'CD':1,'UC':2})
 ada_ind_df['IBD_TYPE'] = ada_ind_df['IBD_TYPE'].map({'CD':1,'UC':2})
+
+
+
+
+
 inf_ind_df = inf_ind_df[ind_modeling_cols].copy()
 ada_ind_df = ada_ind_df[ind_modeling_cols].copy()
 # ada_ind_df['AMT'] = ada_ind_df['AMT'].map({'1 pen':40,'2 pen':80, '2 pen':160})

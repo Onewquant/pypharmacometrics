@@ -245,10 +245,39 @@ for c in PERIOD_added_list1 + PERIOD_added_list2 + [' 컨펌 후 투여',' 맞�
     dose_result_df['PERIOD'] = dose_result_df['PERIOD'].map(lambda x:x.replace(c,''))
 for c in ['1주 1회','ut dict ','ut dict','prn ']:
     dose_result_df['PERIOD'] = dose_result_df['PERIOD'].replace(c,'x1')
-dose_result_df['PERIOD'] = dose_result_df['PERIOD'].map(lambda x:x.replace('  ',' ').replace('X',' X').replace('  ',' '))
 
-dose_result_df = dose_result_df.sort_values(['ID','DATETIME'], ascending=[True,False], ignore_index=True)
+# ADDL, II 추가 및 다음 DOSE 보다 넘어가는 ADDL 확인
+
+dose_result_df['PERIOD'] = dose_result_df['PERIOD'].map(lambda x:x.replace('  ',' ').replace('X',' X').replace('  ',' '))
+dose_result_df['ADDL'] = dose_result_df['PERIOD'].map(lambda x: int(x.split('/')[0].strip()) * int(x.split('X')[-1].split('Week')[0].strip())/ int(x.split('wks')[0].split('/')[-1].strip())-1 if len(re.findall(r'\d+wks',x)) > 0 else 0).map(int)
+dose_result_df['II'] = dose_result_df['PERIOD'].map(lambda x: int(x.split('wks')[0].split('/')[-1].strip()) / int(x.split('/')[0].strip())*7*24 if len(re.findall(r'\d+wks',x)) > 0 else 2*7*24).map(int)
+dose_result_df['NXTLST_DOSE_DT'] = dose_result_df.apply(lambda x: (datetime.strptime(x['DATETIME'],'%Y-%m-%dT%H:%M')+timedelta(x['ADDL']*x['II']/24)).strftime('%Y-%m-%dT%H:%M'), axis=1)
+
+# ROUTE가 IV인데 ACTING에 Y가 안 들어 있는 것 제거
+
+dose_result_df = dose_result_df[~((dose_result_df['ROUTE']=='IV')&(dose_result_df['ACTING'].map(lambda x:'Y' not in x)))].copy()
+
+dose_result_df = dose_result_df.sort_values(['ID','DATETIME'], ascending=[True,True], ignore_index=True)
 dose_result_df.to_csv(f"{output_dir}/dose_df.csv", encoding='utf-8-sig', index=False)
+
+# ADDL시 다음 투약 날짜보다 큰 사람 확인
+
+addl_overflow_df = list()
+for inx, frag_df in dose_result_df[['ID','NAME','DATETIME', 'NXTLST_DOSE_DT']].groupby('ID'): #break
+    frag_df['SHIFT_NXTLST_DT'] = frag_df['NXTLST_DOSE_DT'].shift(1).fillna('0001-01-01T00:00')
+    # frag_df['SHIFT_NXTLST_DT']
+    frag_df['DELT_DT'] = frag_df.apply(lambda x: (datetime.strptime(x['DATETIME'],'%Y-%m-%dT%H:%M')-datetime.strptime(x['SHIFT_NXTLST_DT'],'%Y-%m-%dT%H:%M')).days, axis=1)
+    addl_overflow_frag = frag_df[frag_df['DELT_DT'] <= 0]
+    if len(addl_overflow_frag)>0:
+        addl_overflow_df.append(addl_overflow_frag)
+addl_overflow_df = pd.concat(addl_overflow_df, ignore_index=True)
+addl_overflow_df.to_csv(f"{output_dir}/addl_overflow_dose_df.csv", encoding='utf-8-sig', index=False)
+
+
+    # break
+# len(addl_overflow_df)
+# dose_result_df = dose_result_df.sort_values(['ID','DATETIME'], ascending=[True,False], ignore_index=True)
+
 
 
 # 남은 것: 월요일 투약 처리하기 / #2 ~ / 각 사람들 투약 간격 잘 맞는지 눈으로 확인(당일 맞는것 포함해서 약을 주는 건지)
