@@ -17,7 +17,7 @@ drug_order_set = set()
 order_files = glob.glob(f'{resource_dir}/order/IBD_PGx_order(*).xlsx')
 dose_result_df = list()
 wierd_result_df = list()
-result_cols = ['ID','NAME','DATETIME','DRUG','DOSE','ROUTE','ACTING','PERIOD','ETC_INFO']
+result_cols = ['ID','NAME','DATETIME','DRUG','DOSE','ROUTE','ACTING','PERIOD','ETC_INFO','PLACE']
 no_dup_cols = [c for c in result_cols if c!='NAME']
 for finx, fpath in enumerate(order_files): #break
 
@@ -118,6 +118,7 @@ for finx, fpath in enumerate(order_files): #break
     dose_df['ETC_INFO'] = dose_df['처방지시비고'].copy()
     dose_df['DRUG'] = dose_df['처방지시'].map(lambda x: re.search(regex_pattern, x, flags=re.IGNORECASE).group().lower().replace('(','').replace(')',''))
     dose_df['ROUTE'] = dose_df['처방지시'].map(lambda x: 'IV' if " [SC] " not in x else 'SC')
+    dose_df['PLACE'] = dose_df['주사시행처']
     # dose_df['DOSE'] = dose_df['처방지시'].map(lambda x: re.findall(r'\d+',x.split('▣')[-1].split('mg')[0].split('Remsima')[-1].split('Humira')[-1].split(' ')[-1].strip())[0] if " [SC] " not in x else x.split('(Infliximab)')[-1].split('(Adalimumab)')[-1].split('▣')[-1].split('mg')[0].split(':')[0].split(' [SC] ')[0].strip())
     # dose_df['DOSE'] = dose_df['처방지시'].map(lambda x: re.findall(r'\d+', x.split('mg')[1].split('Remsima')[-1].split('Humira')[-1].split('Stelara')[-1].split(' ')[-1].strip())[0] if (" [SC] " not in x) else x.split('(Infliximab')[-1].split('(Adalimumab')[-1].split('(Ustekinumab')[-1].split('▣')[-1].split('srg')[0].split('via')[0].split('mg')[0].split(':')[0].split(' [SC] ')[0].strip())
     # mg_inx_dict = {'ustekinumab':0,'infliximab':1,'adalimumab':1}
@@ -193,6 +194,7 @@ dose_result_df['PERIOD'] = dose_result_df['PERIOD'].map(lambda x:x.replace('2주
 
 dose_result_df = dose_result_df[dose_result_df['ACTING'].map(lambda x: False if (('H' in x) or ('Z' in x) or ('C' in x)) else True)].reset_index(drop=True)
 dose_result_df = dose_result_df.sort_values(['ID','DATETIME'], ascending=[True,False], ignore_index=True)
+dose_result_df['ETC_INFO_TREATED'] = ''
 
 ## 처방비고 반영 및 기타 정리
 
@@ -213,7 +215,8 @@ change_df = dose_result_df[ETC_INFO_cond|PERIOD_cond].copy()
 for inx, row in change_df.iterrows():
     # dose_result_df.iloc[inx]
     dose_result_df.at[inx,'DATETIME'] = (datetime.strptime(dose_result_df.at[inx,'DATETIME'],'%Y-%m-%dT%H:%M') + timedelta(days=14)).strftime('%Y-%m-%dT%H:%M')
-    dose_result_df.at[inx,'ETC_INFO'] = '처방비고 반영완료'
+    # dose_result_df.at[inx,'ETC_INFO'] = '처방비고 반영완료'
+    dose_result_df.at[inx,'ETC_INFO_TREATED'] = '처방비고 반영완료'
 dose_result_df = dose_result_df.sort_values(['ID','DATETIME'], ascending=[True,False], ignore_index=True)
 
 # Dose 나눠서 이틀에 맞기
@@ -232,11 +235,12 @@ PERIOD_cond = pd.Series(PERIOD_cond)
 change_df = dose_result_df[ETC_INFO_cond|PERIOD_cond].copy()
 change_df['DATETIME'] = change_df['DATETIME'].map(lambda x:(datetime.strptime(x, '%Y-%m-%dT%H:%M') + timedelta(days=1)).strftime('%Y-%m-%dT%H:%M'))
 change_df['DOSE'] = (change_df['DOSE']/2).map(int)
-change_df['ETC_INFO'] = '처방비고 반영완료'
+change_df['ETC_INFO_TREATED'] = '처방비고 반영완료'
 for inx, row in change_df.iterrows():
     # dose_result_df.iloc[inx]
     dose_result_df.at[inx, 'DOSE'] = int(dose_result_df.at[inx, 'DOSE']/2)
-    dose_result_df.at[inx, 'ETC_INFO'] = '처방비고 반영완료'
+    # dose_result_df.at[inx,'ETC_INFO'] = '처방비고 반영완료'
+    dose_result_df.at[inx,'ETC_INFO_TREATED'] = '처방비고 반영완료'
 dose_result_df = pd.concat([dose_result_df,change_df]).reset_index(drop=True)
 
 # Period에 들어있는 추가 글자 제거
@@ -246,6 +250,10 @@ for c in PERIOD_added_list1 + PERIOD_added_list2 + [' 컨펌 후 투여',' 맞�
 for c in ['1주 1회','ut dict ','ut dict','prn ']:
     dose_result_df['PERIOD'] = dose_result_df['PERIOD'].replace(c,'x1')
 
+# ROUTE가 IV인데 ACTING에 Y가 안 들어 있는 것 제거
+
+dose_result_df = dose_result_df[~((dose_result_df['ROUTE']=='IV')&(dose_result_df['ACTING'].map(lambda x:'Y' not in x)))].copy()
+
 # ADDL, II 추가 및 다음 DOSE 보다 넘어가는 ADDL 확인
 
 dose_result_df['PERIOD'] = dose_result_df['PERIOD'].map(lambda x:x.replace('  ',' ').replace('X',' X').replace('  ',' '))
@@ -253,25 +261,91 @@ dose_result_df['ADDL'] = dose_result_df['PERIOD'].map(lambda x: int(x.split('/')
 dose_result_df['II'] = dose_result_df['PERIOD'].map(lambda x: int(x.split('wks')[0].split('/')[-1].strip()) / int(x.split('/')[0].strip())*7*24 if len(re.findall(r'\d+wks',x)) > 0 else 2*7*24).map(int)
 dose_result_df['NXTLST_DOSE_DT'] = dose_result_df.apply(lambda x: (datetime.strptime(x['DATETIME'],'%Y-%m-%dT%H:%M')+timedelta(x['ADDL']*x['II']/24)).strftime('%Y-%m-%dT%H:%M'), axis=1)
 
-# ROUTE가 IV인데 ACTING에 Y가 안 들어 있는 것 제거
+# ADDL을 하나씩 다 넣어보자
+addl_dose_result_df = dose_result_df.sort_values(['ID','DATETIME'], ascending=[True,True], ignore_index=True).copy()
+addl_added_df = list()
+for inx, row in addl_dose_result_df[addl_dose_result_df['ADDL']>0].iterrows():
+    # dose_result_df[dose_result_df.index==inx]
+    # if row['DATETIME']=='2021-07-19T12:05':
+        # raise ValueError
+    max_addl = row['ADDL']
+    init_datetime = row['DATETIME']
+    addl_frag_df = list()
+    for addl_num in range(1,row['ADDL']+1):
+        row['ETC_INFO_TREATED'] = f'ADDL반영_{addl_num}'
+        row['PERIOD'] = 'x1'
+        row['ADDL']=0
+        row['DATETIME'] = (datetime.strptime(init_datetime,'%Y-%m-%dT%H:%M')+timedelta(addl_num*row['II']/24)).strftime('%Y-%m-%dT%H:%M')
+        addl_frag_df.append(pd.DataFrame([row]))
 
-dose_result_df = dose_result_df[~((dose_result_df['ROUTE']=='IV')&(dose_result_df['ACTING'].map(lambda x:'Y' not in x)))].copy()
+    addl_added_df.append(pd.concat(addl_frag_df))
+    addl_dose_result_df.at[inx,'ADDL']=0
+    addl_dose_result_df.at[inx,'ETC_INFO_TREATED'] = f"ADDL존재_{max_addl}"
+    # dose_result_df.at[inx,'PERIOD'] = 'x1'
+
+addl_added_df = pd.concat(addl_added_df)
+
+
+# 요일 정리
+
+dose_result_df['DAY_OF_WK'] = dose_result_df['DATETIME'].map(lambda x: (datetime.strptime(x,'%Y-%m-%dT%H:%M').strftime('%w'))).map({'0':'일','1':'월','2':'화','3':'수','4':'목','5':'금','6':'토'})
+addl_dose_result_df['DAY_OF_WK'] = addl_dose_result_df['DATETIME'].map(lambda x: (datetime.strptime(x,'%Y-%m-%dT%H:%M').strftime('%w'))).map({'0':'일','1':'월','2':'화','3':'수','4':'목','5':'금','6':'토'})
+
+
+# 정리 및 저장
 
 dose_result_df = dose_result_df.sort_values(['ID','DATETIME'], ascending=[True,True], ignore_index=True)
-dose_result_df.to_csv(f"{output_dir}/dose_df.csv", encoding='utf-8-sig', index=False)
+dose_result_df.to_csv(f"{output_dir}/dose_df(addl_col).csv", encoding='utf-8-sig', index=False)
+
+addl_dose_result_df = pd.concat([addl_dose_result_df, addl_added_df]).sort_values(['ID','DATETIME'], ascending=[True,True], ignore_index=True)
+addl_dose_result_df.to_csv(f"{output_dir}/dose_df.csv", encoding='utf-8-sig', index=False)
 
 # ADDL시 다음 투약 날짜보다 큰 사람 확인
 
 addl_overflow_df = list()
-for inx, frag_df in dose_result_df[['ID','NAME','DATETIME', 'NXTLST_DOSE_DT']].groupby('ID'): #break
+for inx, frag_df in dose_result_df[['ID','NAME','DATETIME', 'NXTLST_DOSE_DT', 'DRUG','PLACE']].groupby('ID'): #break
     frag_df['SHIFT_NXTLST_DT'] = frag_df['NXTLST_DOSE_DT'].shift(1).fillna('0001-01-01T00:00')
     # frag_df['SHIFT_NXTLST_DT']
     frag_df['DELT_DT'] = frag_df.apply(lambda x: (datetime.strptime(x['DATETIME'],'%Y-%m-%dT%H:%M')-datetime.strptime(x['SHIFT_NXTLST_DT'],'%Y-%m-%dT%H:%M')).days, axis=1)
     addl_overflow_frag = frag_df[frag_df['DELT_DT'] <= 0]
     if len(addl_overflow_frag)>0:
+        # raise ValueError
+        # addl_overflow_df.append(frag_df[frag_df.index==(addl_overflow_frag.iloc[0].name-1)])
         addl_overflow_df.append(addl_overflow_frag)
 addl_overflow_df = pd.concat(addl_overflow_df, ignore_index=True)
 addl_overflow_df.to_csv(f"{output_dir}/addl_overflow_dose_df.csv", encoding='utf-8-sig', index=False)
+
+"""
+# (1) 보통 아래 예시처럼 외래에서 처방을 받게 되면, 당일 주사는 병원에서 맞고 가는지? 아니면 약만 처방받아 가는 것인지? 
+처방 받는 당일 자가로 투약했다고 볼 수 있을지?
+
+18836363	장--	2023-10-02T10:07	infliximab	120	SC	09:00/, 	1/2wks X14 Weeks		자가
+
+# (2) 아래 예시에서, 첫 4회째 투약 시점(2021-05-05) 부근에 외래에서 추가 4회 처방을 받게 되는데, 각 오더 낸 시점에 투여 받고, 이후 
+각 투여 간격별로 투약했다고(즉, 아래 예시에서 첫 번째 row의 오더는 03/24, 04/07, 04/21, 05/05 에 투약했다고) 볼 수 있을지? 그런데,
+첫 번째 오더의 마지막 투약(05/05) 시점 부근에 다시 외래를 방문하시는데, 이때 또 투약이 된 것인지? 
+
+17677819	김--	2021-03-24T15:18	adalimumab	40	SC	09:00/, 	1/2wks X8 Weeks	2021-05-05T15:18	자가
+17677819	김--	2021-05-06T11:04	adalimumab	40	SC	09:00/, 	1/1wks X4 Weeks	2021-05-27T11:04	자가
+
+# (3) 아래 예시에서 22/12/19 이후 대체로 월요일날 처방 오더를 받았는데, 24/05/02 부터는 목요일에 처방 오더를 받습니다. 이때는 
+새로 받은 약이라도 투약은 계속 월요일마다 진행되었다고 볼 수 있는 것일지?
+
+10933347	장--	2022-10-29T19:34	토	infliximab	300	IV	19:34/Y, 	x1	2022-10-29T19:34
+10933347	장--	2022-12-19T11:25	월	infliximab	120	SC	11:25/Y, 	1/2wks X12 Weeks	2023-02-27T11:25
+10933347	장--	2023-03-13T09:35	월	infliximab	120	SC	09:00/, 	1/2wks X12 Weeks	2023-05-22T09:35
+10933347	장--	2023-06-05T09:14	월	infliximab	120	SC	09:00/, 	1/2wks X12 Weeks	2023-08-14T09:14
+10933347	장--	2023-08-28T09:17	월	infliximab	120	SC	09:00/, 	1/2wks 월요일 X12 Weeks	2023-11-06T09:17
+10933347	장--	2023-11-20T09:29	월	infliximab	120	SC	09:00/, 	1/2wks 월요일 X12 Weeks	2024-01-29T09:29
+10933347	장--	2024-02-05T10:13	월	infliximab	120	SC	09:00/, 	1/2wks 월요일 X12 Weeks	2024-04-15T10:13
+10933347	장--	2024-05-02T09:25	목	infliximab	120	SC	09:00/, 	1/2wks 월요일 X12 Weeks	2024-07-11T09:25
+10933347	장--	2024-07-25T09:19	목	infliximab	120	SC	09:00/, 	1/2wks 월요일 X12 Weeks	2024-10-03T09:19
+10933347	장--	2024-10-17T09:37	목	infliximab	120	SC	09:00/, 	1/2wks 월요일 X12 Weeks	2024-12-26T09:37
+10933347	장--	2025-01-11T09:29	토	infliximab	120	SC	09:00/, 	1/2wks 월요일 X12 Weeks	2025-03-22T09:29
+10933347	장--	2025-03-11T14:03	화	infliximab	120	SC	09:00/, 	1/2wks 월요일 X12 Weeks	2025-05-20T14:03
+
+
+"""
 
 
     # break
