@@ -61,7 +61,7 @@ merged_df.to_csv(f'{output_dir}/merged_df.csv',index=False, encoding='utf-8-sig'
 # merged_df.drop_duplicates(['ID'])
 
 merged_df['DATE'] = merged_df['DATETIME'].map(lambda x:x.split('T')[0])
-merged_df['A_0FLG'] = 0
+merged_df['AZERO'] = 0
 merged_df = merged_df.merge(induction_df[['ID','IBD_TYPE']], on=['ID'], how='left')
 
 # Induction Phase 불일치 환자 구분 (전체 합친 데이터에서)
@@ -98,7 +98,7 @@ merged_df.drop_duplicates(['ID'])
 
 # min_dose_df['ID']
 # comp_df['IND_START_DATE'].iloc[0]
-appended_frag_cols = ['UID', 'NAME', 'DRUG','ROUTE', 'TIME', 'WKTIME', 'DWKTIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'DATETIME','A_0FLG','IBD_TYPE']
+appended_frag_cols = ['UID', 'NAME', 'DRUG','ROUTE', 'TIME', 'WKTIME', 'DWKTIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'DATETIME','AZERO','IBD_TYPE']
 
 
 ind_df = list()
@@ -196,7 +196,7 @@ ada_ind_df = ind_df[ind_df['DRUG']=='adalimumab'].copy()
 inf_ind_df['ID'] = inf_ind_df['UID'].map({uid:uid_inx for uid_inx, uid in enumerate(list(inf_ind_df['UID'].unique()))})
 ada_ind_df['ID'] = ada_ind_df['UID'].map({uid:uid_inx for uid_inx, uid in enumerate(list(ada_ind_df['UID'].unique()))})
 
-ind_modeling_cols = ['ID','TIME','WKTIME','DWKTIME','DV','MDV','AMT','DUR','CMT','DATETIME','IBD_TYPE','A_0FLG','UID','NAME','ROUTE','DRUG']
+ind_modeling_cols = ['ID','TIME','WKTIME','DWKTIME','DV','MDV','AMT','DUR','CMT','DATETIME','IBD_TYPE','AZERO','UID','NAME','ROUTE','DRUG']
 inf_ind_df = inf_ind_df[ind_modeling_cols].copy()
 ada_ind_df = ada_ind_df[ind_modeling_cols].copy()
 

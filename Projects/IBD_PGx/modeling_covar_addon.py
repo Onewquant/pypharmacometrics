@@ -79,16 +79,23 @@ for mode_str in ['integrated','induction','maintenance']:
     # raise ValueError
 
     ## Modeling Data Saving
-    data_check_cols = ['ID','UID','NAME','DATETIME','TIME','DV','MDV','AMT','DUR','CMT','A_0FLG','IBD_TYPE'] + list(modeling_df.loc[:,'DRUG':].iloc[:,1:].columns)
+    data_check_cols = ['ID','UID','NAME','DATETIME','TIME','DV','MDV','AMT','DUR','CMT','AZERO','IBD_TYPE'] + list(modeling_df.loc[:,'DRUG':].iloc[:,1:].columns)
     modeling_df[data_check_cols].to_csv(f'{output_dir}/infliximab_{mode_str}_datacheck_covar.csv', index=False, encoding='utf-8-sig')
 
-    modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','A_0FLG','IBD_TYPE'] + list(modeling_df.loc[:,'DRUG':].iloc[:,1:].columns)
+    modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','AZERO','IBD_TYPE'] + list(modeling_df.loc[:,'DRUG':].iloc[:,1:].columns)
     modeling_df['IBD_TYPE'] = modeling_df['IBD_TYPE'].map({'CD':1,'UC':2})
-    modeling_df = modeling_df[modeling_cols].copy()
+    modeling_df = modeling_df[modeling_cols].sort_values(['ID','TIME'], ignore_index=True)
 
     modeling_input_line = str(list(modeling_df.columns)).replace("', '"," ")
 
     print(f"Mode: {mode_str} / {modeling_input_line}")
+
+    # if mode_str=='maintenance':  # Time decrease가 생김... 확인 !
+    #     modeling_df["prev_time"] = modeling_df.groupby("ID")["TIME"].shift(1)
+    #     modeling_df["time_decrease"] = (modeling_df["TIME"] < modeling_df["prev_time"])
+    #     problem_rows = modeling_df[modeling_df["time_decrease"]]
+    #     print(problem_rows)
+    #     raise ValueError
 
     modeling_df.to_csv(f'{output_dir}/infliximab_{mode_str}_modeling_df.csv',index=False, encoding='utf-8-sig')
 

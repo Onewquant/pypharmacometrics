@@ -61,7 +61,7 @@ merged_df.to_csv(f'{output_dir}/merged_df.csv',index=False, encoding='utf-8-sig'
 # merged_df.drop_duplicates(['ID'])
 
 merged_df['DATE'] = merged_df['DATETIME'].map(lambda x:x.split('T')[0])
-merged_df['A_0FLG'] = 0
+merged_df['AZERO'] = 0
 merged_df = merged_df.merge(induction_df[['ID','IBD_TYPE']], on=['ID'], how='left')
 
 # Induction Phase 불일치 환자 구분 (전체 합친 데이터에서)
@@ -101,7 +101,7 @@ maint_diff_df  = comp_df[comp_df['MIN_DOSE_DATE']!=comp_df['IND_START_DATE']].re
 # min_dose_df['ID']
 # comp_df['IND_START_DATE'].iloc[0]
 
-appended_frag_cols = ['UID', 'NAME', 'DRUG','ROUTE', 'TIME', 'WKTIME', 'DWKTIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'DATETIME','A_0FLG','IBD_TYPE']
+appended_frag_cols = ['UID', 'NAME', 'DRUG','ROUTE', 'TIME', 'WKTIME', 'DWKTIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'DATETIME','AZERO','IBD_TYPE']
 
 maint_df = list()
 no_maintconc_df = list()
@@ -238,14 +238,14 @@ print(f"# Maintenance 시작시 농도 측정값 부재: {len(no_maintconc_df)} 
 
 
 inf_maint_df = maint_df[maint_df['DRUG']=='infliximab'].sort_values(['UID','DATETIME'], ignore_index=True)
-inf_maint_df['A_0FLG'] = (inf_maint_df['UID']!=(inf_maint_df['UID'].shift(1).fillna(0)))*1
+inf_maint_df['AZERO'] = (inf_maint_df['UID']!=(inf_maint_df['UID'].shift(1).fillna(0)))*1
 ada_maint_df = maint_df[maint_df['DRUG']=='adalimumab'].sort_values(['UID','DATETIME'], ignore_index=True)
-ada_maint_df['A_0FLG'] =(ada_maint_df['UID']!=(ada_maint_df['UID'].shift(1).fillna(0)))*1
+ada_maint_df['AZERO'] =(ada_maint_df['UID']!=(ada_maint_df['UID'].shift(1).fillna(0)))*1
 
 inf_maint_df['ID'] = inf_maint_df['UID'].map({uid:uid_inx for uid_inx, uid in enumerate(list(inf_maint_df['UID'].unique()))})
 ada_maint_df['ID'] = ada_maint_df['UID'].map({uid:uid_inx for uid_inx, uid in enumerate(list(ada_maint_df['UID'].unique()))})
 
-ind_modeling_cols = ['ID','TIME','WKTIME','DWKTIME','DV','MDV','AMT','DUR','CMT','DATETIME','IBD_TYPE','A_0FLG','UID','NAME','ROUTE','DRUG']
+ind_modeling_cols = ['ID','TIME','WKTIME','DWKTIME','DV','MDV','AMT','DUR','CMT','DATETIME','IBD_TYPE','AZERO','UID','NAME','ROUTE','DRUG']
 inf_maint_df = inf_maint_df[ind_modeling_cols].copy()
 ada_maint_df = ada_maint_df[ind_modeling_cols].copy()
 
