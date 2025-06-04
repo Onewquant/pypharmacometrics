@@ -7,6 +7,19 @@ prj_dir = './Projects/IBD_PGx'
 resource_dir = f'{prj_dir}/resource'
 output_dir = f"{prj_dir}/results"
 
+# rdf = pd.read_csv(f'{output_dir}/infliximab_induction_modeling_df.csv')
+# rdf['ALB'].median()
+# rdf['CRP'].median()
+# rdf['CREATININE'].median()
+
+## DEMO Covariates Loading
+
+demo_df = pd.read_csv(f"{resource_dir}/anti_TNFa_patients.csv")
+
+# demo_df.columns
+
+
+
 ## LAB Covariates Loading
 
 totlab_df = pd.read_csv(f"{output_dir}/lab_df.csv")
@@ -66,10 +79,10 @@ for mode_str in ['integrated','induction','maintenance']:
     # raise ValueError
 
     ## Modeling Data Saving
-    data_check_cols = ['ID','UID','NAME','DATETIME','TIME','DV','MDV','AMT','DUR','CMT','IBD_TYPE'] + list(modeling_df.loc[:,'DRUG':].iloc[:,1:].columns)
+    data_check_cols = ['ID','UID','NAME','DATETIME','TIME','DV','MDV','AMT','DUR','CMT','A_0FLG','IBD_TYPE'] + list(modeling_df.loc[:,'DRUG':].iloc[:,1:].columns)
     modeling_df[data_check_cols].to_csv(f'{output_dir}/infliximab_{mode_str}_datacheck_covar.csv', index=False, encoding='utf-8-sig')
 
-    modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','IBD_TYPE'] + list(modeling_df.loc[:,'DRUG':].iloc[:,1:].columns)
+    modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','A_0FLG','IBD_TYPE'] + list(modeling_df.loc[:,'DRUG':].iloc[:,1:].columns)
     modeling_df['IBD_TYPE'] = modeling_df['IBD_TYPE'].map({'CD':1,'UC':2})
     modeling_df = modeling_df[modeling_cols].copy()
 
@@ -86,3 +99,4 @@ for mode_str in ['integrated','induction','maintenance']:
 """
 
 # modeling_df[modeling_df['AST'].isna()]['UID'].unique()
+
