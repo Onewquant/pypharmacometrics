@@ -33,8 +33,8 @@ totlab_df['ALT'] = totlab_df[['ALT', 'ALT(GPT)']].max(axis=1)
 totlab_df['CREATININE'] = totlab_df[['Cr (S)', 'Creatinine']].max(axis=1)
 # set(totlab_df['Anti-Infliximab Ab [정밀면역검사] (정량)'].unique())
 totlab_df = totlab_df.rename(columns={'Albumin': 'ALB', 'Calprotectin (Stool)': 'CALPRTSTL', 'Calprotectin (Serum)': 'CALPRTSER', 'Anti-Infliximab Ab [정밀면역검사] (정량)':'INFATI'})
-# totlab_df = totlab_df[['UID', 'DATETIME', 'ALB', 'AST', 'ALT', 'CRP', 'CALPRTSTL', 'CREATININE','INFATI']].copy()
-totlab_df = totlab_df[['UID', 'DATETIME', 'ALB', 'AST', 'ALT', 'CRP', 'CALPRTSTL', 'CREATININE']].copy()
+totlab_df = totlab_df[['UID', 'DATETIME', 'ALB', 'AST', 'ALT', 'CRP', 'CALPRTSTL', 'CREATININE','INFATI']].copy()
+# totlab_df = totlab_df[['UID', 'DATETIME', 'ALB', 'AST', 'ALT', 'CRP', 'CALPRTSTL', 'CREATININE']].copy()
 for c in list(totlab_df.columns)[2:]:  # break
     totlab_df[c] = totlab_df[c].map(lambda x: x if type(x) == float else float(re.findall(r'[\d]+.*[\d]*', str(x))[0]))
 

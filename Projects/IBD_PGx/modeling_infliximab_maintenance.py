@@ -40,6 +40,7 @@ lab_df = pd.read_csv(f"{output_dir}/conc_df.csv")
 # lab_df['DRUG']
 lab_df = lab_df.rename(columns={'CONC':'DV'})
 lab_df['MDV']='.'
+lab_df['RATE']='.'
 lab_df['DUR']='.'
 lab_df['AMT']='.'
 lab_df['ROUTE']='.'
@@ -50,9 +51,10 @@ dose_df = pd.read_csv(f"{output_dir}/dose_df.csv")
 dose_df = dose_df.rename(columns={'DOSE':'AMT'})
 dose_df['DV'] = '.'
 dose_df['MDV'] = 1
-dose_df['DUR'] = 1
+dose_df['RATE']=dose_df['AMT']
+dose_df['DUR'] = '.'
 
-mediator_cols = ['ID','NAME','DRUG','ROUTE','DATETIME','DV','MDV','AMT','DUR']
+mediator_cols = ['ID','NAME','DRUG','ROUTE','DATETIME','DV','MDV','AMT','RATE','DUR']
 lab_df = lab_df[mediator_cols].reset_index(drop=True)
 dose_df = dose_df[mediator_cols].reset_index(drop=True)
 merged_df = pd.concat([lab_df,dose_df]).sort_values(['ID','DATETIME'], ignore_index=True)
@@ -101,7 +103,7 @@ maint_diff_df  = comp_df[comp_df['MIN_DOSE_DATE']!=comp_df['IND_START_DATE']].re
 # min_dose_df['ID']
 # comp_df['IND_START_DATE'].iloc[0]
 
-appended_frag_cols = ['UID', 'NAME', 'DRUG','ROUTE', 'TIME', 'WKTIME', 'DWKTIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'DATETIME','AZERO','IBD_TYPE']
+appended_frag_cols = ['UID', 'NAME', 'DRUG','ROUTE', 'TIME', 'WKTIME', 'DWKTIME', 'DV', 'MDV', 'AMT','RATE', 'DUR', 'CMT', 'DATETIME','AZERO','IBD_TYPE']
 
 maint_df = list()
 no_maintconc_df = list()
@@ -208,6 +210,9 @@ for inx, row in maint_cons_df.iterrows():
     maint_df_frag['WKTIME'] = maint_df_frag['TIME'] / 7
     maint_df_frag['DWKTIME'] = maint_df_frag['WKTIME'].diff().fillna(0.0)
     maint_df_frag['CMT'] = maint_df_frag['ROUTE'].map(lambda x: 2 if x!='SC' else 1)
+    maint_df_frag['RATE'] = maint_df_frag.apply(lambda x: x['RATE'] if (x['ROUTE']!='SC') else -2, axis=1)
+    maint_df_frag['RATE'] = maint_df_frag.apply(lambda x: x['RATE'] if (x['ROUTE']!='SC') else -2, axis=1)
+
     # maint_df_frag['ROUTE']
     maint_df_frag = maint_df_frag.rename(columns={'ID':'UID'})
     # ind_df_frag['TIME'] = ind_df_frag['TIME'].map(lambda x:x)
@@ -245,7 +250,7 @@ ada_maint_df['AZERO'] =(ada_maint_df['UID']!=(ada_maint_df['UID'].shift(1).filln
 inf_maint_df['ID'] = inf_maint_df['UID'].map({uid:uid_inx for uid_inx, uid in enumerate(list(inf_maint_df['UID'].unique()))})
 ada_maint_df['ID'] = ada_maint_df['UID'].map({uid:uid_inx for uid_inx, uid in enumerate(list(ada_maint_df['UID'].unique()))})
 
-ind_modeling_cols = ['ID','TIME','WKTIME','DWKTIME','DV','MDV','AMT','DUR','CMT','DATETIME','IBD_TYPE','AZERO','UID','NAME','ROUTE','DRUG']
+ind_modeling_cols = ['ID','TIME','WKTIME','DWKTIME','DV','MDV','AMT','RATE','DUR','CMT','DATETIME','IBD_TYPE','AZERO','UID','NAME','ROUTE','DRUG']
 inf_maint_df = inf_maint_df[ind_modeling_cols].copy()
 ada_maint_df = ada_maint_df[ind_modeling_cols].copy()
 
@@ -254,7 +259,7 @@ ada_maint_df = ada_maint_df[ind_modeling_cols].copy()
 inf_maint_df.to_csv(f'{output_dir}/infliximab_maintenance_datacheck.csv',index=False, encoding='utf-8-sig')
 ada_maint_df.to_csv(f'{output_dir}/adalimumab_maintenance_datacheck.csv',index=False, encoding='utf-8-sig')
 
-ind_modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','IBD_TYPE']
+ind_modeling_cols = ['ID','TIME','DV','MDV','AMT','RATE','DUR','CMT','IBD_TYPE']
 inf_maint_df['IBD_TYPE'] = inf_maint_df['IBD_TYPE'].map({'CD':1,'UC':2})
 ada_maint_df['IBD_TYPE'] = ada_maint_df['IBD_TYPE'].map({'CD':1,'UC':2})
 inf_maint_df = inf_maint_df[ind_modeling_cols].copy()
