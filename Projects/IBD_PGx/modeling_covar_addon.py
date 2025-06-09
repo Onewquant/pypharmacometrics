@@ -14,11 +14,10 @@ output_dir = f"{prj_dir}/results"
 
 ## DEMO Covariates Loading
 
-demo_df = pd.read_csv(f"{resource_dir}/anti_TNFa_patients.csv")
-
-# demo_df.columns
-
-
+demo_df = pd.read_csv(f"{resource_dir}/demo/IBD_PGx_demo.csv")
+demo_df = demo_df.rename(columns={'EMR ID':'UID','birthdate':'AGE','sex':'SEX','name':'NAME'})
+demo_df = demo_df[['UID','AGE', 'SEX']].copy()
+demo_df['UID'] = demo_df['UID'].astype(str)
 
 ## LAB Covariates Loading
 
@@ -55,6 +54,9 @@ for mode_str in ['integrated','induction','maintenance']:
     """
 
     modeling_df = modeling_df.merge(totlab_df, on=['UID','DATETIME'], how='left')
+    modeling_df = modeling_df.merge(demo_df, on=['UID'], how='left')
+    # modeling_df['UID'].iloc[0]
+    # demo_df['UID'].iloc[0]
 
     ## Covariates의 NA value 처리 (ffill 먼저 시도, 없으면 bfill, 그것도 없으면 전체의 median 값)
 
@@ -84,6 +86,9 @@ for mode_str in ['integrated','induction','maintenance']:
 
     modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','AZERO','IBD_TYPE'] + list(modeling_df.loc[:,'DRUG':].iloc[:,1:].columns)
     modeling_df['IBD_TYPE'] = modeling_df['IBD_TYPE'].map({'CD':1,'UC':2})
+    modeling_df['AGE'] = modeling_df.apply(lambda x: int((datetime.strptime(x['DATETIME'],'%Y-%m-%d') - datetime.strptime(x['AGE'],'%Y-%m-%d')).days/365.25), axis=1)
+    modeling_df['SEX'] = modeling_df['SEX'].map({'남':1,'여':2})
+
     modeling_df = modeling_df[modeling_cols].sort_values(['ID','TIME'], ignore_index=True)
 
     modeling_input_line = str(list(modeling_df.columns)).replace("', '"," ")
