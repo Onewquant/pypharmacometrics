@@ -202,6 +202,10 @@ ind_modeling_cols = ['ID','TIME','WKTIME','DWKTIME','DV','MDV','AMT','DUR','CMT'
 inf_ind_df = inf_ind_df[ind_modeling_cols].copy()
 ada_ind_df = ada_ind_df[ind_modeling_cols].copy()
 
+# DV==Zero 인 경우 모두 빼고 시행할때
+# inf_ind_df = inf_ind_df[~((inf_ind_df['TIME']==0)&(inf_ind_df['DV']==0))].copy()
+# ada_ind_df = ada_ind_df[~((ada_ind_df['TIME']==0)&(ada_ind_df['DV']==0))].copy()
+
 inf_ind_df.to_csv(f'{output_dir}/infliximab_induction_datacheck.csv',index=False, encoding='utf-8-sig')
 ada_ind_df.to_csv(f'{output_dir}/adalimumab_induction_datacheck.csv',index=False, encoding='utf-8-sig')
 
@@ -210,8 +214,6 @@ ada_ind_df.to_csv(f'{output_dir}/adalimumab_induction_datacheck.csv',index=False
 ind_modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','IBD_TYPE']
 inf_ind_df['IBD_TYPE'] = inf_ind_df['IBD_TYPE'].map({'CD':1,'UC':2})
 ada_ind_df['IBD_TYPE'] = ada_ind_df['IBD_TYPE'].map({'CD':1,'UC':2})
-
-
 
 
 
