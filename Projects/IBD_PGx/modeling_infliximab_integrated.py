@@ -297,6 +297,11 @@ else:
 print(f"# 총 환자 수: 140")
 print(f"# Induction 시작시점 일치: {len(maint_cons_df)} (Infliximab: {len(maint_cons_df[maint_cons_df['DRUG']=='infliximab'])} / Adalimumab: {len(maint_cons_df[maint_cons_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(maint_cons_df[maint_cons_df['DRUG']=='ustekinumab'])}) ")
 print(f"# Induction 시작시점 불일치: {len(maint_diff_df)} (Infliximab: {len(maint_diff_df[maint_diff_df['DRUG']=='infliximab'])} / Adalimumab: {len(maint_diff_df[maint_diff_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(maint_diff_df[maint_diff_df['DRUG']=='ustekinumab'])}) ")
+
+# print(f"# Induction 시작시점 일치: {len(maint_cons_df)} (Infliximab: {len(maint_cons_df[maint_cons_df['DRUG']=='infliximab'])} / Adalimumab: {len(maint_cons_df[maint_cons_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(maint_cons_df[maint_cons_df['DRUG']=='ustekinumab'])}) ")
+# print(f"# Induction 시작시점 불일치: {len(maint_diff_df)} (Infliximab: {len(maint_diff_df[maint_diff_df['DRUG']=='infliximab'])} / Adalimumab: {len(maint_diff_df[maint_diff_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(maint_diff_df[maint_diff_df['DRUG']=='ustekinumab'])}) ")
+
+
 # print('')
 # print(f"# Maintenance 시작시 농도 측정값 존재: {len(maint_uniq_df)} (Infliximab: {len(maint_uniq_df[maint_uniq_df['DRUG']=='infliximab'])} / Adalimumab: {len(maint_uniq_df[maint_uniq_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(maint_uniq_df[maint_uniq_df['DRUG']=='ustekinumab'])}) ")
 # print(f"# Maintenance 시작시 농도 측정값 부재: {len(no_maintconc_df)} (Infliximab: {len(no_maintconc_df[no_maintconc_df['DRUG']=='infliximab'])} / Adalimumab: {len(no_maintconc_df[no_maintconc_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(no_maintconc_df[no_maintconc_df['DRUG']=='ustekinumab'])}) ")
@@ -306,16 +311,24 @@ print(f"# Induction 시작시점 불일치: {len(maint_diff_df)} (Infliximab: {l
 # inf_ind_df = inf_ind_df
 # inf_ind_df
 
+
+# pd.concat([inf_ind_df, inf_maint_df])['UID'].drop_duplicates().reset_index(drop=True)
+# pd.concat([ada_ind_df, ada_maint_df])['UID'].drop_duplicates().reset_index(drop=True)
+
 inf_ind_df = ind_df[ind_df['DRUG']=='infliximab'].copy()
 ada_ind_df = ind_df[ind_df['DRUG']=='adalimumab'].copy()
+# ust_ind_df = ind_df[ind_df['DRUG']=='ustekinumab'].copy()
 
 inf_maint_df = maint_df[maint_df['DRUG']=='infliximab'].sort_values(['UID','DATETIME'], ignore_index=True)
 inf_maint_df['AZERO'] = (inf_maint_df['UID']!=(inf_maint_df['UID'].shift(1).fillna(0)))*1
 ada_maint_df = maint_df[maint_df['DRUG']=='adalimumab'].sort_values(['UID','DATETIME'], ignore_index=True)
 ada_maint_df['AZERO'] =(ada_maint_df['UID']!=(ada_maint_df['UID'].shift(1).fillna(0)))*1
+# ust_maint_df = maint_df[maint_df['DRUG']=='ustekinumab'].sort_values(['UID','DATETIME'], ignore_index=True)
+# ust_maint_df['AZERO'] =(ada_maint_df['UID']!=(ada_maint_df['UID'].shift(1).fillna(0)))*1
 
 inf_df = pd.concat([inf_ind_df, inf_maint_df]).sort_values(['UID','DATETIME'], ignore_index=True)
 ada_df = pd.concat([ada_ind_df, ada_maint_df]).sort_values(['UID','DATETIME'], ignore_index=True)
+# ust_df = pd.concat([ust_ind_df, ust_maint_df]).sort_values(['UID','DATETIME'], ignore_index=True)
 
 inf_df['ID'] = inf_df['UID'].map({uid:uid_inx for uid_inx, uid in enumerate(list(inf_df['UID'].unique()))})
 ada_df['ID'] = ada_df['UID'].map({uid:uid_inx for uid_inx, uid in enumerate(list(ada_df['UID'].unique()))})

@@ -186,6 +186,8 @@ print(f"# Induction Trough 농도 측정값 부재(시작시점 일치중): {len
 
 
 
+
+
 # inf_ind_df = inf_ind_df
 # inf_ind_df
 

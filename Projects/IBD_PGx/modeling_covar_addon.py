@@ -19,6 +19,11 @@ demo_df = demo_df.rename(columns={'EMR ID':'UID','birthdate':'AGE','sex':'SEX','
 demo_df = demo_df[['UID','AGE', 'SEX']].copy()
 demo_df['UID'] = demo_df['UID'].astype(str)
 
+demo2_df = pd.read_csv(f"{resource_dir}/demo2/IBD_PGx_demo2.csv")
+demo2_df = demo2_df.rename(columns={'EMR ID':'UID','height':'HT','weight':'WT','bmi':'BMI','bsa':'BSA'})
+demo2_df = demo2_df[['UID','HT', 'WT', 'BMI','BSA']].copy()
+demo2_df['UID'] = demo2_df['UID'].astype(str)
+
 ## LAB Covariates Loading
 
 totlab_df = pd.read_csv(f"{output_dir}/lab_df.csv")
@@ -55,28 +60,27 @@ for mode_str in ['integrated','induction','maintenance']:
 
     modeling_df = modeling_df.merge(totlab_df, on=['UID','DATETIME'], how='left')
     modeling_df = modeling_df.merge(demo_df, on=['UID'], how='left')
+    modeling_df = modeling_df.merge(demo2_df, on=['UID'], how='left')
     # modeling_df['UID'].iloc[0]
     # demo_df['UID'].iloc[0]
 
     ## Covariates의 NA value 처리 (ffill 먼저 시도, 없으면 bfill, 그것도 없으면 전체의 median 값)
 
-    md_df_list = list()
-    for md_inx,md_df in modeling_df.groupby(['UID']):
-        md_df = md_df.sort_values(['DATETIME']).fillna(method='ffill').fillna(method='bfill')
-        md_df_list.append(md_df)
-    modeling_df = pd.concat(md_df_list).reset_index(drop=True)
-
-    modeling_df.fillna(modeling_df.median(numeric_only=True), inplace=True)
-
-    # ## Covariates의 NA value 처리 (ffill 먼저 시도, 없으면 bfill, 그것도 없으면 전체의 median 값)
-    #
     # md_df_list = list()
-    # for md_inx, md_df in modeling_df.groupby(['UID']):
-    #     md_df = md_df.sort_values(['DATETIME']).fillna(method='ffill')
+    # for md_inx,md_df in modeling_df.groupby(['UID']):
+    #     md_df = md_df.sort_values(['DATETIME']).fillna(method='ffill').fillna(method='bfill')
     #     md_df_list.append(md_df)
     # modeling_df = pd.concat(md_df_list).reset_index(drop=True)
-
+    #
     # modeling_df.fillna(modeling_df.median(numeric_only=True), inplace=True)
+
+    ## Covariates의 NA value 처리 (ffill 먼저 시도, 없으면 bfill, 그것도 없으면 전체의 median 값)
+
+    md_df_list = list()
+    for md_inx, md_df in modeling_df.groupby(['UID']):
+        md_df = md_df.sort_values(['DATETIME']).fillna(method='ffill')
+        md_df_list.append(md_df)
+    modeling_df = pd.concat(md_df_list).reset_index(drop=True)
 
     # raise ValueError
 
