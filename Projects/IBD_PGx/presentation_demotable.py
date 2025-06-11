@@ -59,19 +59,34 @@ for drug in ['infliximab', 'adalimumab']:
         sampling_desc = sampling_df.groupby('ID').agg(DV_COUNT=('DV', 'count'), DV_MIN=('DV', 'min')).reset_index(drop=False)
 
         mddemo_dict['Total samples, n (patients n)'] = f"{len(sampling_df)} ({len(sampling_desc)})"
-        mddemo_dict['TL < 3, n (%)'] = f"{np.sum(sampling_df['DV'].astype(float) < 3)} ({round((np.sum(sampling_df['DV'].astype(float) < 3)*100/len(sampling_df['DV'])),2)})"
-        mddemo_dict['TL ≥ 3, n (%)'] = f"{np.sum(sampling_df['DV'].astype(float) >= 3)} ({round((np.sum(sampling_df['DV'].astype(float) >= 3)*100/len(sampling_df['DV'])),2)})"
+        TL_cutoff = 5 if drug=='infliximab' else 8
+        mddemo_dict[f'TL < {TL_cutoff}, n (%)'] = f"{np.sum(sampling_df['DV'].astype(float) < TL_cutoff)} ({round((np.sum(sampling_df['DV'].astype(float) < TL_cutoff)*100/len(sampling_df['DV'])),2)})"
+        mddemo_dict[f'TL ≥ {TL_cutoff}, n (%)'] = f"{np.sum(sampling_df['DV'].astype(float) >= TL_cutoff)} ({round((np.sum(sampling_df['DV'].astype(float) >= TL_cutoff)*100/len(sampling_df['DV'])),2)})"
         mddemo_dict['Samples/person, mean (SD)'] = f"{round(np.mean(sampling_desc['DV_COUNT']), 2)} ({round(np.std(sampling_desc['DV_COUNT']), 2)})"
 
-
         mddemo_dict['ATI'] = ""
-        not_na_ati_ids = md_df[~md_df['INFATI'].isna()].drop_duplicates(['ID'])['ID'].reset_index(drop=True)
+        not_na_ati_df = md_df[~md_df['INFATI'].isna()].copy()
+        not_na_ati_ids = not_na_ati_df.drop_duplicates(['ID'])['ID'].reset_index(drop=True)
         ati_series = md_df.sort_values(['ID', 'INFATI'], ascending=[True, False]).drop_duplicates(['ID'])['INFATI'].copy()
         mddemo_dict['Patients with measured ATI, n (%)'] = f"{len(not_na_ati_ids)} ({round(len(not_na_ati_ids) * 100 / subtotal_n, 2)})"
-        mddemo_dict['ATI positive (>= 10), n (%)'] = f"{(ati_series >= 10).sum()} ({round(((ati_series >= 10).sum()) * 100 / len(not_na_ati_ids), 2)})"
+        mddemo_dict['Patients with ATI positive, n (%)'] = f"{(ati_series >= 10).sum()} ({round(((ati_series >= 10).sum()) * 100 / len(not_na_ati_ids), 2)})"
+
+        mddemo_dict['total ATI samples, n (%)'] = f"{len(not_na_ati_df)} ({round(100, 2)})"
+        mddemo_dict['high ATI samples, n (%)'] = f"{(not_na_ati_df['INFATI'] >= 10).sum()} ({round(((not_na_ati_df['INFATI'] >= 10).sum()) * 100 / len(not_na_ati_df), 2)})"
+        mddemo_dict['intermediate ATI samples, n (%)'] = f"{((not_na_ati_df['INFATI'] < 10)&(not_na_ati_df['INFATI'] > 2.5)).sum()} ({round(((not_na_ati_df['INFATI'] < 10)&(not_na_ati_df['INFATI'] > 2.5)) * 100 / len(not_na_ati_df), 2)})"
+        mddemo_dict['LLOQ ATI samples, n (%)'] = f"{(not_na_ati_df['INFATI'] <= 2.5).sum()} ({round(((not_na_ati_df['INFATI'] <= 2.5).sum()) * 100 / len(not_na_ati_df), 2)})"
+
+        # not_na_ati_df[(not_na_ati_df['INFATI'] < 10)&(not_na_ati_df['INFATI'] > 2.5)][['ID','INFATI']]
+        raise ValueError
+        # not_na_ati_df = md_df[~md_df['INFATI'].isna()].copy()
+        # not_na_ati_df[not_na_ati_df['INFATI'] > 2.5].drop_duplicates(['ID'])['INFATI']
+        # not_na_ati_df[not_na_ati_df['INFATI'] >= 10]
+
         if drug=='adalimumab':
             mddemo_dict['Patients with measured ATI, n (%)'] = f"0 (0.0)"
-            mddemo_dict['ATI positive (>= 10), n (%)'] = f"0 (0.0)"
+            mddemo_dict['ATI high (value >= 10), n (%)'] = f"0 (0.0)"
+            mddemo_dict['ATI intermediate (10 > value >= 2.5), n (%)'] = f"0 (0.0)"
+            mddemo_dict['ATI negative (value < 2.5), n (%)'] = f"0 (0.0)"
 
 
         ## Dosing

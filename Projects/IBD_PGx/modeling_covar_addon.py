@@ -67,23 +67,24 @@ for drug in ['infliximab','adalimumab']:
 
         ## Covariates의 NA value 처리 (ffill 먼저 시도, 없으면 bfill, 그것도 없으면 전체의 median 값)
 
-        md_df_list = list()
-        for md_inx,md_df in modeling_df.groupby(['UID']):
-            md_df = md_df.sort_values(['DATETIME']).fillna(method='ffill').fillna(method='bfill')
-            md_df_list.append(md_df)
-        modeling_df = pd.concat(md_df_list).reset_index(drop=True)
-
-        modeling_df.fillna(modeling_df.median(numeric_only=True), inplace=True)
+        # md_df_list = list()
+        # for md_inx,md_df in modeling_df.groupby(['UID']):
+        #     md_df = md_df.sort_values(['DATETIME']).fillna(method='ffill').fillna(method='bfill')
+        #     md_df_list.append(md_df)
+        # modeling_df = pd.concat(md_df_list).reset_index(drop=True)
+        #
+        # modeling_df.fillna(modeling_df.median(numeric_only=True), inplace=True)
 
         ## Covariates의 NA value 처리 (ffill 먼저 시도, 없으면 bfill, 그것도 없으면 전체의 median 값)
 
-        # md_df_list = list()
-        # for md_inx, md_df in modeling_df.groupby(['UID']):
-        #     md_df = md_df.sort_values(['DATETIME']).fillna(method='ffill')
-        #     md_df_list.append(md_df)
-        # modeling_df = pd.concat(md_df_list).reset_index(drop=True)
+        md_df_list = list()
+        for md_inx, md_df in modeling_df.groupby(['UID']):
+            # md_df = md_df.sort_values(['DATETIME']).fillna(method='ffill')
+            md_df = md_df.sort_values(['DATETIME'])
+            md_df_list.append(md_df)
+        modeling_df = pd.concat(md_df_list).reset_index(drop=True)
 
-        # modeling_df.fillna(modeling_df.median(numeric_only=True), inplace=True)
+        # modeling_df.fillna('.', inplace=True)
 
         # raise ValueError
 
@@ -107,9 +108,14 @@ for drug in ['infliximab','adalimumab']:
         #     modeling_df["time_decrease"] = (modeling_df["TIME"] < modeling_df["prev_time"])
         #     problem_rows = modeling_df[modeling_df["time_decrease"]]
         #     print(problem_rows)
-        #     raise ValueError
+        # raise ValueError
 
         modeling_df.to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df.csv',index=False, encoding='utf-8-sig')
+        modeling_df[~((modeling_df['TIME'] == 0) & (modeling_df['DV'] == '0.0'))].copy().to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df_without_zero_dv.csv',index=False, encoding='utf-8-sig')
+        modeling_df['TIME']= modeling_df['TIME']/24
+        modeling_df.to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df_dayscale.csv',index=False, encoding='utf-8-sig')
+
+
 
 """
 # 결과에서 Covariate 일부분이 비어있는 이유

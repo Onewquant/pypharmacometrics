@@ -54,6 +54,7 @@ for finx, fpath in enumerate(lab_files):
     fdf['VALUE'] = fdf['검사결과']
     fdf = fdf.drop_duplicates(['DATETIME','LAB'], keep='last', ignore_index=True)
     fpv_df = fdf.pivot_table(index='DATETIME', columns='LAB', values='VALUE', aggfunc='min').reset_index(drop=False).fillna(method='ffill')
+    # fpv_df = fdf.pivot_table(index='DATETIME', columns='LAB', values='VALUE', aggfunc='min').reset_index(drop=False)
     fpv_df.columns.name = None
     fpv_df['UID'] = pid
     ind_lab_cols = list(fpv_df.columns)
@@ -82,6 +83,7 @@ for uid, uid_df in lab_result_df.groupby('UID',as_index=False): #break
     uid_fulldt_df['UID'] = uid
 
     uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left').fillna(method='ffill')
+    # uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left')
 
     if count==0:
         full_result_df = uid_fulldt_df.copy()
