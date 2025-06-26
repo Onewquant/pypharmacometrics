@@ -40,7 +40,7 @@ for drug in ['infliximab', 'adalimumab']:
         mddemo_dict['AGE at the 1st Dose, mean (SD)'] = f"{round(np.mean(age_series), 2)} ({round(np.std(age_series), 2)})"
 
         sex_series = md_df.drop_duplicates(['ID'])['SEX'].copy()
-        mddemo_dict['Female, n (%)'] = f"{(sex_series==1).sum()} ({round(((sex_series==1).sum()) * 100 /len(sex_series), 2)})"
+        mddemo_dict['Female, n (%)'] = f"{(sex_series==2).sum()} ({round(((sex_series==2).sum()) * 100 /len(sex_series), 2)})"
 
         height_series = md_df.drop_duplicates(['ID'])['HT'].copy()
         mddemo_dict['Height(recent), mean (SD)'] = f"{round(np.mean(height_series), 2)} ({round(np.std(height_series), 2)})"

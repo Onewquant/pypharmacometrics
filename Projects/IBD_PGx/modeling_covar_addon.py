@@ -113,7 +113,7 @@ for drug in ['infliximab','adalimumab']:
         # modeling_df['CREATININE'].median()
         # modeling_df['ALB'].median()
         # modeling_df['CRP'].median()
-        raise ValueError
+        # raise ValueError
 
         # modeling_df['A_0FLG'] = (modeling_df['ID'].shift(1)!=modeling_df['ID'])*1
 
