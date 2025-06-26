@@ -77,9 +77,9 @@ for finx, fpath in enumerate(conc_files): #break
     conc_df['ID'] = pid
     conc_df['NAME'] = pname
     conc_df['DRUG'] = conc_df['검사명'].map(lambda x:x.split(' ')[0].lower())
-    conc_df['검사결과'] = conc_df['검사결과'].replace('중복 오더임',np.nan)
-    conc_df['CONC'] = conc_df['검사결과'].map(lambda x:float(x.split('(')[0].replace('<','').replace('>','').strip()) if str(x).lower()!='nan' else np.nan)
-    conc_df['ETC_INFO'] = conc_df['검사결과'].map(lambda x:x.split('(')[-1].strip() if str(x).lower() != 'nan' else np.nan)
+    conc_df['검사결과'] = conc_df['검사결과'].replace('중복 오더임',np.nan).astype(str)
+    conc_df['CONC'] = conc_df['검사결과'].map(lambda x:float(x.split('(')[0].replace('<','').replace('>','').strip()) if x.lower()!='nan' else np.nan)
+    conc_df['ETC_INFO'] = conc_df['검사결과'].map(lambda x:x.split('(')[-1].strip() if x.lower() != 'nan' else np.nan)
 
 
     conc_df = conc_df[~conc_df['CONC'].isna()].copy()
@@ -115,6 +115,16 @@ for finx, fpath in enumerate(conc_files): #break
     # drug_order_set = drug_order_set.union(set(dose_df['처방지시'].map(lambda x:''.join(x.split(':')[0].replace('  ',' ').split(') ')[1:]).replace('[원내]','').replace('[D/C]','').replace('[보류]','').replace('[반납]','').replace('[Em] ','').strip()).drop_duplicates()))
 
 conc_result_df = pd.concat(conc_result_df, ignore_index=True).drop_duplicates(['ID','보고일','오더일','DRUG','CONC'])
+
+etc_info_list = list()
+for x in conc_result_df['ETC_INFO']:
+    try:
+        float(x)
+        etc_info_list.append(np.nan)
+    except:
+        etc_info_list.append(x)
+conc_result_df['ETC_INFO'] = etc_info_list
+
 conc_result_df.to_csv(f"{output_dir}/conc_df(lab).csv", encoding='utf-8-sig', index=False)
 
 # ot_list = list()
