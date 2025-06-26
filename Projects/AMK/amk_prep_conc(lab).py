@@ -5,7 +5,8 @@ from pynca.tools import *
 # result_type = 'R'
 
 prj_name = 'AMK'
-prj_dir = f'./Projects/{prj_name}'
+prj_dir = f'C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/{prj_name}'
+# prj_dir = f'./Projects/{prj_name}'
 resource_dir = f'{prj_dir}/resource'
 output_dir = f"{prj_dir}/results"
 if not os.path.exists(output_dir):
@@ -79,13 +80,13 @@ for finx, fpath in enumerate(conc_files): #break
     conc_df['DRUG'] = conc_df['검사명'].map(lambda x:x.split(' ')[0].lower())
     conc_df['검사결과'] = conc_df['검사결과'].replace('중복 오더임',np.nan).astype(str)
     conc_df['CONC'] = conc_df['검사결과'].map(lambda x:float(x.split('(')[0].replace('<','').replace('>','').strip()) if x.lower()!='nan' else np.nan)
-    conc_df['ETC_INFO'] = conc_df['검사결과'].map(lambda x:x.split('(')[-1].strip() if x.lower() != 'nan' else np.nan)
+    conc_df['POTENTIAL_SAMPLING_INFO'] = conc_df['검사결과'].map(lambda x:x.split('(')[-1].strip() if x.lower() != 'nan' else np.nan)
 
 
     conc_df = conc_df[~conc_df['CONC'].isna()].copy()
     # conc_df[] = conc_df[['보고일','오더일']].max(axis=1)
 
-    conc_result_df.append(conc_df[['ID','NAME','보고일','오더일','DRUG','CONC', 'ETC_INFO']])
+    conc_result_df.append(conc_df[['ID','NAME','보고일','오더일','DRUG','CONC', 'POTENTIAL_SAMPLING_INFO']])
     # conc_result_df['ID'].drop_duplicates()
     # # if pname=='김옥순': raise ValueError
     #
@@ -117,13 +118,13 @@ for finx, fpath in enumerate(conc_files): #break
 conc_result_df = pd.concat(conc_result_df, ignore_index=True).drop_duplicates(['ID','보고일','오더일','DRUG','CONC'])
 
 etc_info_list = list()
-for x in conc_result_df['ETC_INFO']:
+for x in conc_result_df['POTENTIAL_SAMPLING_INFO']:
     try:
         float(x)
         etc_info_list.append(np.nan)
     except:
         etc_info_list.append(x)
-conc_result_df['ETC_INFO'] = etc_info_list
+conc_result_df['POTENTIAL_SAMPLING_INFO'] = etc_info_list
 
 conc_result_df.to_csv(f"{output_dir}/conc_df(lab).csv", encoding='utf-8-sig', index=False)
 
