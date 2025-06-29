@@ -259,10 +259,29 @@ for inx, row in dose_result_df.iterrows():
 
 
     # DOSE 붙이기 작업
-    dose_split = row['DOSE'].strip().split('_')
-    if (dose_split>1):
+    dose_split = row['DOSE'].strip().replace(')','').replace('(','').split('_')
+    new_actval_split = new_actval_str.split('_')
+    if (len(dose_split)>1):
+        if len(dose_split)==len(new_actval_split):
+            new_actval_str = '_'.join([f"{new_actval_split[nav_dose_inx]}DOSE{dose_split[nav_dose_inx]}" for nav_dose_inx in range(len(dose_split))])
+            print(f'C / {new_actval_str}')
+            # raise ValueError
+        else:
+            if len(new_actval_split)==1:
+                new_actval_str += f"DOSE{dose_split[-1]}"
+                print(f'N / {new_actval_str}')
+            else:
+                print(f'N / {new_actval_str}')
+                raise ValueError
+    else:
+        # print('one dose')
+        # Acting에 dose가 들어있는 경우도 생각해서 넣어줘야.
+        new_actval_str = '_'.join([f"{nav}DOSE{dose_split[0]}" for nav in new_actval_split])
+        print(f'O / {new_actval_str}')
+        # raise ValueError
         
-    new_actval_str.split('_')
+        # Dose가 한 자리수인 경우도 존재 / dose_split 3개, acting_split 2개 인 경우 있음
+
 
     dt_dose_series.append(new_actval_str)
 dose_result_df['DT_DOSE'] = dt_dose_series
