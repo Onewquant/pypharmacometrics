@@ -298,6 +298,11 @@ for inx, row in dose_result_df.iterrows():
     dt_dose_series.append(new_actval_str)
 dose_result_df['DT_DOSE'] = dt_dose_series
 dose_result_df.to_csv(f"{output_dir}/dt_dose_df.csv", encoding='utf-8-sig', index=False)
+
+
+
+
+dose_result_df = pd.read_csv(f"{output_dir}/dt_dose_df.csv")
 """
 # 각 actval에 Dose 추가하는 작업
 # 각 actval을 dt_dose_series 에 append하여 한 컬럼 구성
