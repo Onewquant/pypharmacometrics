@@ -143,7 +143,7 @@ dose_result_df['DATE'] = dose_result_df['DATETIME'].map(lambda x:x.split('T')[0]
 dose_result_df['ACTING'] = dose_result_df['ACTING'].map(lambda x:x.replace('MG','mg').replace('G','mg').replace('MD','12A').replace('MN',' 12P')) # # MG 이나 MICU 등 보정 (M 들어가 있어 아래 코드에서 잘못인식)
 
 dt_dose_series = list()
-vacant_data = '0000-00-00 NN:NN'
+vacant_data = '0000-00-00TNN:NN'
 for inx, row in dose_result_df.iterrows():
     # raise ValueError
 
@@ -160,7 +160,7 @@ for inx, row in dose_result_df.iterrows():
         ## 날짜 시간/Y일때
         y_val = re.findall(r"\d\d\d\d-\d\d-\d\d \d\d:\d\d/Y",actval)
         if len(y_val) > 0:
-            new_actval_str+='_' + y_val[0].replace("/Y","")
+            new_actval_str+='_' + y_val[0].replace("/Y","").replace(" ","T")
             continue
         else:
             pass
@@ -168,7 +168,7 @@ for inx, row in dose_result_df.iterrows():
         ## 시간/Y 일떄
         y_val = re.findall(r"\d\d:\d\d/Y",actval)
         if len(y_val) > 0:
-            new_actval_str+=f'_{row["DATE"]} {y_val[0].replace("/Y","")}'
+            new_actval_str+=f'_{row["DATE"]}T{y_val[0].replace("/Y","")}'
             continue
 
         ## 나머지 처리
@@ -233,14 +233,14 @@ for inx, row in dose_result_df.iterrows():
                         else:
                             minute_str = time_pattern_split[-1].zfill(2)
                         num_time_str = f"{hour_str}:{minute_str}"
-                        new_actval_str += f'_{date_pattern[0]} {num_time_str}'
+                        new_actval_str += f'_{date_pattern[0]}T{num_time_str}'
                         continue
                         
                     elif (len(date_pattern) > 0) and (len(time_pattern) == 0):
-                        new_actval_str += f'_{date_pattern[0]} NN:NN'
+                        new_actval_str += f'_{date_pattern[0]}TNN:NN'
                         continue
                     elif (len(date_pattern) == 0) and (len(time_pattern) > 0):
-                        new_actval_str += f'_{row["DATE"]} {time_pattern[0]}'
+                        new_actval_str += f'_{row["DATE"]}T{time_pattern[0]}'
                         continue
                     # print(f"({inx}) {actval} / {date_pattern} / {time_pattern}")
                     else:
@@ -260,28 +260,40 @@ for inx, row in dose_result_df.iterrows():
 
     # DOSE 붙이기 작업
     dose_split = row['DOSE'].strip().replace(')','').replace('(','').split('_')
+    dose_split_set = set(dose_split)
     new_actval_split = new_actval_str.split('_')
-    if (len(dose_split)>1):
+    if (len(dose_split_set)>1):
         if len(dose_split)==len(new_actval_split):
+            print(f'({inx}) C / {new_actval_str}')
             new_actval_str = '_'.join([f"{new_actval_split[nav_dose_inx]}DOSE{dose_split[nav_dose_inx]}" for nav_dose_inx in range(len(dose_split))])
-            print(f'C / {new_actval_str}')
             # raise ValueError
         else:
             if len(new_actval_split)==1:
+                print(f'({inx}) N / {new_actval_str}')
                 new_actval_str += f"DOSE{dose_split[-1]}"
-                print(f'N / {new_actval_str}')
             else:
-                print(f'N / {new_actval_str}')
-                raise ValueError
+                if len(dose_split) > len(new_actval_split):
+                    # 500, 340 이면 뒤의 340만으로 Acting에 적용
+                    print(f'({inx}) N / {new_actval_str}')
+                    new_actval_str = '_'.join([f"{nav}DOSE{dose_split[-len(new_actval_split):][nav_inx]}" for nav_inx,nav in enumerate(new_actval_split)])
+                #elif len(dose_split) < len(new_actval_split):
+                else:
+                    # 500, 340, 340 이면 뒤의 340을 연장해서 Acting에 적용
+                    print(f'({inx}) N / {new_actval_str}')
+                    new_actval_str = '_'.join([f"{nav}DOSE{(dose_split+[dose_split[-1]]*(len(new_actval_split)-len(dose_split)))[nav_inx]}" for nav_inx,nav in enumerate(new_actval_split)])
+                # else:
+                #     pass
+                # '500_340_340' 이렇게 되어 있는 분 (11836850) 중 ACTING에 2개만 있는 row는 340_340으로 일단 처리
+                # '500_340_340' 인데, ['2007-11-08T02:18', '2007-11-08T11:18', '2007-11-08T16:55', '2007-11-08T23:26']
     else:
+        print(f'({inx}) O / {new_actval_str}')
         # print('one dose')
         # Acting에 dose가 들어있는 경우도 생각해서 넣어줘야.
-        new_actval_str = '_'.join([f"{nav}DOSE{dose_split[0]}" for nav in new_actval_split])
-        print(f'O / {new_actval_str}')
+        new_actval_str = '_'.join([f"{nav}DOSE{list(dose_split_set)[0]}" for nav in new_actval_split])
+
         # raise ValueError
         
         # Dose가 한 자리수인 경우도 존재 / dose_split 3개, acting_split 2개 인 경우 있음
-
 
     dt_dose_series.append(new_actval_str)
 dose_result_df['DT_DOSE'] = dt_dose_series
