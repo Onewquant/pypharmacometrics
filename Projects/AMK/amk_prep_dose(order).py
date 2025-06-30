@@ -16,8 +16,12 @@ drug_order_set = set()
 order_files = glob.glob(f'{resource_dir}/order/{prj_name}_order(*).xlsx')
 dose_result_df = list()
 no_data_pid_list = list()
-result_cols = ['ID','NAME','DT1','DT2','DATETIME','DRUG','DOSE','ACTING','PERIOD','PLACE']
-no_dup_cols = [c for c in result_cols if c!='NAME']
+no_dosing_dt_data_list = list()
+no_drug_keyword_pid_list = list()
+result_cols = ['ID','NAME','DT1','DT2','DATETIME','DRUG','DOSE','ACTING','PERIOD','PLACE','ETC_INFO']
+no_dup_cols = [c for c in result_cols if c not in ['NAME','ETC_INFO']]
+# len(order_files)
+# len(no_data_pid_list)
 for finx, fpath in enumerate(order_files): #break
 
 
@@ -55,8 +59,6 @@ for finx, fpath in enumerate(order_files): #break
         print(f"({finx}) {pname} / {pid} / No dosing data")
         continue
 
-    print(f"({finx}) {pname} / {pid}")
-
     # dose_df['처방지시비고'] = dose_df['처방지시'].map(lambda x:x.split(' : ')[-1] if len(x.split(' : '))>1 else '')
 
     dose_df['ID'] = pid
@@ -69,16 +71,32 @@ for finx, fpath in enumerate(order_files): #break
     # dose_df[dose_df['약국_검사'].isna() & dose_df['처방지시'].map(lambda x: '(infliximab)' in x.lower())].to_excel(f"{output_dir}/test.xlsx",index=False)
     # dose_df[~dose_df['약국_검사'].isna() & dose_df['처방지시'].map(lambda x: '(infliximab)' in x.lower())].to_excel(f"{output_dir}/test2.xlsx",index=False)
     dose_df = dose_df[(~dose_df['약국_검사'].isna())].copy()
+    if len(dose_df)==0:
+        no_dosing_dt_data_list.append(pid)
+        print(f"({finx}) {pname} / {pid} / No dosing datetime data")
+        continue
 
     #### 성분명이 IBD Biologics 인 경우만으로 필터링 (Infliximab, Adalimumab)
 
-    regex_pattern = r'\(amikacin'
-    dose_df = dose_df[dose_df['처방지시'].map(lambda x: bool(re.search(regex_pattern, x, flags=re.IGNORECASE)))].copy()
-    # dose_df.to_csv(f"{output_dir}/test_dose_df.csv", encoding='utf-8-sig', index=False)
+    regex_pattern = r'amikacin'
+    # regex_pattern = r'\(amikacin'
+    dose_df = dose_df[dose_df['처방지시'].map(lambda x: bool(re.search(regex_pattern, x, flags=re.IGNORECASE)) and not re.search(r'normal\s+saline', x, re.IGNORECASE) and not re.search(r'dextrose', x, re.IGNORECASE))].copy()
 
-    dose_df['DT1'] = dose_df['약국_검사'].map(lambda x:x.split(']   ')[0].split('[')[-1].replace(' ','T'))
-    dose_df['DT2'] = dose_df['약국_검사'].map(lambda x:x.split(']   ')[-1].split('[')[-1].replace(' ','T')[:-3])
+    if len(dose_df)==0:
+        no_drug_keyword_pid_list.append(pid)
+        print(f"({finx}) {pname} / {pid} / Amikacin Dosing")
+        continue
+
+    print(f"({finx}) {pname} / {pid}")
+    # dose_df.to_csv(f"{output_dir}/test_dose_df.csv", encoding='utf-8-sig', index=False)
+    if pid=='28340528': # 이 사람 날짜가 제대로 입력되어 있지 않은 row 존재
+        dose_df.at[dose_df.index[-1],'약국_검사'] = dose_df.at[dose_df.index[-2],'약국_검사']
+
+    dose_df['DT1'] = dose_df['약국_검사'].map(lambda x:re.findall(r'\d\d\d\d-\d\d-\d\d \d\d:\d\d',x)[0].replace(' ','T'))
+    dose_df['DT2'] = dose_df['약국_검사'].map(lambda x:re.findall(r'\d\d\d\d-\d\d-\d\d \d\d:\d\d',x)[-1].replace(' ','T'))
     dose_df['DATETIME'] = dose_df[['DT1','DT2']].min(axis=1)
+    # for
+    # dose_df[dose_df['DATETIME']=='']
     # dose_df['ETC_INFO'] = dose_df['처방지시비고'].copy()
     dose_df['DRUG'] = dose_df['처방지시'].map(lambda x: re.search(regex_pattern, x, flags=re.IGNORECASE).group().lower().replace('(','').replace(')',''))
     # dose_df['ROUTE'] = dose_df['처방지시'].map(lambda x: 'IV' if " [SC] " not in x else 'SC')
@@ -96,7 +114,7 @@ for finx, fpath in enumerate(order_files): #break
         if len(seq_dose_patterns)>=1:
             dose_val = '_'.join(re.findall(r'\d+',seq_dose_patterns[0]))
         else:
-            try: dose_val = int(re.findall(r'\d+mg',x)[1].replace('mg','').strip())
+            try: dose_val = int(re.findall(r'\d+m',x)[1].replace('m','').strip())
             except:
                 """
                 (12) [D/C] Amikacin soln 500mg 신풍(Amikacin) (430-430)mg [IVS] x1 
@@ -108,10 +126,23 @@ for finx, fpath in enumerate(order_files): #break
                 (11)  Amikacin soln 500mg 신풍(Amikacin) (430-430)mg [IVS] q12h 
                 이런 모양 처리 고민
                 """
-                if 'via' in x: via_count = int(re.findall(r'\d+ via', x)[0].replace('via', '').strip())
-                if 'amp' in x: via_count = int(re.findall(r'\d+ amp', x)[0].replace('amp', '').strip())
+                if 'via' in x:
+                    via_count = int(re.findall(r'\d+ via', x)[0].replace('via', '').strip())
+                elif 'amp' in x:
+                    via_count = int(re.findall(r'\d+ amp', x)[0].replace('amp', '').strip())
+                else:
+                    via_count = 1
+                    print(f"({finx}) {pname} / {pid} / (No vial count) / {x}")
+                    # continue
 
-                dose_val = int(re.findall(r'\d+mg', x)[0].replace('mg', '').strip()) * via_count
+                mg_num_list = re.findall(r'\d+m', x)
+                if len(mg_num_list)==0:
+                    mg_num = np.nan
+                    print(f"({finx}) {pname} / {pid} / (No mg number) / {x}")
+                    # continue
+                else:
+                    mg_num = int(mg_num_list[0].replace('m', '').strip())
+                dose_val = mg_num * via_count
             # dose_val = re.findall(r'\d+',x.split('mg')[0].split('Remsima')[-1].split('Humira')[-1].split('Stelara')[-1].split(' ')[-1].strip())[0]
             # raise ValueError
         dose_series.append(dose_val)
@@ -122,7 +153,10 @@ for finx, fpath in enumerate(order_files): #break
     # (1) [원내] Remsima 100mg inj (Infliximab Korea) ...
     dose_df['ACTING'] = dose_df['Acting']
 
-    dose_df['PERIOD'] = dose_df['처방지시'].map(lambda x: re.findall(r'q[\d]+h',x)[0] if len(re.findall(r'q[\d]+h',x))>=1 else x.strip())
+    dose_df['PERIOD'] = dose_df['처방지시'].map(lambda x: re.findall(r'q[\d]+h',x)[0] if len(re.findall(r'q[\d]+h',x))>=1 else x.split(':')[0].split(']')[-1].strip())
+    dose_df['ETC_INFO'] = dose_df['처방지시'].map(lambda x:x.split(':')[-1].strip() if ':' in x else '')
+    dose_df = dose_df[~dose_df['DOSE'].isna()].copy()
+
     # dose_df.to_csv(f"{output_dir}/dose_df_lhj.csv", encoding='utf-8-sig', index=False)
     # dose_df.loc[3203,'처방지시']
 
@@ -132,15 +166,25 @@ for finx, fpath in enumerate(order_files): #break
 
 
 dose_result_df = pd.concat(dose_result_df, ignore_index=True).sort_values(['ID','DATETIME'], ascending=[True,False], ignore_index=True)
-# dose_result_df.to_csv(f"{output_dir}/part_dose_df.csv", encoding='utf-8-sig', index=False)
+dose_result_df.to_csv(f"{output_dir}/part_dose_df.csv", encoding='utf-8-sig', index=False)
+# dose_result_df.columns
 
-dose_result_df = pd.read_csv(f"{output_dir}/part_dose_df.csv")
+print(f"TOTAL 오더 파일 수 : {len(order_files)} 명")
+print(f"ACTING 정보 존재 : {len(order_files)-len(no_data_pid_list)} 명 (-{len(no_data_pid_list)} 명)")
+print(f"약국_검사에 Datetime 정보 존재 : {len(order_files)-len(no_data_pid_list)-len(no_dosing_dt_data_list)} 명 (-{len(no_dosing_dt_data_list)} 명)")
+print(f"처방지시에 Amikacin 키워드 존재 : {len(order_files)-len(no_data_pid_list)-len(no_dosing_dt_data_list)-len(no_drug_keyword_pid_list)} 명 (-{len(no_drug_keyword_pid_list)} 명)")
+print(f"모든 DOSING 정보 존재 : {len(dose_result_df.drop_duplicates(['ID']))} 명")
+# dose_result_df.drop_duplicates(['ID'])
+
+# dose_result_df = pd.read_csv(f"{output_dir}/part_dose_df.csv")
 
 
-## 날짜T시간D도스 형태로 정리
+
+## 날짜T시간DOSE도스 형태로 정리
 
 dose_result_df['DATE'] = dose_result_df['DATETIME'].map(lambda x:x.split('T')[0])
 dose_result_df['ACTING'] = dose_result_df['ACTING'].map(lambda x:x.replace('MG','mg').replace('G','mg').replace('MD','12A').replace('MN',' 12P')) # # MG 이나 MICU 등 보정 (M 들어가 있어 아래 코드에서 잘못인식)
+dose_result_df['DOSE'] = dose_result_df['DOSE'].astype(str)
 
 dt_dose_series = list()
 vacant_data = '0000-00-00TNN:NN'
@@ -149,7 +193,6 @@ for inx, row in dose_result_df.iterrows():
 
     new_actval_str=''
     for actval in row['ACTING'].strip().split(','): #break
-
 
         ## 빈칸일때
         if actval=='':
@@ -182,38 +225,8 @@ for inx, row in dose_result_df.iterrows():
                 continue
             else:
                 rest_y_val = actval.split('/')[-1]
-                ## Y가 있긴 한데 다음과 같은 format들
+
                 """
-                (344) /Y 2005-05-17(2P ER) / ['2005-05-17'] / ['2P']
-                (922) /Y 2005-02-05(ER 4P30) / ['2005-02-05'] / ['4P30']
-                (1284)  /Y 2005-04-16(외출9A) / ['2005-04-16'] / ['9A']
-                (1932) /Y 2004-01-06(2P30 ER) / ['2004-01-06'] / ['2P30']
-                (2214) /Y 청구용 2003-12-11(10A-청구용) / ['2003-12-11'] / ['10A']
-                (2506) /Y 2005-06-27(반납) / ['2005-06-27'] / []
-                (2671)  /Y 2004-05-06(OA) / ['2004-05-06'] / []
-                (3125) /Y 2005-01-28(PRE 적용) / ['2005-01-28'] / []
-                (3813) /Y 2004-06-18(10P-청구용) / ['2004-06-18'] / ['10P']
-                (4002) /Y 2004-07-21(청구용-6A) / ['2004-07-21'] / ['6A']
-                (4012) /Y 2004-06-12(7A-청구용) / ['2004-06-12'] / ['7A']
-                (4394) /Y 2004-07-06(비품) / ['2004-07-06'] / []
-                (4733) /Y 2004-07-21(청구용) / ['2004-07-21'] / []
-                (4850) /Y 2004-08-02(비품) / ['2004-08-02'] / []
-                (4944) /Y 2005-05-03(7P-ER) / ['2005-05-03'] / ['7P']
-                (5085) /Y 2004-08-05(4P-ER) / ['2004-08-05'] / ['4P']
-                (5794) /Y 2005-04-04(청구) / ['2005-04-04'] / []
-                (5805) /Y 2004-10-27(청구용) / ['2004-10-27'] / []
-                (5887)  /Y 2004-11-09(OA) / ['2004-11-09'] / []
-                (6358) /Y 2005-01-02(청구용) / ['2005-01-02'] / []
-                (6456)  /Y 2005-01-22(ER5P) / ['2005-01-22'] / ['5P']
-                (6664) /Y 2005-02-25(청구용) / ['2005-02-25'] / []
-                (6974) /Y 2005-04-22(청) / ['2005-04-22'] / []
-                (7213) /Y 2005-09-12(청구용) / ['2005-09-12'] / []
-                (7461) /Y 2005-06-01(비품용) / ['2005-06-01'] / []
-                (7504) /Y 2005-06-14(청구) / ['2005-06-14'] / []
-                (7763)  /Y 2005-08-06(ER 1P) / ['2005-08-06'] / ['1P']
-                (7972) /Y 2005-09-04(N) / ['2005-09-04'] / []
-                (8074) /Y 2005-09-13(600 9P) / ['2005-09-13'] / ['9P']
-                
                 # 확인 필요한 부분: D나 N은 투약이 된것인지?
                 """
                 if ('Y ' in rest_y_val) or ('O ' in rest_y_val) or ('N ' in rest_y_val):
@@ -235,7 +248,7 @@ for inx, row in dose_result_df.iterrows():
                         num_time_str = f"{hour_str}:{minute_str}"
                         new_actval_str += f'_{date_pattern[0]}T{num_time_str}'
                         continue
-                        
+
                     elif (len(date_pattern) > 0) and (len(time_pattern) == 0):
                         new_actval_str += f'_{date_pattern[0]}TNN:NN'
                         continue
@@ -246,7 +259,7 @@ for inx, row in dose_result_df.iterrows():
                     else:
                         new_actval_str+=f'_{vacant_data}'
                         continue
-                #         
+                #
                 # elif ('O ' in rest_y_val) or ('N ' in rest_y_val):
                 #     date_pattern = re.findall(r"\d\d\d\d-\d\d-\d\d",actval)
                 #     # print(f"({inx}) {actval}")
@@ -292,7 +305,7 @@ for inx, row in dose_result_df.iterrows():
         new_actval_str = '_'.join([f"{nav}DOSE{list(dose_split_set)[0]}" for nav in new_actval_split])
 
         # raise ValueError
-        
+
         # Dose가 한 자리수인 경우도 존재 / dose_split 3개, acting_split 2개 인 경우 있음
 
     dt_dose_series.append(new_actval_str)
@@ -302,7 +315,29 @@ dose_result_df.to_csv(f"{output_dir}/dt_dose_df.csv", encoding='utf-8-sig', inde
 
 
 
-dose_result_df = pd.read_csv(f"{output_dir}/dt_dose_df.csv")
+# dose_result_df = pd.read_csv(f"{output_dir}/dt_dose_df.csv")
+# vacant_data = '0000-00-00TNN:NN'
+final_dose_df = list()
+for inx, row in dose_result_df.iterrows(): #break
+    row_df = pd.DataFrame(columns=['ID','NAME','DRUG','PERIOD','DT_DOSE','ETC_INFO'])
+    row_df['DT_DOSE'] = row['DT_DOSE'].split('_')
+    for c in ['ID','NAME','DRUG','PERIOD','ETC_INFO']:
+        row_df[c] = row[c]
+    final_dose_df.append(row_df)
+final_dose_df = pd.concat(final_dose_df, ignore_index=True)
+final_dose_df['DATE'] = final_dose_df['DT_DOSE'].map(lambda x:x.split('T')[0])
+final_dose_df['TIME'] = final_dose_df['DT_DOSE'].map(lambda x:x.split('T')[-1].split('DOSE')[0])
+final_dose_df['DOSE'] = final_dose_df['DT_DOSE'].map(lambda x:x.split('DOSE')[-1])
+final_dose_df = final_dose_df[(final_dose_df['DATE']!=vacant_data.split('T')[0])]
+# final_dose_df = final_dose_df[(final_dose_df['TIME']!=vacant_data.split('T')[-1])]
+final_dose_df = final_dose_df[['ID','NAME','DRUG','PERIOD','DATE','TIME','DOSE','ETC_INFO']].sort_values(['ID','DATE','TIME'], ignore_index=True)
+
+# final_dose_df['ID'].drop_duplicates()
+
+final_dose_df.to_csv(f"{output_dir}/final_dose_df.csv", encoding='utf-8-sig', index=False)
+
+# final_dose_df[final_dose_df['PERIOD'].map(lambda x:len(x)>20)]
+
 """
 # 각 actval에 Dose 추가하는 작업
 # 각 actval을 dt_dose_series 에 append하여 한 컬럼 구성
