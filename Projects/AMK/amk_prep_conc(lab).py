@@ -128,6 +128,108 @@ conc_result_df['POTENTIAL_SAMPLING_INFO'] = etc_info_list
 
 conc_result_df.to_csv(f"{output_dir}/conc_df(lab).csv", encoding='utf-8-sig', index=False)
 
+
+
+
+conc_result_df = pd.read_csv(f'{output_dir}/conc_df(lab).csv')
+
+## 랩 자체에 sampling 시간 같이 쓰여 있는 경우 parsing
+
+pot_samp_list = list()
+for inx, row in conc_result_df.iterrows():
+
+    # ## 날짜 Parsing
+    # samp_patterns = re.findall(r'\d{1,2}\/\d+', str(row['POTENTIAL_SAMPLING_INFO']))
+    # if len(samp_patterns) > 0:
+    #     sp = samp_patterns[0]
+    #     sp
+    #     raise ValueError
+
+    ## 시간 Parsing
+
+    # NN:NN 타입
+    pot_samp_str = ''
+
+    samp_patterns = re.findall(r'\d+:\d+',str(row['POTENTIAL_SAMPLING_INFO']))
+    if len(samp_patterns)>0:
+        sp = samp_patterns[0]
+        hour = int(sp.split(':')[0])
+        minute = int(sp.split(':')[-1])
+        if (hour >= 24) or (minute >= 60):
+            print('(hour >= 24) or (minute >= 60)')
+            raise ValueError
+        else:
+            pot_samp_str = sp
+            pot_samp_list.append(pot_samp_str)
+            continue
+
+    # NN [P|A]: NN 타입
+    samp_patterns = re.findall(r'\d+[P|A]:*\d+', str(row['POTENTIAL_SAMPLING_INFO']).upper())
+    if len(samp_patterns)>0:
+        # raise ValueError
+        sp = samp_patterns[0].upper().replace(':','')
+        if 'A' in sp:
+            sp_split = sp.split('A')
+            hour = int(sp_split[0])
+            minute = int(sp_split[-1])
+
+            if (hour >= 12) or (minute >= 60):
+                print('AM - (hour >= 24) or (minute >= 60)')
+                if hour <= 24:
+                    pot_samp_str = sp.replace('A',':')
+                    pot_samp_list.append(pot_samp_str)
+                    continue
+
+                str_hour = str(hour)
+                if len(str_hour)==4:
+                    hour = int(str(hour)[-2:])
+                elif len(str_hour)==3:
+                    sp_first = sp_split[0]
+                    if ((int((sp_first[:2])) <= 31) and (int((sp_first[2:])) <= 12)) and ((int((sp_first[:1])) <= 31) and (int((sp_first[-2:])) <= 12)):
+                        raise ValueError
+                    else:
+                        if (int((sp_first[:2])) <= 31) and (int((sp_first[2:])) <= 12):
+                            hour = int((sp_first[2:]))
+                        elif (int((sp_first[:1])) <= 31) and (int((sp_first[-2:])) <= 12):
+                            hour = int((sp_first[-2:]))
+
+        elif 'P' in sp:
+            sp_split = sp.split('P')
+            hour = int(sp_split[0]) + 12
+            minute = int(sp_split[-1])
+
+            if (hour >= 24) or (minute >= 60):
+                print('PM - (hour >= 24) or (minute >= 60)')
+                if hour <= 36:
+                    pot_samp_str = sp.replace('P',':')
+                    pot_samp_list.append(pot_samp_str)
+                    continue
+
+                str_hour = str(hour)
+                if len(str_hour)==4:
+                    hour = int(str(hour)[-2:])
+                elif len(str_hour)==3:
+                    sp_first = sp_split[0]
+                    if ((int((sp_first[:2])) <= 31) and (int((sp_first[2:])) <= 12)) and ((int((sp_first[:1])) <= 31) and (int((sp_first[-2:])) <= 12)):
+                        raise ValueError
+                    else:
+                        if (int((sp_first[:2])) <= 31) and (int((sp_first[2:])) <= 12):
+                            hour = int((sp_first[2:])) + 12
+                        elif (int((sp_first[:1])) <= 31) and (int((sp_first[-2:])) <= 12):
+                            hour = int((sp_first[-2:])) + 12
+
+                    # raise ValueError
+
+        pot_samp_str = f"{str(hour).zfill(2)}:{str(minute).zfill(2)}"
+        pot_samp_list.append(pot_samp_str)
+        continue
+
+    pot_samp_list.append(pot_samp_str)
+conc_result_df['POTENTIAL_SAMPLING_INFO'] = pot_samp_list
+
+
+conc_result_df.to_csv(f"{output_dir}/final_lab_df.csv", encoding='utf-8-sig', index=False)
+
 # ot_list = list()
 # for inx_ot, order_text in enumerate(drug_order_set):
 #     if '[SC]' not in order_text:
