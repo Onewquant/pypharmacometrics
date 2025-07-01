@@ -303,7 +303,9 @@ sampling_result_df = pd.read_csv(f"{output_dir}/final_sampling_df.csv")
 sampling_result_df['ID'] = sampling_result_df['ID'].astype(str)
 uniq_sampling_pids = list(sampling_result_df.drop_duplicates(['ID'])['ID'].astype(str))
 
-# pt_df = list()
+
+final_df = list()
+conc_samp_mismatch_pids = list()
 for finx, fpath in enumerate(pt_files): #break
 
     pid = fpath.split('(')[-1].split('_')[0]
@@ -311,7 +313,7 @@ for finx, fpath in enumerate(pt_files): #break
     # pt_df.append({'ID':pid,'NAME':pname})
 
 
-
+    # 둘 다 있는 경우
     if (pid in uniq_conc_pids) and (pid in uniq_sampling_pids):
         id_conc_df = conc_result_df[conc_result_df['ID']==pid].copy()
         id_samp_df = sampling_result_df[sampling_result_df['ID']==pid].copy()
@@ -319,28 +321,51 @@ for finx, fpath in enumerate(pt_files): #break
         # id_conc_df[['오더일','보고일','POT채혈DT','CONC']]
         # id_samp_df[['오더일','보고일','채혈DT', '라벨DT','접수DT']]
 
+        cdf = id_conc_df.sort_values(['보고일', 'CONC'])
+        sdf = id_samp_df[['보고일', '채혈DT', '라벨DT', '접수DT','시행DT','보고DT']].copy()
 
-
-        cdf = id_conc_df[['보고일', 'POT채혈DT', 'CONC']].sort_values(['보고일', 'CONC'])
-        sdf = id_samp_df[['보고일', '채혈DT', '라벨DT', '접수DT']].copy()
-
-        mdf = cdf.merge(sdf, on=['보고일'], how='outer')[['보고일', 'CONC', '채혈DT', 'POT채혈DT']]
+        mdf = cdf.merge(sdf, on=['보고일'], how='outer')
         mdf = mdf.sort_values(['보고일', 'CONC', '채혈DT'])
 
         trough_mdf = mdf.drop_duplicates(['보고일'], keep='first')
         peak_mdf = mdf.drop_duplicates(['보고일'], keep='last')
-        total_mdf = pd.concat([trough_mdf, peak_mdf]).drop_duplicates(['보고일','CONC', '채혈DT'], keep='last').sort_values(['보고일', 'CONC', '채혈DT'])
+        total_mdf = pd.concat([trough_mdf, peak_mdf]).drop_duplicates(['보고일', 'CONC', '채혈DT'], keep='last').sort_values(['보고일', 'CONC', '채혈DT'])
+        # total_mdf.columns
+        # cdf = id_conc_df[['보고일', 'POT채혈DT', 'CONC']].sort_values(['보고일', 'CONC'])
+        # sdf = id_samp_df[['보고일', '채혈DT', '라벨DT', '접수DT']].copy()
+        #
+        # mdf = cdf.merge(sdf, on=['보고일'], how='outer')[['보고일', 'CONC', '채혈DT', 'POT채혈DT']]
+        # mdf = mdf.sort_values(['보고일', 'CONC', '채혈DT'])
+        #
+        # trough_mdf = mdf.drop_duplicates(['보고일'], keep='first')
+        # peak_mdf = mdf.drop_duplicates(['보고일'], keep='last')
+        # total_mdf = pd.concat([trough_mdf, peak_mdf]).drop_duplicates(['보고일','CONC', '채혈DT'], keep='last').sort_values(['보고일', 'CONC', '채혈DT'])
+        #
+
+
+        # CONC 데이터는 오더일, 보고일 날짜 두개만 존재
+        # SAMPLING 데이터는 여러개의 날짜 존재 두개만 존재
 
         if len(total_mdf)!=len(cdf):
-
-            if pid not in ['10112328', '10143478', '10228470', '10533576']:
-                raise ValueError
+            print(f"({finx}) {pname} / {pid} / No matched")
+            conc_samp_mismatch_pids.append(pid)
+            # len(conc_samp_mismatch_pids)
+            # continue
+        else:
+            print(f"({finx}) {pname} / {pid} / matched")
+            # if pid not in ['11116501', '10112328', '10143478', '10228470', '10533576', '10885385', '10914959', ]:
+            #     raise ValueError
             """
             '10112328' : 04.17 의 샘플링 타임데이터는 있는데 농도데이터는 부재함.
             '10143478' : 2018-06-04 의 농도데이터가 3개 있는데, 샘플링 데이터는 2개라 max, min만 남기면 df 길이 달라짐
             '10228470' : 2005-04-22 샘플링 데이터는 존재, 농도 데이터는 그날 것 없음. (total_mdf 에 CONC가 NAN인 값 생김)
             '10533576' : 2004-09-14에 CONC가 0.5로 똑같은 데이터 2개 존재. 아마도 9-13일 채혈일듯. (보고일 기준으로만 하고 있는데, 중복된 데이터의 오더일은 다른 것으로 보아 하나는 2004-09-13 데이터인듯
+            '10885385' : 샘플링 데이터 보고일기준 2003-12-30 는 1개, 2004-01-02 는 2개 인데, 농도데이터에서는 2, 1개로 되어 있음
+            '10914959'
+            '11116501'
             """
+        final_df.append(total_mdf)
+
         # if finx==3:
         #     raise ValueError
 
@@ -354,17 +379,32 @@ for finx, fpath in enumerate(pt_files): #break
         # peak_mdf = mdf.drop_duplicates(['오더일', '보고일'], keep='last')
         # total_mdf = pd.concat([trough_mdf, peak_mdf]).drop_duplicates(['오더일', '보고일', 'CONC', '채혈DT'], keep='last')
 
-
-
+    # CONC 데이터만 있는 경우
     elif (pid in uniq_conc_pids) and (pid not in uniq_sampling_pids):
-        print(f"({finx}) {pname} / {pid} / No Time data")
-        continue
-    elif (pid not in uniq_conc_pids) and (pid in uniq_sampling_pids):
-        print(f"({finx}) {pname} / {pid} / No Conc data")
-        continue
-    elif (pid not in uniq_conc_pids) and (pid not in uniq_sampling_pids):
-        print(f"({finx}) {pname} / {pid} / No Both data")
-        continue
+        print(f"({finx}) {pname} / {pid} / Only conc data")
+        id_conc_df = conc_result_df[conc_result_df['ID'] == pid].copy()
+        # cdf = id_conc_df[['보고일', 'POT채혈DT', 'CONC']].sort_values(['보고일', 'CONC'])
+        for c in ['채혈DT', '라벨DT', '접수DT','시행DT','보고DT']:
+            id_conc_df[c] = ''
+        # id_conc_df.columns
+        final_df.append(id_conc_df)
+        # continue
     else:
-        raise ValueError
+        # raise ValueError
+        continue
 
+    # elif (pid not in uniq_conc_pids) or (pid not in uniq_sampling_pids):
+    #     print(f"({finx}) {pname} / {pid} / No eighther data")
+    #     continue
+    # else:
+    #     raise ValueError
+
+final_df = pd.concat(final_df, ignore_index=True)
+final_df.to_csv(f"{output_dir}/final_conc_df(with sampling).csv", encoding='utf-8-sig', index=False)
+
+
+"""
+## 새로운 로직 필요할듯
+# (1) DOSING 시점을 기준으로 측정된 CONC들의 평균을 내서 평균값보다 작은 애들은 DOSING 전에 배치, 큰 애들은 DOSING 후에 배치
+# (2).........
+"""
