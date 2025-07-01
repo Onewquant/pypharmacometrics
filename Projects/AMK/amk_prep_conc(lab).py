@@ -135,22 +135,50 @@ conc_result_df = pd.read_csv(f'{output_dir}/conc_df(lab).csv')
 
 ## 랩 자체에 sampling 시간 같이 쓰여 있는 경우 parsing
 
-pot_samp_list = list()
+pot_time_list = list()
+pot_date_list = list()
 for inx, row in conc_result_df.iterrows():
 
-    # ## 날짜 Parsing
-    # samp_patterns = re.findall(r'\d{1,2}\/\d+', str(row['POTENTIAL_SAMPLING_INFO']))
-    # if len(samp_patterns) > 0:
-    #     sp = samp_patterns[0]
-    #     sp
-    #     raise ValueError
+    pot_date_str = ''
+    year = max(row['보고일'],row['오더일'])[:4]
+
+    ## 날짜 Parsing
+    samp_md_patterns = re.findall(r'\d{1,2}\/\d+', str(row['POTENTIAL_SAMPLING_INFO']))
+    if len(samp_md_patterns) > 0:
+        sp_md = samp_md_patterns[0]
+        sp_md_split = sp_md.split('/')
+        month = sp_md_split[0]
+        day = sp_md_split[-1]
+        if (int(month) > 12) or (int(day) > 31):
+            print('(month > 12) or (day > 31)')
+
+            str_day = day
+            if len(str_day) == 4:
+                day = str_day[:2]
+            elif len(str_day) == 3:
+                sp_first = sp_md_split[-1]
+                if ((int((sp_first[:2])) <= 31) and (int((sp_first[2:])) <= 12)) and ((int((sp_first[:1])) <= 31) and (int((sp_first[-2:])) <= 12)):
+                    raise ValueError
+                else:
+                    if (int(sp_first[:2]) <= 31) and (int(sp_first[2:]) <= 12):
+                        day = sp_first[:2]
+                    elif (int(sp_first[:1]) <= 31) and (int(sp_first[-2:]) <= 12):
+                        day = int(sp_first[:1])
+            # raise ValueError
+
+        sp_md = f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+        pot_date_str = sp_md
+    pot_date_list.append(pot_date_str)
+
 
     ## 시간 Parsing
+
+    search_samp_str = str(row['POTENTIAL_SAMPLING_INFO']).upper().replace('MD', '12:').replace('::', ':')
 
     # NN:NN 타입
     pot_samp_str = ''
 
-    samp_patterns = re.findall(r'\d+:\d+',str(row['POTENTIAL_SAMPLING_INFO']))
+    samp_patterns = re.findall(r'\d+:\d+',search_samp_str)
     if len(samp_patterns)>0:
         sp = samp_patterns[0]
         hour = int(sp.split(':')[0])
@@ -159,25 +187,34 @@ for inx, row in conc_result_df.iterrows():
             print('(hour >= 24) or (minute >= 60)')
             raise ValueError
         else:
-            pot_samp_str = sp
-            pot_samp_list.append(pot_samp_str)
+            pot_samp_str = f"T{str(hour).zfill(2)}:{str(minute).zfill(2)}"
+            pot_time_list.append(pot_samp_str)
             continue
 
+
+
     # NN [P|A]: NN 타입
-    samp_patterns = re.findall(r'\d+[P|A]:*\d+', str(row['POTENTIAL_SAMPLING_INFO']).upper())
-    if len(samp_patterns)>0:
+
+    samp_patterns = re.findall(r'\d+[P|A]:*\d+', search_samp_str)
+    samp_short_patterns = re.findall(r'\d+[P|A]', search_samp_str)
+    if (len(samp_patterns)>0) or (len(samp_short_patterns)>0):
+
+        # NN [P|A] 만 있는 경우 -> 뒤에 minute을 00으로 붙여줌
+        if ((len(samp_patterns)>0)==False) and (len(samp_short_patterns)>0):
+            sp = samp_short_patterns[0] + '00'
         # raise ValueError
-        sp = samp_patterns[0].upper().replace(':','')
+        else:
+            sp = samp_patterns[0].replace(':','')
         if 'A' in sp:
             sp_split = sp.split('A')
             hour = int(sp_split[0])
             minute = int(sp_split[-1])
 
-            if (hour >= 12) or (minute >= 60):
-                print('AM - (hour >= 24) or (minute >= 60)')
+            if (hour > 12) or (minute >= 60):
+                print('AM - (hour > 12) or (minute >= 60)')
                 if hour <= 24:
-                    pot_samp_str = sp.replace('A',':')
-                    pot_samp_list.append(pot_samp_str)
+                    pot_samp_str = f"T{str(hour).zfill(2)}:{str(minute).zfill(2)}"
+                    pot_time_list.append(pot_samp_str)
                     continue
 
                 str_hour = str(hour)
@@ -201,8 +238,8 @@ for inx, row in conc_result_df.iterrows():
             if (hour >= 24) or (minute >= 60):
                 print('PM - (hour >= 24) or (minute >= 60)')
                 if hour <= 36:
-                    pot_samp_str = sp.replace('P',':')
-                    pot_samp_list.append(pot_samp_str)
+                    pot_samp_str = 'T'+sp.replace('P',':')
+                    pot_time_list.append(pot_samp_str)
                     continue
 
                 str_hour = str(hour)
@@ -220,15 +257,18 @@ for inx, row in conc_result_df.iterrows():
 
                     # raise ValueError
 
-        pot_samp_str = f"{str(hour).zfill(2)}:{str(minute).zfill(2)}"
-        pot_samp_list.append(pot_samp_str)
+        pot_samp_str = f"T{str(hour).zfill(2)}:{str(minute).zfill(2)}"
+        pot_time_list.append(pot_samp_str)
         continue
 
-    pot_samp_list.append(pot_samp_str)
-conc_result_df['POTENTIAL_SAMPLING_INFO'] = pot_samp_list
+
+    pot_time_list.append(pot_samp_str)
+conc_result_df['POT_SAMP_TIME'] = pot_time_list
+conc_result_df['POT_SAMP_MONTHDAY'] = pot_date_list
 
 
-conc_result_df.to_csv(f"{output_dir}/final_lab_df.csv", encoding='utf-8-sig', index=False)
+conc_result_df = conc_result_df[['ID', 'NAME', '보고일', '오더일', 'DRUG', 'CONC', 'POT_SAMP_MONTHDAY', 'POT_SAMP_TIME','POTENTIAL_SAMPLING_INFO']].copy()
+conc_result_df.to_csv(f"{output_dir}/final_conc_df.csv", encoding='utf-8-sig', index=False)
 
 # ot_list = list()
 # for inx_ot, order_text in enumerate(drug_order_set):
@@ -247,3 +287,84 @@ conc_result_df.to_csv(f"{output_dir}/final_lab_df.csv", encoding='utf-8-sig', in
 #
 # df = pd.read_csv(f'{resource_dir}/glpharma_CONC.csv')
 # seq_df = pd.read_csv(f'{prj_dir}/glpharma_SEQUENCE.csv')
+
+pt_files = glob.glob(f'{resource_dir}/lab/{prj_name}_lab(*).xlsx')
+
+conc_result_df = pd.read_csv(f"{output_dir}/final_conc_df.csv")
+conc_result_df = conc_result_df[['ID', 'NAME', '보고일', '오더일', 'DRUG', 'CONC', 'POT_SAMP_MONTHDAY', 'POT_SAMP_TIME']].copy()
+conc_result_df['ID'] = conc_result_df['ID'].astype(str)
+conc_result_df['POT_SAMP_MONTHDAY'] = conc_result_df['POT_SAMP_MONTHDAY'].replace(np.nan,'')
+conc_result_df['POT_SAMP_TIME'] = conc_result_df['POT_SAMP_TIME'].replace(np.nan,'')
+conc_result_df['POT채혈DT'] = conc_result_df['POT_SAMP_MONTHDAY'] + conc_result_df['POT_SAMP_TIME']
+uniq_conc_pids = list(conc_result_df.drop_duplicates(['ID'])['ID'].astype(str))
+
+sampling_result_df = pd.read_csv(f"{output_dir}/final_sampling_df.csv")
+# sampling_result_df = sampling_result_df[['ID', 'NAME', '오더일','보고일','채혈DT']].copy()
+sampling_result_df['ID'] = sampling_result_df['ID'].astype(str)
+uniq_sampling_pids = list(sampling_result_df.drop_duplicates(['ID'])['ID'].astype(str))
+
+# pt_df = list()
+for finx, fpath in enumerate(pt_files): #break
+
+    pid = fpath.split('(')[-1].split('_')[0]
+    pname = fpath.split('_')[-1].split(')')[0]
+    # pt_df.append({'ID':pid,'NAME':pname})
+
+
+
+    if (pid in uniq_conc_pids) and (pid in uniq_sampling_pids):
+        id_conc_df = conc_result_df[conc_result_df['ID']==pid].copy()
+        id_samp_df = sampling_result_df[sampling_result_df['ID']==pid].copy()
+
+        # id_conc_df[['오더일','보고일','POT채혈DT','CONC']]
+        # id_samp_df[['오더일','보고일','채혈DT', '라벨DT','접수DT']]
+
+
+
+        cdf = id_conc_df[['보고일', 'POT채혈DT', 'CONC']].sort_values(['보고일', 'CONC'])
+        sdf = id_samp_df[['보고일', '채혈DT', '라벨DT', '접수DT']].copy()
+
+        mdf = cdf.merge(sdf, on=['보고일'], how='outer')[['보고일', 'CONC', '채혈DT', 'POT채혈DT']]
+        mdf = mdf.sort_values(['보고일', 'CONC', '채혈DT'])
+
+        trough_mdf = mdf.drop_duplicates(['보고일'], keep='first')
+        peak_mdf = mdf.drop_duplicates(['보고일'], keep='last')
+        total_mdf = pd.concat([trough_mdf, peak_mdf]).drop_duplicates(['보고일','CONC', '채혈DT'], keep='last').sort_values(['보고일', 'CONC', '채혈DT'])
+
+        if len(total_mdf)!=len(cdf):
+
+            if pid not in ['10112328', '10143478', '10228470', '10533576']:
+                raise ValueError
+            """
+            '10112328' : 04.17 의 샘플링 타임데이터는 있는데 농도데이터는 부재함.
+            '10143478' : 2018-06-04 의 농도데이터가 3개 있는데, 샘플링 데이터는 2개라 max, min만 남기면 df 길이 달라짐
+            '10228470' : 2005-04-22 샘플링 데이터는 존재, 농도 데이터는 그날 것 없음. (total_mdf 에 CONC가 NAN인 값 생김)
+            '10533576' : 2004-09-14에 CONC가 0.5로 똑같은 데이터 2개 존재. 아마도 9-13일 채혈일듯. (보고일 기준으로만 하고 있는데, 중복된 데이터의 오더일은 다른 것으로 보아 하나는 2004-09-13 데이터인듯
+            """
+        # if finx==3:
+        #     raise ValueError
+
+        # cdf = id_conc_df[['오더일', '보고일', 'POT채혈DT', 'CONC']].copy()
+        # sdf = id_samp_df[['오더일', '보고일', '채혈DT', '라벨DT', '접수DT']].copy()
+
+        # mdf = cdf.merge(sdf, on=['오더일', '보고일'], how='outer')[['오더일', '보고일','CONC','채혈DT','POT채혈DT']]
+        # mdf = mdf.sort_values(['오더일', '보고일', 'CONC', '채혈DT'])
+
+        # trough_mdf = mdf.drop_duplicates(['오더일', '보고일'], keep='first')
+        # peak_mdf = mdf.drop_duplicates(['오더일', '보고일'], keep='last')
+        # total_mdf = pd.concat([trough_mdf, peak_mdf]).drop_duplicates(['오더일', '보고일', 'CONC', '채혈DT'], keep='last')
+
+
+
+    elif (pid in uniq_conc_pids) and (pid not in uniq_sampling_pids):
+        print(f"({finx}) {pname} / {pid} / No Time data")
+        continue
+    elif (pid not in uniq_conc_pids) and (pid in uniq_sampling_pids):
+        print(f"({finx}) {pname} / {pid} / No Conc data")
+        continue
+    elif (pid not in uniq_conc_pids) and (pid not in uniq_sampling_pids):
+        print(f"({finx}) {pname} / {pid} / No Both data")
+        continue
+    else:
+        raise ValueError
+
