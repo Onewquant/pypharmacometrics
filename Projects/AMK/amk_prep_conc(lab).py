@@ -287,8 +287,27 @@ conc_result_df.to_csv(f"{output_dir}/final_conc_df.csv", encoding='utf-8-sig', i
 #
 # df = pd.read_csv(f'{resource_dir}/glpharma_CONC.csv')
 # seq_df = pd.read_csv(f'{prj_dir}/glpharma_SEQUENCE.csv')
+pt_info = pd.read_csv(f"{resource_dir}/AMK_tdm.csv", encoding='euc-kr')
+pt_info = pt_info.sort_values(['등록번호','검사일']).drop_duplicates(['등록번호'], ignore_index=True)
+rename_dict = {'등록번호':'ID','환자명':'NAME','검사일':'TDM_REQ_DATE','작성일':'TDM_RES_DATE','성별':'SEX','몸무게':'WT','키':'HT','나이':'AGE','병동':'WARD','진료과':'DEP'}
+pt_info = pt_info.rename(columns=rename_dict)
+pt_info['ID'] = pt_info['ID'].astype(str)
+# pt_info['TDM_REQ_DATE'] = pt_info['TDM_REQ_DATE'].map(lambda x:x.replace(' ','T'))
+pt_info['TDM_REQ_DATE'] = pt_info['TDM_REQ_DATE'].map(lambda x:x.split(' ')[0])
+pt_info = pt_info[list(rename_dict.values())]
+pt_info.to_csv(f"{output_dir}/patient_info.csv", encoding='utf-8-sig', index=False)
+# pt_info.columns
 
 pt_files = glob.glob(f'{resource_dir}/lab/{prj_name}_lab(*).xlsx')
+
+dose_result_df = pd.read_csv(f"{output_dir}/final_dose_df.csv")
+dose_result_df['ID'] = dose_result_df['ID'].astype(str)
+dose_result_df['DOSE_DT'] = dose_result_df['DATE']+'T'+dose_result_df['TIME']
+dose_result_df['TIME'] = "T"+dose_result_df['TIME']
+dose_result_df = dose_result_df.rename(columns={'DATE':'DOSE_DATE','TIME':'DOSE_TIME'})
+dose_result_df = dose_result_df[['ID', 'NAME', 'DOSE_DATE','DOSE_TIME','DOSE_DT', 'DOSE']].copy()
+uniq_dose_pids = list(dose_result_df.drop_duplicates(['ID'])['ID'].astype(str))
+
 
 conc_result_df = pd.read_csv(f"{output_dir}/final_conc_df.csv")
 conc_result_df = conc_result_df[['ID', 'NAME', '보고일', '오더일', 'DRUG', 'CONC', 'POT_SAMP_MONTHDAY', 'POT_SAMP_TIME']].copy()
@@ -306,20 +325,139 @@ uniq_sampling_pids = list(sampling_result_df.drop_duplicates(['ID'])['ID'].astyp
 
 final_df = list()
 conc_samp_mismatch_pids = list()
+no_dose_pids = list()
+error_passing_pids = set()
 for finx, fpath in enumerate(pt_files): #break
 
     pid = fpath.split('(')[-1].split('_')[0]
     pname = fpath.split('_')[-1].split(')')[0]
     # pt_df.append({'ID':pid,'NAME':pname})
+    id_info_df = pt_info[pt_info['ID'] == pid].copy()
+    min_date = (datetime.strptime(id_info_df['TDM_REQ_DATE'].iloc[0],'%Y-%m-%d')-timedelta(days=62)).strftime('%Y-%m-%d')
+    max_date = (datetime.strptime(id_info_df['TDM_RES_DATE'].iloc[0],'%Y-%m-%d')+timedelta(days=92)).strftime('%Y-%m-%d')
+
+    id_dose_df = dose_result_df[dose_result_df['ID'] == pid].copy()
+    id_conc_df = conc_result_df[conc_result_df['ID'] == pid].copy()
+    id_conc_df = id_conc_df[(id_conc_df['오더일']>=min_date)&(id_conc_df['오더일']<=max_date)&(id_conc_df['보고일']>=min_date)&(id_conc_df['보고일']<=max_date)]
+    id_samp_df = sampling_result_df[sampling_result_df['ID'] == pid].copy()
+
+    res_frag_df = id_conc_df.copy()
+    for c in ['SAMP_DT','채혈DT', '라벨DT', '접수DT', '시행DT', '보고DT']:
+        res_frag_df[c] = ''
+
+    # if finx
+    # raise ValueError
+    # res_frag_df.columns
+
+    # POT채혈DT 있는 경우
+    pot_dt_rows = res_frag_df[(res_frag_df['POT채혈DT'] != '') & (~res_frag_df['POT채혈DT'].isna())]
+    if len(pot_dt_rows)!=0:
+        print(f"({finx}) {pname} / {pid} / POT채혈DT 결과 존재")
+        for potdt_inx, potdt_row in pot_dt_rows.iterrows(): #break
+            # pot_dt_rows['POT채혈DT']
+            # POT채혈DT에 날짜도 써 있는 경우 -> 해당 날짜로 SAMP_DT 입력
+            if bool(re.search(r'\d\d\d\d-\d\d-\d\dT\d\d:\d\d',potdt_row['POT채혈DT'])):
+                if res_frag_df.at[potdt_inx, 'SAMP_DT'] == '':
+                    res_frag_df.at[potdt_inx, 'SAMP_DT'] = potdt_row['POT채혈DT']
+                else:
+                    continue
+                error_passing_pids.add(pid)
+            # res_frag_df['POT채혈DT']
+            # res_frag_df['SAMP_DT']
+            # POT채혈DT에 시간만 써 있는 경우 -> SAMPLING DATA 있는 경우는 아래서 처리. 없는 경우는 여기서 처리
+            elif bool(re.search(r'T\d\d:\d\d',potdt_row['POT채혈DT'])):
+                if res_frag_df.at[potdt_inx, 'SAMP_DT'] == '':
+                    if pid in uniq_sampling_pids:
+                        print("POT채혈DT 결과 존재 / SAMPLING DATA 있어 아래서 처리")
+                        error_passing_pids.add(pid)
+                        pass
+                    else:
+                        print("POT채혈DT 결과 존재 하는데 / SAMPLING DATA 없는 경우 입니다")
+                        # POT채혈DT, Dosing 기록으로 유추해야.
+
+                        # 농도측정의 오더일과 보고일이 같은 날짜인 경우는 그 날짜로 사용
+                        if potdt_row['오더일']==potdt_row['보고일']:
+                            if res_frag_df.at[potdt_inx, 'SAMP_DT'] == '':
+                                res_frag_df.at[potdt_inx, 'SAMP_DT'] = potdt_row['오더일'] + potdt_row['POT채혈DT']
+
+                        # 농도측정의 오더일과 보고일이 다른 날짜들의 경우
+                        ord_noteq_rep_rows = res_frag_df[(res_frag_df['오더일'] != res_frag_df['보고일'])&(res_frag_df['SAMP_DT']=='')].copy()
+                        if len(ord_noteq_rep_rows)>0:
+                            # 농도채혈 오더 난 날짜가 1개만 있을때
+                            if len(ord_noteq_rep_rows['오더일'].drop_duplicates()) == 1:
+                                for oneqr_inx, oneqr_row in ord_noteq_rep_rows.iterrows():
+                                    res_frag_df.at[oneqr_inx, 'SAMP_DT'] = oneqr_row['오더일'] + oneqr_row['POT채혈DT']
+                            # 농도채혈 오더 난 날짜가 1개 이상 존재할 때 있을때
+                            else:
+                                print("POT채혈DT 결과 존재 / SAMPLING DATA 없음 / 농도채혈 오더 난 날짜가 1개 이상 존재")
+                                raise ValueError
+                        error_passing_pids.add(pid)
 
 
-    # 둘 다 있는 경우
-    if (pid in uniq_conc_pids) and (pid in uniq_sampling_pids):
-        id_conc_df = conc_result_df[conc_result_df['ID']==pid].copy()
-        id_samp_df = sampling_result_df[sampling_result_df['ID']==pid].copy()
+                    # res_frag_df[['보고일', '오더일', 'CONC', ]]
+                    # id_dose_df
+                    # id_samp_df[['보고일', '오더일', '채혈DT', ]]
+                    # res_frag_df.at[potdt_inx, 'SAMP_DT'] = potdt_row['POT채혈DT']
+                else:
+                    continue
+            # POT채혈DT에 날짜만 써 있는 경우 -> SAMPLING DATA 있는 경우는 아래서 처리. 없는 경우는 여기서 처리
+            elif bool(re.search(r'\d\d\d\d-\d\d-\d\d',potdt_row['POT채혈DT'])):
+                if res_frag_df.at[potdt_inx, 'SAMP_DT'] == '':
+                    
+            else:
+                # 이 조건은 만족하는 게 없을 것이라 예상
+                print(f"({finx}) {pname} / {pid} / 이 조건은 만족하는 게 없을 것이라 예상")
+                raise ValueError
 
-        # id_conc_df[['오더일','보고일','POT채혈DT','CONC']]
-        # id_samp_df[['오더일','보고일','채혈DT', '라벨DT','접수DT']]
+        if pid not in error_passing_pids:
+            raise ValueError
+
+    # CONC 데이터만 있는 경우
+    if (pid in uniq_conc_pids) and (pid not in uniq_sampling_pids):
+        if len(id_dose_df) == 0:
+            print(f"({finx}) {pname} / {pid} / Only Conc data / No Dose Data (Check!)")
+            no_dose_pids.append(pid)
+            continue
+        else:
+            print(f"({finx}) {pname} / {pid} / Only Conc data")
+
+        # res_frag_df.columns
+        # id_info_df
+        conc_order_date_list = list(res_frag_df['오더일'].unique())
+        # 농도채혈 order가 난 날짜가 1개만 있을때 (dosing 타임과 농도데이터 개수 및 농도 값 고려해서 배열)
+        if len(conc_order_date_list) == 1:
+            id_dose_df = id_dose_df[id_dose_df['DOSE_DATE'] == order_date_list[0]].copy()
+
+            # 측정된 농도 값이 2개 이하이면 DOSING 타임 및 CONC 값 고려하여 배열
+            if len(res_frag_df) <= 2:
+                est_dose_dt = datetime.strptime(id_dose_df.iloc[0]['DOSE_DT'], '%Y-%m-%dT%H:%M')
+                est_conc_dt_tups = ((est_dose_dt - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M'),
+                                    (est_dose_dt + timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M'))
+                res_frag_df = res_frag_df.sort_values(['CONC'], ignore_index=True)
+                for resf_inx, resf_row in res_frag_df.iterrows():  # break
+                    if resf_row['SAMP_DT'] == '':
+                        res_frag_df.at[resf_inx, 'SAMP_DT'] = est_conc_dt_tups[resf_inx]
+                    # res_frag_df['SAMP_DT']
+            else:
+                print(f"({finx}) {pname} / {pid} / 농도 측정 오더 날짜 1개, 측정된 농도 값이 2개 이상")
+                raise ValueError
+
+        # 농도 측정 오더 날짜 2개 이상
+        else:
+            print(f"({finx}) {pname} / {pid} / 농도 측정 오더 날짜 2개 이상")
+            raise ValueError
+
+        # final_df.append(res_frag_df)
+        # continue
+
+    # CONC, SAMP 데이터 둘 다 있는 경우
+    elif (pid in uniq_conc_pids) and (pid in uniq_sampling_pids):
+        continue
+        # print(f"({finx}) {pname} / {pid} / CONC, SAMP 데이터 둘 다 존재")
+        raise ValueError
+
+        # id_info_df
+        # res_frag_df[['보고일','오더일', 'CONC']]
 
         cdf = id_conc_df.sort_values(['보고일', 'CONC'])
         sdf = id_samp_df[['보고일', '채혈DT', '라벨DT', '접수DT','시행DT','보고DT']].copy()
@@ -379,19 +517,11 @@ for finx, fpath in enumerate(pt_files): #break
         # peak_mdf = mdf.drop_duplicates(['오더일', '보고일'], keep='last')
         # total_mdf = pd.concat([trough_mdf, peak_mdf]).drop_duplicates(['오더일', '보고일', 'CONC', '채혈DT'], keep='last')
 
-    # CONC 데이터만 있는 경우
-    elif (pid in uniq_conc_pids) and (pid not in uniq_sampling_pids):
-        print(f"({finx}) {pname} / {pid} / Only conc data")
-        id_conc_df = conc_result_df[conc_result_df['ID'] == pid].copy()
-        # cdf = id_conc_df[['보고일', 'POT채혈DT', 'CONC']].sort_values(['보고일', 'CONC'])
-        for c in ['채혈DT', '라벨DT', '접수DT','시행DT','보고DT']:
-            id_conc_df[c] = ''
-        # id_conc_df.columns
-        final_df.append(id_conc_df)
-        # continue
+
     else:
-        # raise ValueError
-        continue
+        print(f"({finx}) {pname} / {pid} / 그 어디도 X")
+        raise ValueError
+
 
     # elif (pid not in uniq_conc_pids) or (pid not in uniq_sampling_pids):
     #     print(f"({finx}) {pname} / {pid} / No eighther data")
@@ -405,6 +535,21 @@ final_df.to_csv(f"{output_dir}/final_conc_df(with sampling).csv", encoding='utf-
 
 """
 ## 새로운 로직 필요할듯
-# (1) DOSING 시점을 기준으로 측정된 CONC들의 평균을 내서 평균값보다 작은 애들은 DOSING 전에 배치, 큰 애들은 DOSING 후에 배치
-# (2).........
+
+(1) 'POT채혈DT' 있는 경우 -> POT채혈DT로 시간 설정
+# 날짜,시간 모두 존재: POT채혈DT로 채혈시간 설정 [CONFIRMED]
+# 채혈시간만 존재: 
+    - (보고일==오더일)인 경우: 오더일로 날짜 설정 후 채혈시간 적용 [CONFIRMED]
+    - (보고일!=오더일)인 경우: [PASS]
+        * '채혈DT' 있는 경우: [PASS]
+        * '채혈DT' 없는 경우: [PASS]
+
+(2) '채혈DT' 있는 경우
+
+
+(보고일==오더일)인 경우는 채혈시간은 그날 NN:NN으로 일단 설정 
+      # '채혈DT' 있는 경우 -> 그날의 Dosing 시점 및 '채혈DT' 
+      # 채혈기록 없는 경우 -> 그날의 Dosing 시점 고려하여 Dosing 전후로 설정
+# (2) (보고일=!오더일)인 경우
+      # '채혈DT' 있는 경우 -> 그날의 
 """
