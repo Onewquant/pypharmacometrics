@@ -516,6 +516,12 @@ for finx, fpath in enumerate(pt_files): #break
                     est_dose_dt = datetime.strptime(temp_id_dose_df.iloc[0]['DOSE_DT'], '%Y-%m-%dT%H:%M')
                     est_conc_dt_tups = ((est_dose_dt - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M'),
                                         (est_dose_dt + timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M'))
+
+                    if ((est_conc_dt_tups[0] in list(res_frag_df['SAMP_DT'])) or (est_conc_dt_tups[1] in list(res_frag_df['SAMP_DT']))) and (len(temp_id_dose_df)>1):
+                        est_dose_dt = datetime.strptime(temp_id_dose_df.iloc[1]['DOSE_DT'], '%Y-%m-%dT%H:%M')
+                        est_conc_dt_tups = ((est_dose_dt - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M'),
+                                            (est_dose_dt + timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M'))
+
                     ord_noteq_rep_rows = ord_noteq_rep_rows.sort_values(['CONC'])
                     for resf_inx, resf_row in ord_noteq_rep_rows.reset_index(drop=False).iterrows():  # break
                         if (resf_inx==0) and (est_conc_dt_tups[resf_inx] not in list(res_frag_df['SAMP_DT'])):
@@ -526,6 +532,13 @@ for finx, fpath in enumerate(pt_files): #break
                             res_frag_df.at[resf_row['index'], 'SAMP_DT'] = est_conc_dt_tups[resf_inx]
                         else:
                             print(f'({finx}) {pname} / {pid} / 기록할 인덱스가 넘어감')
+                            # 다음 DOSING 타임으로 DOSING TIME 기준을 바꿔야할 듯
+                            """
+                            est_dose_dt = datetime.strptime(temp_id_dose_df.iloc[1]['DOSE_DT'], '%Y-%m-%dT%H:%M')
+                            est_conc_dt_tups = ((est_dose_dt - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M'),
+                                                (est_dose_dt + timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M'))
+                            ord_noteq_rep_rows = ord_noteq_rep_rows.sort_values(['CONC'])
+                            """
                             raise ValueError
                             
                         
