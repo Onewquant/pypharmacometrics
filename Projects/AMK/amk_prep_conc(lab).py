@@ -328,7 +328,8 @@ uniq_sampling_pids = list(sampling_result_df.drop_duplicates(['ID'])['ID'].astyp
 
 final_df = list()
 conc_samp_mismatch_pids = list()
-no_dose_pids = list()
+no_dose_pids = set()
+partly_no_dose_pids = set()
 re_dose_pids = set()
 error_passing_pids = set()
 for finx, fpath in enumerate(pt_files): #break
@@ -345,7 +346,10 @@ for finx, fpath in enumerate(pt_files): #break
     id_conc_df = id_conc_df[(id_conc_df['오더일']>=min_date)&(id_conc_df['오더일']<=max_date)&(id_conc_df['보고일']>=min_date)&(id_conc_df['보고일']<=max_date)]
     id_samp_df = sampling_result_df[sampling_result_df['ID'] == pid].copy()
 
+    # res_frag_df = id_conc_df.sort_values(['오더일'], ascending=False)
     res_frag_df = id_conc_df.copy()
+    # res_frag_df = id_conc_df.sort_values(['오더일'], ascending=True)
+    # pd.to_datetime(res_frag_df['오더일']).diff().dt.days
     for c in ['SAMP_DT','채혈DT', '라벨DT', '접수DT', '시행DT', '보고DT']:
         res_frag_df[c] = ''
 
@@ -443,13 +447,13 @@ for finx, fpath in enumerate(pt_files): #break
     #   POT채혈DT에 날짜만 써 있는 경우 / SAMPLING DATA 존재시
     if (pid in uniq_conc_pids) and (pid not in uniq_sampling_pids):
         # POT채혈DT 존재하는 잘못된 케이스 있나 확인
-        if len(res_frag_df[(res_frag_df['SAMP_DT']=='')&(res_frag_df['POT채혈DT']!='')]):
+        if len(res_frag_df[(res_frag_df['SAMP_DT']=='')&(res_frag_df['POT채혈DT']!='')])>0:
             print('POT채혈DT 존재하는 잘못된 케이스 있나 확인')
             raise ValueError
         # DOSING 데이터 없는 경우
         if len(id_dose_df) == 0:
             print(f"({finx}) {pname} / {pid} / Only Conc data / No Dose Data (Check!)")
-            no_dose_pids.append(pid)
+            no_dose_pids.add(pid)
             continue
         else:
             print(f"({finx}) {pname} / {pid} / Only Conc data (Dosing: O, Sampling X, POT채혈DT: X")
@@ -467,7 +471,7 @@ for finx, fpath in enumerate(pt_files): #break
             date_dose_rows = id_dose_df[id_dose_df['DOSE_DATE'] == oer_row['오더일']].copy()
             if len(date_dose_rows) == 0:
                 pass
-            elif (len(date_dose_rows) <= 4) and (len(date_dose_rows) >= 1):
+            elif (len(date_dose_rows) > 0) and (len(date_dose_rows) <= 5) and (len(date_dose_rows) >= 1):
             # elif (len(date_dose_rows) <= 2) and (len(date_dose_rows) >= 1):
                 est_conc_dt_tups = ((datetime.strptime(date_dose_rows.iloc[0]['DOSE_DT'], '%Y-%m-%dT%H:%M') - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M'),
                                     (datetime.strptime(date_dose_rows.iloc[0]['DOSE_DT'], '%Y-%m-%dT%H:%M') + timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
@@ -475,9 +479,9 @@ for finx, fpath in enumerate(pt_files): #break
                 # est_conc_dt_tups = (datetime.strptime(date_dose_rows.iloc[0]['DOSE_DT'],'%Y-%m-%dT%H:%M')-timedelta(minutes=30),date_dose_rows.iloc[0]['DOSE_DT'],'%Y-%m-%dT%H:%M')+timedelta(minutes=30))
 
                 if res_frag_df.at[oer_inx, 'CONC'] < mean_conc:
-                    res_frag_df.at[oer_inx, 'SAMP_DT'] = oer_row['오더일'] + est_conc_dt_tups[0]
+                    res_frag_df.at[oer_inx, 'SAMP_DT'] = oer_row['오더일'] + 'T' + est_conc_dt_tups[0].split('T')[-1]
                 else:
-                    res_frag_df.at[oer_inx, 'SAMP_DT'] = oer_row['오더일'] + est_conc_dt_tups[1]
+                    res_frag_df.at[oer_inx, 'SAMP_DT'] = oer_row['오더일'] + 'T' + est_conc_dt_tups[1].split('T')[-1]
             else:
                 print(f"({finx}) {pname} / {pid} / Only Conc data (Dosing: O, Sampling X, POT채혈DT: X / 해당 날짜 dose기록 3개 이상")
                 raise ValueError
@@ -486,24 +490,36 @@ for finx, fpath in enumerate(pt_files): #break
         ord_noteq_rep_rows = res_frag_df[(res_frag_df['SAMP_DT'] == '') & (res_frag_df['오더일'] != res_frag_df['보고일'])].copy()
 
         conc_order_date_list = list(ord_noteq_rep_rows['오더일'].unique())
+        conc_report_date_list = list(ord_noteq_rep_rows['보고일'].unique())
         # 농도채혈 order가 난 날짜가 1개만 있을때 (dosing 타임과 농도데이터 개수 및 농도 값 고려해서 배열)
         if len(conc_order_date_list) == 0:
             pass
         elif len(conc_order_date_list) == 1:
-            id_dose_df = id_dose_df[id_dose_df['DOSE_DATE'] == conc_order_date_list[0]].copy()
-
-            # 측정된 농도 값이 2개 이하이면 DOSING 타임 및 CONC 값 고려하여 배열
-            if len(ord_noteq_rep_rows) <= 2:
-                est_dose_dt = datetime.strptime(id_dose_df.iloc[0]['DOSE_DT'], '%Y-%m-%dT%H:%M')
-                est_conc_dt_tups = ((est_dose_dt - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M'),
-                                    (est_dose_dt + timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M'))
-                ord_noteq_rep_rows = ord_noteq_rep_rows.sort_values(['CONC'], ignore_index=True)
-                for resf_inx, resf_row in ord_noteq_rep_rows.iterrows():  # break
-                    res_frag_df.at[resf_inx, 'SAMP_DT'] = est_conc_dt_tups[resf_inx]
-                    # res_frag_df['SAMP_DT']
+            temp_id_dose_df = id_dose_df[(id_dose_df['DOSE_DATE'] >= conc_order_date_list[0])&(id_dose_df['DOSE_DATE'] <= min(conc_report_date_list))].copy()
+            if len(temp_id_dose_df[(temp_id_dose_df['DOSE_DATE'] == conc_order_date_list[0])])>0:
+                temp_id_dose_df = temp_id_dose_df[(temp_id_dose_df['DOSE_DATE'] == conc_order_date_list[0])].copy()
+            elif len(temp_id_dose_df[(temp_id_dose_df['DOSE_DATE'] == conc_report_date_list[0])])>0:
+                temp_id_dose_df = temp_id_dose_df[(temp_id_dose_df['DOSE_DATE'] == conc_report_date_list[0])].copy()
             else:
-                print(f"({finx}) {pname} / {pid} / 농도 측정 오더 날짜 1개, 측정된 농도 값이 3개 이상")
-                raise ValueError
+                temp_id_dose_df = temp_id_dose_df.sort_values(['DOSE_DATE','DOSE_TIME'],ascending=[False,True])
+
+            if len(temp_id_dose_df)==0:
+                print(f"({finx}) {pname} / {pid} / 농도 측정 오더일 1개, 일부 CONC 날짜의 DOSING DATA 부재함")
+                partly_no_dose_pids.add(pid)
+            else:
+                # ord_noteq_rep_rows['CONC']
+                # 측정된 농도 값이 2개 이하이면 DOSING 타임 및 CONC 값 고려하여 배열
+                if len(ord_noteq_rep_rows) <= 2:
+                    est_dose_dt = datetime.strptime(temp_id_dose_df.iloc[0]['DOSE_DT'], '%Y-%m-%dT%H:%M')
+                    est_conc_dt_tups = ((est_dose_dt - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M'),
+                                        (est_dose_dt + timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M'))
+                    ord_noteq_rep_rows = ord_noteq_rep_rows.sort_values(['CONC'], ignore_index=True)
+                    for resf_inx, resf_row in ord_noteq_rep_rows.iterrows():  # break
+                        res_frag_df.at[resf_inx, 'SAMP_DT'] = est_conc_dt_tups[resf_inx]
+                        # res_frag_df['SAMP_DT']
+                else:
+                    print(f"({finx}) {pname} / {pid} / 농도 측정 오더일 1개, 도스 3개 이상")
+                    raise ValueError
 
         # 농도 측정 오더 날짜 2개 이상
         else:
@@ -550,7 +566,7 @@ for finx, fpath in enumerate(pt_files): #break
                         concord_date_rows = concord_date_rows.sort_values(['CONC']).reset_index(drop=False)
 
                         for resf_inx, resf_row in concord_date_rows.iterrows():  # break
-                            res_frag_df.at[concord_date_rows.at[resf_inx,'index'], 'SAMP_DT'] = est_conc_dt_tups[resf_inx]
+                            res_frag_df.at[resf_row['index'], 'SAMP_DT'] = est_conc_dt_tups[resf_inx]
                             # res_frag_df['SAMP_DT']
                     else:
                         print(f"({finx}) {pname} / {pid} / 농도 측정 오더 날짜 1개, 측정된 농도 값이 3개 이상")
