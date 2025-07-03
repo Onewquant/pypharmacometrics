@@ -498,10 +498,13 @@ for finx, fpath in enumerate(pt_files): #break
             temp_id_dose_df = id_dose_df[(id_dose_df['DOSE_DATE'] >= conc_order_date_list[0])&(id_dose_df['DOSE_DATE'] <= min(conc_report_date_list))].copy()
             if len(temp_id_dose_df[(temp_id_dose_df['DOSE_DATE'] == conc_order_date_list[0])])>0:
                 temp_id_dose_df = temp_id_dose_df[(temp_id_dose_df['DOSE_DATE'] == conc_order_date_list[0])].copy()
+                ascending_orders = [True,True]
             elif len(temp_id_dose_df[(temp_id_dose_df['DOSE_DATE'] == conc_report_date_list[0])])>0:
                 temp_id_dose_df = temp_id_dose_df[(temp_id_dose_df['DOSE_DATE'] == conc_report_date_list[0])].copy()
+                ascending_orders = [True, True]
             else:
-                temp_id_dose_df = temp_id_dose_df.sort_values(['DOSE_DATE','DOSE_TIME'],ascending=[False,True])
+                ascending_orders = [False, True]
+            temp_id_dose_df = temp_id_dose_df.sort_values(['DOSE_DATE','DOSE_TIME'],ascending=ascending_orders)
 
             if len(temp_id_dose_df)==0:
                 print(f"({finx}) {pname} / {pid} / 농도 측정 오더일 1개, 일부 CONC 날짜의 DOSING DATA 부재함")
@@ -513,9 +516,19 @@ for finx, fpath in enumerate(pt_files): #break
                     est_dose_dt = datetime.strptime(temp_id_dose_df.iloc[0]['DOSE_DT'], '%Y-%m-%dT%H:%M')
                     est_conc_dt_tups = ((est_dose_dt - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M'),
                                         (est_dose_dt + timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M'))
-                    ord_noteq_rep_rows = ord_noteq_rep_rows.sort_values(['CONC'], ignore_index=True)
-                    for resf_inx, resf_row in ord_noteq_rep_rows.iterrows():  # break
-                        res_frag_df.at[resf_inx, 'SAMP_DT'] = est_conc_dt_tups[resf_inx]
+                    ord_noteq_rep_rows = ord_noteq_rep_rows.sort_values(['CONC'])
+                    for resf_inx, resf_row in ord_noteq_rep_rows.reset_index(drop=False).iterrows():  # break
+                        if (resf_inx==0) and (est_conc_dt_tups[resf_inx] not in list(res_frag_df['SAMP_DT'])):
+                            res_frag_df.at[resf_row['index'], 'SAMP_DT'] = est_conc_dt_tups[resf_inx]
+                        elif (resf_inx==0) and (est_conc_dt_tups[resf_inx] in list(res_frag_df['SAMP_DT'])):
+                            res_frag_df.at[resf_row['index'], 'SAMP_DT'] = est_conc_dt_tups[resf_inx+1]
+                        elif (resf_inx == 1) and (est_conc_dt_tups[resf_inx] not in list(res_frag_df['SAMP_DT'])):
+                            res_frag_df.at[resf_row['index'], 'SAMP_DT'] = est_conc_dt_tups[resf_inx]
+                        else:
+                            print(f'({finx}) {pname} / {pid} / 기록할 인덱스가 넘어감')
+                            raise ValueError
+                            
+                        
                         # res_frag_df['SAMP_DT']
                 else:
                     print(f"({finx}) {pname} / {pid} / 농도 측정 오더일 1개, 도스 3개 이상")
