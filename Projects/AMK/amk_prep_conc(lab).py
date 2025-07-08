@@ -665,75 +665,166 @@ for finx, fpath in enumerate(pt_files): #break
     elif (pid in uniq_conc_pids) and (pid in uniq_sampling_pids):
         # continue
         # print(f"({finx}) {pname} / {pid} / CONC, SAMP 데이터 둘 다 존재")
-        raise ValueError
+        # raise ValueError
 
-        # id_info_df
-        # res_frag_df[['보고일','오더일', 'CONC']]
-        # res_frag_df[res_frag_df['SAMP_DT']=='']
-        cdf = res_frag_df[res_frag_df['SAMP_DT']==''].copy()
+        cdf = res_frag_df[res_frag_df['SAMP_DT'] == ''].copy()
         pdf = cdf[cdf['POT채혈DT'] != ''].copy()
-        sdf = id_samp_df[['보고일', '채혈DT', '라벨DT', '접수DT','시행DT','보고DT']].copy()
+        ddf = id_dose_df.copy()
+        # sdf = id_samp_df[['보고일', '채혈DT', '라벨DT', '접수DT', '시행DT', '보고DT']].copy()
+        sdf = id_samp_df.copy()
 
+        print(f"({finx}) {pname} / {pid} / SAMP 데이터 존재 / 농도 측정 오더 날짜 2개 이상")
+        mean_conc = res_frag_df['CONC'].mean()
+        # tdm_relate_dates = set(id_info_df['TDM_RES_DATE']).union(set(id_info_df['TDM_REQ_DATE']))
+        samp_relate_dates =  set(sdf['보고일'])
+        if len(samp_relate_dates.intersection(set(cdf['오더일']))) >= len(samp_relate_dates.intersection(set(cdf['보고일']))):
+            conc_ord_date_type = '오더일'
+            print(f"선택된 날짜 타입이 '{conc_ord_date_type}'이 더 잘 맞음")
+            raise ValueError
 
-        mdf = cdf.merge(sdf, on=['보고일'], how='outer')
-        mdf = mdf.sort_values(['보고일', 'CONC', '채혈DT'])
-
-        trough_mdf = mdf.drop_duplicates(['보고일'], keep='first')
-        peak_mdf = mdf.drop_duplicates(['보고일'], keep='last')
-        total_mdf = pd.concat([trough_mdf, peak_mdf]).drop_duplicates(['보고일', 'CONC', '채혈DT'], keep='last').sort_values(['보고일', 'CONC', '채혈DT'])
-        # total_mdf.columns
-        # cdf = id_conc_df[['보고일', 'POT채혈DT', 'CONC']].sort_values(['보고일', 'CONC'])
-        # sdf = id_samp_df[['보고일', '채혈DT', '라벨DT', '접수DT']].copy()
-        #
-        # mdf = cdf.merge(sdf, on=['보고일'], how='outer')[['보고일', 'CONC', '채혈DT', 'POT채혈DT']]
-        # mdf = mdf.sort_values(['보고일', 'CONC', '채혈DT'])
-        #
-        # trough_mdf = mdf.drop_duplicates(['보고일'], keep='first')
-        # peak_mdf = mdf.drop_duplicates(['보고일'], keep='last')
-        # total_mdf = pd.concat([trough_mdf, peak_mdf]).drop_duplicates(['보고일','CONC', '채혈DT'], keep='last').sort_values(['보고일', 'CONC', '채혈DT'])
-        #
-
-
-        # CONC 데이터는 오더일, 보고일 날짜 두개만 존재
-        # SAMPLING 데이터는 여러개의 날짜 존재 두개만 존재
-
-        if len(total_mdf)!=len(cdf):
-            print(f"({finx}) {pname} / {pid} / No matched")
-            conc_samp_mismatch_pids.append(pid)
-            # len(conc_samp_mismatch_pids)
-            # continue
         else:
-            print(f"({finx}) {pname} / {pid} / matched")
-            # if pid not in ['11116501', '10112328', '10143478', '10228470', '10533576', '10885385', '10914959', ]:
-            #     raise ValueError
-            """
-            '10112328' : 04.17 의 샘플링 타임데이터는 있는데 농도데이터는 부재함.
-            '10143478' : 2018-06-04 의 농도데이터가 3개 있는데, 샘플링 데이터는 2개라 max, min만 남기면 df 길이 달라짐
-            '10228470' : 2005-04-22 샘플링 데이터는 존재, 농도 데이터는 그날 것 없음. (total_mdf 에 CONC가 NAN인 값 생김)
-            '10533576' : 2004-09-14에 CONC가 0.5로 똑같은 데이터 2개 존재. 아마도 9-13일 채혈일듯. (보고일 기준으로만 하고 있는데, 중복된 데이터의 오더일은 다른 것으로 보아 하나는 2004-09-13 데이터인듯
-            '10885385' : 샘플링 데이터 보고일기준 2003-12-30 는 1개, 2004-01-02 는 2개 인데, 농도데이터에서는 2, 1개로 되어 있음
-            '10914959'
-            '11116501'
-            """
-        final_df.append(total_mdf)
+            conc_ord_date_type = '보고일'
+        for concord_date in cdf[conc_ord_date_type].drop_duplicates():  # break
+            concord_date_rows = cdf[cdf[conc_ord_date_type] == concord_date]  # break
+            samp_date_rows = sdf[sdf[conc_ord_date_type] == concord_date]  # break
+            # ord_noteq_rep_rows[ord_noteq_rep_rows]
+            # tdm_info_row = {'TDM_REQ_DATE': '0000-00-00', 'TDM_RES_DATE': '9999-99-99'}
+            # try: tdm_info_row = id_info_df[id_info_df['TDM_REQ_DATE'] == concord_date].iloc[0]
+            # except:
+            #     try:tdm_info_row = id_info_df[id_info_df['TDM_RES_DATE'] == concord_date].iloc[0]
+            #     except:
+            #         pass
+                    # raise ValueError
 
-        # if finx==3:
-        #     raise ValueError
 
-        # cdf = id_conc_df[['오더일', '보고일', 'POT채혈DT', 'CONC']].copy()
-        # sdf = id_samp_df[['오더일', '보고일', '채혈DT', '라벨DT', '접수DT']].copy()
 
-        # mdf = cdf.merge(sdf, on=['오더일', '보고일'], how='outer')[['오더일', '보고일','CONC','채혈DT','POT채혈DT']]
-        # mdf = mdf.sort_values(['오더일', '보고일', 'CONC', '채혈DT'])
+            # len()
+            # tdm_date_tups = (tdm_info_row['TDM_REQ_DATE'], tdm_info_row['TDM_RES_DATE'])
+            # samp_date_tups = (samp_date_rows['TDM_REQ_DATE'], samp_date_rows['TDM_RES_DATE'])
+            min_ord_date = samp_date_rows['오더일'].min()
+            max_ord_date = samp_date_rows['보고일'].max()
 
-        # trough_mdf = mdf.drop_duplicates(['오더일', '보고일'], keep='first')
-        # peak_mdf = mdf.drop_duplicates(['오더일', '보고일'], keep='last')
-        # total_mdf = pd.concat([trough_mdf, peak_mdf]).drop_duplicates(['오더일', '보고일', 'CONC', '채혈DT'], keep='last')
+            dose_ord_frag = id_dose_df[(id_dose_df['DOSE_DATE'] >= min_ord_date) & (id_dose_df['DOSE_DATE'] <= max_ord_date)].copy()
+            # dose_ord_frag = dose_ord_frag[(dose_ord_frag['DOSE_DATE'] >= tdm_date_tups[0]) & (dose_ord_frag['DOSE_DATE'] <= tdm_date_tups[1])].copy()
+            # dose_ord_frag['TROUGH_DT'] = dose_ord_frag['DOSE_DT'].map(lambda x: (datetime.strptime(x, '%Y-%m-%dT%H:%M') - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M'))
+            # dose_ord_frag['PEAK_DT'] = dose_ord_frag['DOSE_DT'].map(lambda x: (datetime.strptime(x, '%Y-%m-%dT%H:%M') + timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M'))
+
+            ## 농도 기록과 채혈 시간 기록이 일치할경우 -> Dose 투약 시점에 맞춰 Conc 크기에 따라 배열
+            if (len(concord_date_rows)==len(samp_date_rows)) and (len(samp_date_rows) <= 2):
+                samp_date_rows['채혈DT']
+                dose_between_samps = dose_ord_frag[(dose_ord_frag['DOSE_DT'] >= samp_date_rows['채혈DT'].min())&(dose_ord_frag['DOSE_DT'] <= samp_date_rows['채혈DT'].max())].copy()
+                # 채혈 시간 기록 사이에 Dose 투약 기록이 있는 경우 -> 채혈 농도값으로 peak / trough에 해당하는 농도들 구분하고, '채혈DT'를 이에 맞춰 배정 후 SAMP_DT로 확정시킴 (DOSE_DT 앞 뒤에 있는게 맞는지 확인도하면 좋을듯)
+                if len(dose_between_samps)>0:
+
+
+                    if len(dose_between_samps) >=2:
+                        print('sampling 사이에 dose 기록이 여러개 존재')
+                        raise ValueError
+
+                    dose_between_samps
+                    print('sampling 사이에 dose 기록이 한 개 존재')
+                    raise ValueError
+
+                # 채혈 시간 기록 사이에 Dose 투약 기록이 없는 경우 -> 채혈 농도값의 크기를 내림차순(큰->작은)으로 배열하고 '채혈DT'를 오름차순으로 맞춰 배정
+                else:
+                    arranged_conc_samp_rows = concord_date_rows.sort_values(['CONC'], ascending=False)
+                    arranged_conc_samp_rows['채혈DT'] = list(samp_date_rows.sort_values(['채혈DT'], ascending=True)['채혈DT'])
+                    for dd_inx, dd_row in arranged_conc_samp_rows.iterrows():
+                        if dd_row[dd_col] not in list(res_frag_df['SAMP_DT']):
+                            res_frag_df.at[resf_inx, 'SAMP_DT'] = dd_row[dd_col]
+                            break
+                        else:
+                            print('이미 날짜 DT가 존재합니다')
+                            raise ValueError
+
+
+            elif (len(concord_date_rows)==len(samp_date_rows)) and (len(samp_date_rows) > 2):
+                print('샘플이 3 개 이상')
+                raise ValueError
+
+            else:
+                print(f'CONC 데이터 길이: {len(concord_date_rows)} != SAMP 데이터 길이: {len(samp_date_rows)}')
+                raise ValueError
+
+
+
+
+            # id_info_df
+            # id_samp_df
+
+
+# """
+#         # id_info_df
+#         # res_frag_df[['보고일','오더일', 'CONC']]
+#         # res_frag_df[res_frag_df['SAMP_DT']=='']
+#         cdf = res_frag_df[res_frag_df['SAMP_DT']==''].copy()
+#         pdf = cdf[cdf['POT채혈DT'] != ''].copy()
+#         sdf = id_samp_df[['보고일', '채혈DT', '라벨DT', '접수DT','시행DT','보고DT']].copy()
+#
+#
+#         mdf = cdf.merge(sdf, on=['보고일'], how='outer')
+#         mdf = mdf.sort_values(['보고일', 'CONC', '채혈DT'])
+#
+#         trough_mdf = mdf.drop_duplicates(['보고일'], keep='first')
+#         peak_mdf = mdf.drop_duplicates(['보고일'], keep='last')
+#         total_mdf = pd.concat([trough_mdf, peak_mdf]).drop_duplicates(['보고일', 'CONC', '채혈DT'], keep='last').sort_values(['보고일', 'CONC', '채혈DT'])
+#         # total_mdf.columns
+#         # cdf = id_conc_df[['보고일', 'POT채혈DT', 'CONC']].sort_values(['보고일', 'CONC'])
+#         # sdf = id_samp_df[['보고일', '채혈DT', '라벨DT', '접수DT']].copy()
+#         #
+#         # mdf = cdf.merge(sdf, on=['보고일'], how='outer')[['보고일', 'CONC', '채혈DT', 'POT채혈DT']]
+#         # mdf = mdf.sort_values(['보고일', 'CONC', '채혈DT'])
+#         #
+#         # trough_mdf = mdf.drop_duplicates(['보고일'], keep='first')
+#         # peak_mdf = mdf.drop_duplicates(['보고일'], keep='last')
+#         # total_mdf = pd.concat([trough_mdf, peak_mdf]).drop_duplicates(['보고일','CONC', '채혈DT'], keep='last').sort_values(['보고일', 'CONC', '채혈DT'])
+#         #
+#
+#
+#         # CONC 데이터는 오더일, 보고일 날짜 두개만 존재
+#         # SAMPLING 데이터는 여러개의 날짜 존재 두개만 존재
+#
+#         if len(total_mdf)!=len(cdf):
+#             print(f"({finx}) {pname} / {pid} / No matched")
+#             conc_samp_mismatch_pids.append(pid)
+#             # len(conc_samp_mismatch_pids)
+#             # continue
+#         else:
+#             print(f"({finx}) {pname} / {pid} / matched")
+#             # if pid not in ['11116501', '10112328', '10143478', '10228470', '10533576', '10885385', '10914959', ]:
+#             #     raise ValueError
+#
+#             # '10112328' : 04.17 의 샘플링 타임데이터는 있는데 농도데이터는 부재함.
+#             # '10143478' : 2018-06-04 의 농도데이터가 3개 있는데, 샘플링 데이터는 2개라 max, min만 남기면 df 길이 달라짐
+#             # '10228470' : 2005-04-22 샘플링 데이터는 존재, 농도 데이터는 그날 것 없음. (total_mdf 에 CONC가 NAN인 값 생김)
+#             # '10533576' : 2004-09-14에 CONC가 0.5로 똑같은 데이터 2개 존재. 아마도 9-13일 채혈일듯. (보고일 기준으로만 하고 있는데, 중복된 데이터의 오더일은 다른 것으로 보아 하나는 2004-09-13 데이터인듯
+#             # '10885385' : 샘플링 데이터 보고일기준 2003-12-30 는 1개, 2004-01-02 는 2개 인데, 농도데이터에서는 2, 1개로 되어 있음
+#             # '10914959'
+#             # '11116501'
+#
+#
+#         final_df.append(total_mdf)
+#
+#         # if finx==3:
+#         #     raise ValueError
+#
+#         # cdf = id_conc_df[['오더일', '보고일', 'POT채혈DT', 'CONC']].copy()
+#         # sdf = id_samp_df[['오더일', '보고일', '채혈DT', '라벨DT', '접수DT']].copy()
+#
+#         # mdf = cdf.merge(sdf, on=['오더일', '보고일'], how='outer')[['오더일', '보고일','CONC','채혈DT','POT채혈DT']]
+#         # mdf = mdf.sort_values(['오더일', '보고일', 'CONC', '채혈DT'])
+#
+#         # trough_mdf = mdf.drop_duplicates(['오더일', '보고일'], keep='first')
+#         # peak_mdf = mdf.drop_duplicates(['오더일', '보고일'], keep='last')
+#         # total_mdf = pd.concat([trough_mdf, peak_mdf]).drop_duplicates(['오더일', '보고일', 'CONC', '채혈DT'], keep='last')
+#
+# """
+
 
 
     else:
         print(f"({finx}) {pname} / {pid} / 그 어디도 X")
-        raise ValueError
+        # raise ValueError
 
 
     # elif (pid not in uniq_conc_pids) or (pid not in uniq_sampling_pids):
