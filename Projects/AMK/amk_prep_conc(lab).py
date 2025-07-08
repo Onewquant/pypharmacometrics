@@ -654,24 +654,26 @@ for finx, fpath in enumerate(pt_files): #break
             #     print('정상작동중')
             #     raise ValueError
 
-    final_df.append(res_frag_df)
-final_df = pd.concat(final_df, ignore_index=True)
-final_df.to_csv(f"{output_dir}/final_conc_df(with sampling).csv", encoding='utf-8-sig', index=False)
+#     final_df.append(res_frag_df)
+# final_df = pd.concat(final_df, ignore_index=True)
+# final_df.to_csv(f"{output_dir}/final_conc_df(with sampling).csv", encoding='utf-8-sig', index=False)
 
 
-
+    # print(f"{} {}")
 
     # CONC, SAMP 데이터 둘 다 있는 경우
     elif (pid in uniq_conc_pids) and (pid in uniq_sampling_pids):
-        continue
+        # continue
         # print(f"({finx}) {pname} / {pid} / CONC, SAMP 데이터 둘 다 존재")
         raise ValueError
 
         # id_info_df
         # res_frag_df[['보고일','오더일', 'CONC']]
-
-        cdf = id_conc_df.sort_values(['보고일', 'CONC'])
+        # res_frag_df[res_frag_df['SAMP_DT']=='']
+        cdf = res_frag_df[res_frag_df['SAMP_DT']==''].copy()
+        pdf = cdf[cdf['POT채혈DT'] != ''].copy()
         sdf = id_samp_df[['보고일', '채혈DT', '라벨DT', '접수DT','시행DT','보고DT']].copy()
+
 
         mdf = cdf.merge(sdf, on=['보고일'], how='outer')
         mdf = mdf.sort_values(['보고일', 'CONC', '채혈DT'])
@@ -740,8 +742,13 @@ final_df.to_csv(f"{output_dir}/final_conc_df(with sampling).csv", encoding='utf-
     # else:
     #     raise ValueError
 
-final_df = pd.concat(final_df, ignore_index=True)
-final_df.to_csv(f"{output_dir}/final_conc_df(with sampling).csv", encoding='utf-8-sig', index=False)
+    final_df.append(res_frag_df)
+# final_df = pd.concat(final_df, ignore_index=True)
+# final_df.to_csv(f"{output_dir}/final_conc_df(with sampling).csv", encoding='utf-8-sig', index=False)
+
+#
+# final_df = pd.concat(final_df, ignore_index=True)
+# final_df.to_csv(f"{output_dir}/final_conc_df(with sampling).csv", encoding='utf-8-sig', index=False)
 
 
 """
