@@ -565,7 +565,7 @@ for finx, fpath in enumerate(pt_files): #break
                     else:
                         print('DOSE와 DOSE사이 TROUGH 샘플이 2 개 이상 - peak/trough 배열 조정 요망')
                         raise ValueError
-                    
+
 
                     # if len(trough_ds_frag_row)==0:
                     #     continue
