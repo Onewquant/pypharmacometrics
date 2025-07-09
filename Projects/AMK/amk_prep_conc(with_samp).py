@@ -23,7 +23,10 @@ pt_info['TDM_REQ_DATE'] = pt_info['TDM_REQ_DATE'].map(lambda x:x.split(' ')[0])
 pt_info = pt_info[list(rename_dict.values())]
 pt_info_dup = pt_info.copy()
 pt_info = pt_info.drop_duplicates(['ID'], ignore_index=True)
+# pt_info['MAX_DT'] = pt_info[['TDM_REQ_DATE','TDM_RES_DATE']].max(axis=1).map(lambda x:(datetime.strptime(x,'%Y-%m-%d') + timedelta(days=92)).strftime('%Y-%m-%dT%H:%M'))
+# pt_info['MIN_DT'] = pt_info[['TDM_REQ_DATE','TDM_RES_DATE']].min(axis=1).map(lambda x:(datetime.strptime(x,'%Y-%m-%d') - timedelta(days=61)).strftime('%Y-%m-%dT%H:%M'))
 pt_info.to_csv(f"{output_dir}/patient_info.csv", encoding='utf-8-sig', index=False)
+
 # pt_info.columns
 
 pt_files = glob.glob(f'{resource_dir}/lab/{prj_name}_lab(*).xlsx')
@@ -69,8 +72,8 @@ for finx, fpath in enumerate(pt_files): #break
     id_dose_df = dose_result_df[dose_result_df['ID'] == pid].copy()
     id_conc_df = conc_result_df[conc_result_df['ID'] == pid].copy()
     id_conc_df = id_conc_df[(id_conc_df['오더일']>=min_date)&(id_conc_df['오더일']<=max_date)&(id_conc_df['보고일']>=min_date)&(id_conc_df['보고일']<=max_date)]
-    id_samp_df_ori = sampling_result_df[sampling_result_df['ID'] == pid].copy()
-    id_samp_df = id_samp_df_ori[(id_samp_df_ori['채혈DT'] != '') & (~id_samp_df_ori['채혈DT'].isna())]
+    id_samp_df_ori = sampling_result_df[(sampling_result_df['ID'] == pid)].copy()
+    id_samp_df = id_samp_df_ori[(id_samp_df_ori['채혈DT'] != '') & (~id_samp_df_ori['채혈DT'].isna()) & (id_samp_df_ori['시행DT']<=max_date)&(id_samp_df_ori['시행DT']>=min_date)]
     if len(id_samp_df)>0:
         uniq_sampling_pids.append(pid)
 
@@ -424,8 +427,8 @@ for finx, fpath in enumerate(pt_files): #break
             conc_ord_date_type = '보고일'
             other_type = '오더일'
         for concord_date in cdf[conc_ord_date_type].drop_duplicates(): # break
-            concord_date_rows = cdf[cdf[conc_ord_date_type] == concord_date]  # break
-            samp_date_rows = sdf[sdf[conc_ord_date_type] == concord_date]  # break
+            concord_date_rows = cdf[cdf[conc_ord_date_type] == concord_date].copy()  # break
+            samp_date_rows = sdf[sdf[conc_ord_date_type] == concord_date].copy()  # break
 
             # SAMPLING TIME DATA가 부분적으로 없는 경우
             if len(samp_date_rows) == 0:
@@ -479,42 +482,129 @@ for finx, fpath in enumerate(pt_files): #break
 
             ## 농도 기록과 채혈 시간 기록이 일치할경우 -> Dose 투약 시점에 맞춰 Conc 크기에 따라 배열
             if (len(concord_date_rows)==len(samp_date_rows)) and (len(samp_date_rows) <= 2):
+                if (len(samp_date_rows) == 1):
+                    print('CONC 데이터 길이 == SAMP 데이터 길이 / samp_date_rows 기록이 1개만 존재')
 
-                # samp_date_rows['채혈DT']
-                dose_between_samps = dose_ord_frag[(dose_ord_frag['DOSE_DT'] >= samp_date_rows['채혈DT'].min())&(dose_ord_frag['DOSE_DT'] <= samp_date_rows['채혈DT'].max())].copy()
-                # 채혈 시간 기록 사이에 Dose 투약 기록이 있는 경우 -> 채혈 농도값으로 peak / trough에 해당하는 농도들 구분하고, '채혈DT'를 이에 맞춰 배정 후 SAMP_DT로 확정시킴 (DOSE_DT 앞 뒤에 있는게 맞는지 확인도하면 좋을듯)
-                if len(dose_between_samps)>=2:
-                    print('CONC 데이터 길이 == SAMP 데이터 길이 / sampling 사이에 dose 기록이 2개 이상 존재')
-                    raise ValueError
-
-                elif len(dose_between_samps)==1:
-
-                    conc_ascending_sort = True
-                    samp_ascending_sort = True
-
-                    # print(f'CONC 데이터 길이 == SAMP 데이터 길이 / sampling 사이에 dose 기록이 한 개 존재')
+                    # dose_before_samps = id_dose_df[(id_dose_df['DOSE_DT'] < samp_date_rows['채혈DT'].min())].copy()
+                    # dose_after_samps = id_dose_df[(id_dose_df['DOSE_DT'] > samp_date_rows['채혈DT'].min())].copy()
                     # raise ValueError
+                    concord_date_rows['채혈DT'] = samp_date_rows['채혈DT'].iloc[0]
 
-                # 채혈 시간 기록 사이에 Dose 투약 기록이 없는 경우 -> 채혈 농도값의 크기를 내림차순(큰->작은)으로 배열하고 '채혈DT'를 오름차순으로 맞춰 배정
+                    for dd_inx, dd_row in concord_date_rows.iterrows():
+                        if dd_row['채혈DT'] not in list(res_frag_df['SAMP_DT']):
+                            # print('기록')
+                            res_frag_df.at[dd_inx, 'SAMP_DT'] = dd_row['채혈DT']
+                            # break
+                        else:
+                            # res_frag_df.at[dd_inx, 'SAMP_DT'] = dd_row['채혈DT']
+                            # res_frag_df['채혈DT']
+                            # res_frag_df['SAMP_DT']
+                            # res_frag_df['POT채혈DT']
+
+                            print('이미 날짜 DT가 존재합니다')
                 else:
-                    conc_ascending_sort = False
-                    samp_ascending_sort = True
+                    # samp_date_rows['채혈DT']
+                    dose_before_samps = id_dose_df[(id_dose_df['DOSE_DT'] < samp_date_rows['채혈DT'].min())].copy()
+                    dose_between_samps = dose_ord_frag[(dose_ord_frag['DOSE_DT'] >= samp_date_rows['채혈DT'].min())&(dose_ord_frag['DOSE_DT'] <= samp_date_rows['채혈DT'].max())].copy()
+                    dose_after_samps = id_dose_df[(id_dose_df['DOSE_DT'] > samp_date_rows['채혈DT'].min())].copy()
+                    # 채혈 시간 기록 사이에 Dose 투약 기록이 있는 경우 -> 채혈 농도값으로 peak / trough에 해당하는 농도들 구분하고, '채혈DT'를 이에 맞춰 배정 후 SAMP_DT로 확정시킴 (DOSE_DT 앞 뒤에 있는게 맞는지 확인도하면 좋을듯)
+                    if len(dose_between_samps)>=2:
+                        print('CONC 데이터 길이 == SAMP 데이터 길이 / sampling 사이에 dose 기록이 2개 이상 존재')
+                        # dose_between_samps['DOSE_DT']
+                        temp_min_samp_dt_str = samp_date_rows['채혈DT'].min()
+                        temp_max_samp_dt_str = samp_date_rows['채혈DT'].max()
 
-                arranged_conc_samp_rows = concord_date_rows.sort_values(['CONC'], ascending=conc_ascending_sort)
-                arranged_conc_samp_rows['채혈DT'] = list(samp_date_rows.sort_values(['채혈DT'], ascending=samp_ascending_sort)['채혈DT'])
-                for dd_inx, dd_row in arranged_conc_samp_rows.iterrows():
-                    if dd_row['채혈DT'] not in list(res_frag_df['SAMP_DT']):
-                        print('기록')
-                        res_frag_df.at[dd_inx, 'SAMP_DT'] = dd_row['채혈DT']
-                        # break
-                    else:
-                        res_frag_df.at[dd_inx, 'SAMP_DT'] = dd_row['채혈DT']
-                        # res_frag_df['채혈DT']
-                        # res_frag_df['SAMP_DT']
-                        # res_frag_df['POT채혈DT']
+                        temp_min_samp_dt = datetime.strptime(samp_date_rows['채혈DT'].min(),'%Y-%m-%dT%H:%M')
+                        temp_max_samp_dt = datetime.strptime(samp_date_rows['채혈DT'].max(),'%Y-%m-%dT%H:%M')
 
-                        print('이미 날짜 DT가 존재합니다')
+                        before_samp_min_dt_str = dose_before_samps['DOSE_DT'].max()
+                        if type(before_samp_min_dt_str)==str:
+                            temp_dose_before_samps_dt = datetime.strptime(before_samp_min_dt_str,'%Y-%m-%dT%H:%M')
+                        else:
+                            temp_dose_before_samps_dt = '0000-00-00T00:00'
+
+                        temp_dose_between_samps_min_dt = datetime.strptime(dose_between_samps['DOSE_DT'].min(), '%Y-%m-%dT%H:%M')
+                        temp_dose_between_samps_max_dt = datetime.strptime(dose_between_samps['DOSE_DT'].max(), '%Y-%m-%dT%H:%M')
+
+                        after_samp_min_dt_str = dose_after_samps['DOSE_DT'].min()
+                        if type(after_samp_min_dt_str)==str:
+                            temp_dose_after_samps_dt = datetime.strptime(after_samp_min_dt_str,'%Y-%m-%dT%H:%M')
+                        else:
+                            temp_dose_after_samps_dt = '9999-99-99T99:99'
+
+                        # 직전까지의 DOSE_DT가 다음 DOSE_DT 보다 시간적으로 가까우면 -> 채혈DT중 min값은 peak conc
+                        if ((temp_min_samp_dt - temp_dose_before_samps_dt).total_seconds()/60) < ((temp_dose_between_samps_min_dt - temp_min_samp_dt).total_seconds()/60):
+                            min_samp_dt_conc_type = 'peak'
+                        else:
+                            min_samp_dt_conc_type = 'trough'
+
+                        if ((temp_max_samp_dt - temp_dose_between_samps_max_dt).total_seconds()/60) < ((temp_dose_after_samps_dt - temp_max_samp_dt).total_seconds()/60):
+                            max_samp_dt_conc_type = 'peak'
+                        else:
+                            max_samp_dt_conc_type = 'trough'
+                        # id_conc_df
+                        concval_saving_rows = concord_date_rows.copy()
+                        concord_date_rows.at[concord_date_rows.index[0], 'SAMP_DT'] = temp_min_samp_dt_str
+                        if min_samp_dt_conc_type=='peak':
+                            concord_date_rows.at[concord_date_rows.index[0],'CONC'] = concval_saving_rows[concval_saving_rows['CONC'] >= mean_conc].iloc[-1]['CONC']
+                        else:
+                            concord_date_rows.at[concord_date_rows.index[0],'CONC'] = concval_saving_rows[concval_saving_rows['CONC'] < mean_conc].iloc[-1]['CONC']
+
+                        concord_date_rows.at[concord_date_rows.index[-1], 'SAMP_DT'] = temp_max_samp_dt_str
+                        if max_samp_dt_conc_type=='peak':
+                            concord_date_rows.at[concord_date_rows.index[-1],'CONC'] = concval_saving_rows[concval_saving_rows['CONC'] >= mean_conc].iloc[0]['CONC']
+                        else:
+                            concord_date_rows.at[concord_date_rows.index[-1],'CONC'] = concval_saving_rows[concval_saving_rows['CONC'] < mean_conc].iloc[0]['CONC']
+
+                        # concord_date_rows[['SAMP_DT','CONC']]
+                        for dd_inx, dd_row in concord_date_rows.iterrows():
+                            if dd_row['채혈DT'] not in list(res_frag_df['SAMP_DT']):
+                                # print('기록')
+                                res_frag_df.at[dd_inx, 'SAMP_DT'] = dd_row['채혈DT']
+                                res_frag_df.at[dd_inx, 'CONC'] = dd_row['CONC']
+                                # break
+                            else:
+                                # res_frag_df.at[dd_inx, 'SAMP_DT'] = dd_row['채혈DT']
+                                # res_frag_df['채혈DT']
+                                # res_frag_df['SAMP_DT']
+                                # res_frag_df['POT채혈DT']
+
+                                print('이미 날짜 DT가 존재합니다')
+
+                        # res_frag_df['']
+                        #
+                        # res_frag_df[(res_frag_df[conc_ord_date_type] == concord_date) & (res_frag_df['SAMP_DT'] == '')]
+
                         # raise ValueError
+
+                    elif len(dose_between_samps)==1:
+
+                        conc_ascending_sort = True
+                        samp_ascending_sort = True
+
+                        # print(f'CONC 데이터 길이 == SAMP 데이터 길이 / sampling 사이에 dose 기록이 한 개 존재')
+                        # raise ValueError
+
+                    # 채혈 시간 기록 사이에 Dose 투약 기록이 없는 경우 -> 채혈 농도값의 크기를 내림차순(큰->작은)으로 배열하고 '채혈DT'를 오름차순으로 맞춰 배정
+                    else:
+                        conc_ascending_sort = False
+                        samp_ascending_sort = True
+
+                    arranged_conc_samp_rows = concord_date_rows.sort_values(['CONC'], ascending=conc_ascending_sort)
+                    arranged_conc_samp_rows['채혈DT'] = list(samp_date_rows.sort_values(['채혈DT'], ascending=samp_ascending_sort)['채혈DT'])
+                    for dd_inx, dd_row in arranged_conc_samp_rows.iterrows():
+                        if dd_row['채혈DT'] not in list(res_frag_df['SAMP_DT']):
+                            print('기록')
+                            res_frag_df.at[dd_inx, 'SAMP_DT'] = dd_row['채혈DT']
+                            # break
+                        else:
+                            res_frag_df.at[dd_inx, 'SAMP_DT'] = dd_row['채혈DT']
+                            # res_frag_df['채혈DT']
+                            # res_frag_df['SAMP_DT']
+                            # res_frag_df['POT채혈DT']
+
+                            print('이미 날짜 DT가 존재합니다')
+                            # raise ValueError
 
 
             elif (len(concord_date_rows)==len(samp_date_rows)) and (len(samp_date_rows) > 2):
@@ -540,8 +630,9 @@ for finx, fpath in enumerate(pt_files): #break
                 # dose_samp_date_rows['임시']
 
                 prev_dosedt = '0000-00-00T00:00'
-                for dosedt in dose_between_samps: #break
+                for dosedt_inx, dosedt in enumerate(dose_between_samps['DOSE_DT']): #break
                     # dose_samp_date_rows['임시CONC'].iloc[0]
+                    print('사이클')
                     try: next_dosedt = dose_between_samps[dose_between_samps['DOSE_DT'] > dosedt].iloc[0]['DOSE_DT']
                     except: next_dosedt = '9999-99-99T99:99'
 
@@ -550,14 +641,19 @@ for finx, fpath in enumerate(pt_files): #break
 
                     if len(prev_ds_frag_row)==0:
                         if len(next_ds_frag_row)==0:
-                            continue
+                            pass
                         elif len(next_ds_frag_row)==1:
-                            temp_inx = next_ds_frag_row.index[0]
-                            dose_samp_date_rows.at[temp_inx, '임시CONC'] = peak_concord_date_rows.iloc[-1]['CONC']
-                            peak_concord_date_rows = peak_concord_date_rows.iloc[:-1, :]
-                        elif len(next_ds_frag_row)==2:
+                            print('prev_ds_frag_row는 0개 / next_ds_frag_row가 1 개')
                             raise ValueError
-                        continue
+                            # temp_inx = next_ds_frag_row.index[0]
+                            # dose_samp_date_rows.at[temp_inx, '임시CONC'] = peak_concord_date_rows.iloc[-1]['CONC']
+                            # peak_concord_date_rows = peak_concord_date_rows.iloc[:-1, :]
+                        elif len(next_ds_frag_row)==2:
+                            print('prev_ds_frag_row는 0개 / next_ds_frag_row가 2 개')
+                            raise ValueError
+                        else:
+                            print('prev_ds_frag_row는 0개 / next_ds_frag_row가 3 개 이상')
+                            raise ValueError
                     elif len(prev_ds_frag_row)==1:
                         temp_inx = prev_ds_frag_row.index[0]
                         dose_samp_date_rows.at[temp_inx, '임시CONC'] = trough_concord_date_rows.iloc[-1]['CONC']
@@ -566,24 +662,40 @@ for finx, fpath in enumerate(pt_files): #break
                         print('DOSE와 DOSE사이 TROUGH 샘플이 2 개 이상 - peak/trough 배열 조정 요망')
                         raise ValueError
 
+                    if dosedt_inx==len(dose_between_samps)-1:
+                        if len(next_ds_frag_row)==0:
+                            print('마지막 dose 처리 / next_ds_frag_row가 0 개')
+                            pass
+                        elif len(next_ds_frag_row)==1:
+                            temp_inx = next_ds_frag_row.index[0]
+                            dose_samp_date_rows.at[temp_inx, '임시CONC'] = peak_concord_date_rows.iloc[0]['CONC']
+                            peak_concord_date_rows = peak_concord_date_rows.iloc[:-1,:]
+                        else:
+                            print('마지막 dose 처리 / next_ds_frag_row가 2 개 이상')
+                            raise ValueError
+                        decided_dose_samp_date_rows = dose_samp_date_rows[~dose_samp_date_rows['ID'].isna()].copy()
+                        decided_dose_samp_date_rows['CONC'] = decided_dose_samp_date_rows['임시CONC']
+                        decided_dose_samp_date_rows['SAMP_DT'] = decided_dose_samp_date_rows['임시DT']
+                        # concord_date_rows.columns
+                        if len(res_frag_df)==len(decided_dose_samp_date_rows):
+                            for col in ['CONC','SAMP_DT',]:
+                                res_frag_df[col] = list(decided_dose_samp_date_rows[col])
+                        else:
+                            print(f"len(res_frag_df)!=len(decided_dose_samp_date_rows)")
+                            raise ValueError
 
-                    # if len(trough_ds_frag_row)==0:
-                    #     continue
-                    # elif len(trough_ds_frag_row)==1:
-                    #     temp_inx = ds_frag_row.index[0]
-                    #     dose_samp_date_rows.at[temp_inx, '임시CONC'] = trough_concord_date_rows.iloc[-1]['CONC']
-                    #     trough_concord_date_rows = trough_concord_date_rows.iloc[:-1,:]
-                    # else:
-                    #     print('DOSE와 DOSE사이 TROUGH 샘플이 2 개 이상 - peak/trough 배열 조정 요망')
-                    #     raise ValueError
-
-
+                        # decided_dose_samp_date_rows['CONC']
+                        # res_frag_df.columns
+                        # res_frag_df['CONC']
+                        # for
+                        #     res_frag_df.at[temp_inx, '임시CONC'] = peak_concord_date_rows.iloc[0]['CONC']
+                        # decided_dose_samp_date_rows['CONC']
                     prev_dosedt = dosedt
 
                 # mean_conc
 
 
-                raise ValueError
+                # raise ValueError
 
             elif len(concord_date_rows) > len(samp_date_rows):
                 print(f'CONC 데이터 길이: {len(concord_date_rows)} > SAMP 데이터 길이: {len(samp_date_rows)}')
@@ -624,11 +736,48 @@ for finx, fpath in enumerate(pt_files): #break
                     # list(['채혈DT'])
                     # for dd_inx, dd_row in arranged_conc_samp_rows:
                     arranged_conc_samp_rows['채혈DT'] = list(modi_samp_date_rows['채혈DT'])
-
+                # id_conc_df
+                # res_frag_df['SAMP_DT']
                 # raise ValueError
             elif len(concord_date_rows) < len(samp_date_rows):
                 print(f'CONC 데이터 길이: {len(concord_date_rows)} < SAMP 데이터 길이: {len(samp_date_rows)}')
-                raise ValueError
+                not_na_pot_dt_rows = concord_date_rows[~concord_date_rows['POT채혈DT'].isna()].copy()
+                not_na_pot_dt_rows = not_na_pot_dt_rows[not_na_pot_dt_rows['POT채혈DT']!=''].copy()
+                if len(not_na_pot_dt_rows)>0:
+                    for dd_inx, dd_row in not_na_pot_dt_rows.iterrows(): # break
+
+                        # dd_row['POT_SAMP_TIME']
+                        if (dd_row['POT_SAMP_MONTHDAY']!='') and (dd_row['POT_SAMP_TIME']!=''):
+                            samp_dt_input = dd_row['POT채혈DT']
+                        elif (dd_row['POT_SAMP_MONTHDAY']=='') and (dd_row['POT_SAMP_TIME']!=''):
+                            samp_dt_input = dd_row['보고일'] + dd_row['POT_SAMP_TIME']
+                        elif (dd_row['POT_SAMP_MONTHDAY']!='') and (dd_row['POT_SAMP_TIME']==''):
+                            samp_dt_input = dd_row['POT채혈DT'] + 'T00:00'
+                            raise ValueError
+                        else:
+                            print('이런경우는 없을듯. 이미 앞전 조건이 pot dt가 있어야하는 조건')
+                            raise ValueError
+
+
+
+                        if samp_dt_input not in list(res_frag_df['SAMP_DT']):
+                            # print('기록')
+                            res_frag_df.at[dd_inx, 'SAMP_DT'] = samp_dt_input
+                        else:
+
+                            print('이미 날짜 DT가 존재합니다')
+                else:
+                    print(f'pot dt 도 없으면서 실제 / CONC 데이터 길이: {len(concord_date_rows)} < SAMP 데이터 길이: {len(samp_date_rows)}')
+                    if len(concord_date_rows)==1:
+                        concord_date_rows[conc_ord_date_type]
+                        samp_date_rows
+                        id_dose_df
+                        id_dose_df['DOSE_DT']
+                        print('여기 할 차례')
+                        raise ValueError
+                    else:
+                        print('CONC 데이터 길이 2개 이상')
+                        raise ValueError
 
     ## 기타 추가 처리
 
