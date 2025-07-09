@@ -48,7 +48,13 @@ for finx, fpath in enumerate(sampling_files):  # break
     # conc_df.columns
     conc_df = fdf[fdf['검사명'].isin(['Amikacin 농도'])].copy()  # Amikacin 농도 측정 항목만 추출
     conc_df['검사보고일시'] = conc_df['검사보고일시'].replace('_x000D_', np.nan)
-    conc_df = conc_df[(~conc_df['검사채혈일시'].isna()) & (~conc_df['검사시행일시'].isna()) & (~conc_df['검사보고일시'].isna()) & (~conc_df['처방발행일시'].isna())].copy()
+    # conc_df = conc_df[(~conc_df['검사채혈일시'].isna()) & (~conc_df['검사시행일시'].isna()) & (~conc_df['검사보고일시'].isna()) & (~conc_df['처방발행일시'].isna())].copy()
+    conc_df = conc_df[(~conc_df['검사시행일시'].isna()) & (~conc_df['검사보고일시'].isna()) & (~conc_df['처방발행일시'].isna())].copy()
+
+    # samp_na = conc_df[conc_df['검사채혈일시'].isna()].copy()
+    # samp_na['검사채혈일시'] = samp_na['검사접수일시']
+    # samp_not_na = conc_df[~conc_df['검사채혈일시'].isna()].copy()
+    # conc_df = pd.concat([samp_na, samp_not_na])
     # raise ValueError
 
     if len(conc_df)==0:
@@ -74,6 +80,6 @@ for finx, fpath in enumerate(sampling_files):  # break
     sampling_result_df.append(conc_df[['ID', 'NAME', '오더일','보고일', 'DRUG', '오더DT','라벨DT', '채혈DT','접수DT', '시행DT', '보고DT']])
 
 sampling_result_df = pd.concat(sampling_result_df, ignore_index=True).drop_duplicates(['ID', '보고일', '오더일', '채혈DT'])
-# sampling_result_df.drop_duplicates(['ID'])
+sampling_result_df = sampling_result_df.drop_duplicates(['ID', 'NAME', '오더일','보고일', 'DRUG', '오더DT','라벨DT', '채혈DT','접수DT', '시행DT', '보고DT'])
 sampling_result_df.to_csv(f"{output_dir}/final_sampling_df.csv", encoding='utf-8-sig', index=False)
 # sampling_result_df[['ID', 'NAME', '오더일','보고일','채혈DT']]
