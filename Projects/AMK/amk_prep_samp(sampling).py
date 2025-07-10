@@ -24,9 +24,10 @@ for finx, fpath in enumerate(sampling_files):  # break
     pname = fpath.split('_')[-1].split(')')[0]
 
 
-    # if pid in ("10757512",):
+    # if pid in ("19447177",):
     #     raise ValueError
-
+    # else:
+    #     continue
     fdf = pd.read_excel(fpath)
     # lab_set = lab_set.union(set(fdf[fdf['검사명'].map(lambda x:'amikacin' in x.lower())]['검사명'].unique()))
 
@@ -79,7 +80,8 @@ for finx, fpath in enumerate(sampling_files):  # break
     # conc_df = conc_df[~conc_df['CONC'].isna()].copy()
     sampling_result_df.append(conc_df[['ID', 'NAME', '오더일','보고일', 'DRUG', '오더DT','라벨DT', '채혈DT','접수DT', '시행DT', '보고DT']])
 
-sampling_result_df = pd.concat(sampling_result_df, ignore_index=True).drop_duplicates(['ID', '보고일', '오더일', '채혈DT'])
+sampling_result_df = pd.concat(sampling_result_df, ignore_index=True).drop_duplicates(['ID', '보고일', '오더일', '채혈DT', '접수DT'])
+# sampling_result_df = pd.concat(sampling_result_df, ignore_index=True).drop_duplicates(['ID', '보고일', '오더일', '채혈DT'])
 sampling_result_df = sampling_result_df.drop_duplicates(['ID', 'NAME', '오더일','보고일', 'DRUG', '오더DT','라벨DT', '채혈DT','접수DT', '시행DT', '보고DT'])
 sampling_result_df.to_csv(f"{output_dir}/final_sampling_df.csv", encoding='utf-8-sig', index=False)
 # sampling_result_df[['ID', 'NAME', '오더일','보고일','채혈DT']]
