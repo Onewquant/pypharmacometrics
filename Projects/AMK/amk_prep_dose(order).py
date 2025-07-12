@@ -236,7 +236,7 @@ for inx, row in dose_result_df.iterrows():
             if len(vacant_y_val)>0:
                 new_actval_str += f'_{vacant_data}'
                 continue
-            elif ('X' in actval) or ('M' in actval) or ('H' in actval) or ('C' in actval):
+            elif ('X' in actval) or ('M' in actval) or ('H' in actval) or ('C' in actval) or ('N' in actval):
                 new_actval_str+= f'_{vacant_data}'
                 continue
             else:
@@ -245,7 +245,8 @@ for inx, row in dose_result_df.iterrows():
                 """
                 # 확인 필요한 부분: D나 N은 투약이 된것인지?
                 """
-                if ('Y ' in rest_y_val) or ('O ' in rest_y_val) or ('N ' in rest_y_val):
+                if ('Y ' in rest_y_val) or ('O ' in rest_y_val):
+                # if ('Y ' in rest_y_val) or ('O ' in rest_y_val) or ('N ' in rest_y_val):
                     date_pattern = re.findall(r"\d\d\d\d-\d\d-\d\d",actval)
                     time_pattern = re.findall(r"\d+[P|A]\d*",actval.upper())
                     if (len(date_pattern) > 0) and (len(time_pattern) > 0):
@@ -267,6 +268,15 @@ for inx, row in dose_result_df.iterrows():
 
                     elif (len(date_pattern) > 0) and (len(time_pattern) == 0):
                         new_actval_str += f'_{date_pattern[0]}TNN:NN'
+                        """
+                        ID         /  약국_검사                                           Acting
+                        10908086   / 접수 [2005-06-27 20:00]   2005-06-27 20:00:53		/Y 2005-06-27(반납), 
+                        10948899  / 접수 [2004-05-06 06:00]   2004-05-06 06:00:34		12:00/ 2004-05-06(), /Y 2004-05-06(OA), 
+
+                        
+                        
+                        
+                        """
                         continue
                     elif (len(date_pattern) == 0) and (len(time_pattern) > 0):
                         new_actval_str += f'_{row["DATE"]}T{time_pattern[0]}'
@@ -357,19 +367,35 @@ dose_unique_list.sort()
 final_dose_df['ETC_INFO'] = (final_dose_df['ETC_INFO'].replace(np.nan, '')+'||').replace('||', '')
 # print(final_dose_df[final_dose_df['ID']==18115888])
 # final_dose_df= final_dose_df.groupby(['ID','NAME','DRUG','PERIOD','DATE','TIME'],as_index=False).agg({'DOSE':'sum','ETC_INFO':'sum'})
-final_dose_df= final_dose_df.groupby(['ID','NAME','DRUG','PERIOD','DATE','TIME'],as_index=False).agg({'DOSE':'sum','ETC_INFO':'sum'})
+final_dose_df= final_dose_df.groupby(['ID','NAME','DRUG','DATE','TIME'],as_index=False).agg({'DOSE':'sum','ETC_INFO':'sum','PERIOD':'min'})
 # print(final_dose_df[final_dose_df['ID']==18115888])
 # print(len(final_dose_df['ETC_INFO'].unique()))
 # final_dose_df = final_dose_df[(final_dose_df['TIME']!=vacant_data.split('T')[-1])]
 final_dose_df = final_dose_df[['ID','NAME','DRUG','PERIOD','DATE','TIME','DOSE','ETC_INFO']].sort_values(['ID','DATE','TIME'], ignore_index=True)
 final_dose_df.to_csv(f"{output_dir}/final_dose_df.csv", encoding='utf-8-sig', index=False)
-# final_dose_df[final_dose_df['DOSE']==2]
+
+# final_dose_df = pd.read_csv(f"{output_dir}/final_dose_df.csv")
+# final_dose_df[final_dose_df['DOSE']==8]
 # sns.displot(final_dose_df['DOSE'])
 
-no_dosing_data_df = pd.DataFrame(columns=['ID'])
-no_dosing_data_df['ID'] = no_dosing_dt_data_list
-no_dosing_data_df.to_csv(f"{output_dir}/no_dose_df.csv", encoding='utf-8-sig', index=False)
 
+no_dosing_data_df = pd.DataFrame(columns=['ID'])
+no_dosing_data_df['ID'] = no_data_pid_list
+no_dosing_data_df.to_csv(f"{output_dir}/err_no_dose_df.csv", encoding='utf-8-sig', index=False)
+
+no_dosing_dt_df = pd.DataFrame(columns=['ID'])
+no_dosing_dt_df['ID'] = no_dosing_dt_data_list
+no_dosing_dt_df.to_csv(f"{output_dir}/err_no_dosing_dt_df.csv", encoding='utf-8-sig', index=False)
+
+
+no_no_drug_keyword_df = pd.DataFrame(columns=['ID'])
+no_no_drug_keyword_df['ID'] = no_drug_keyword_pid_list
+no_no_drug_keyword_df.to_csv(f"{output_dir}/err_no_drug_keyword_df.csv", encoding='utf-8-sig', index=False)
+
+
+# no_data_pid_list = list()
+# no_dosing_dt_data_list = list()
+# no_drug_keyword_pid_list
 
 # final_dose_df[final_dose_df['PERIOD'].map(lambda x:len(x)>20)]
 
