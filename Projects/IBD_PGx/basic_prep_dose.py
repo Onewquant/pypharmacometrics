@@ -192,7 +192,7 @@ dose_result_df['PERIOD'] = dose_result_df['PERIOD'].map(lambda x:x.replace('2주
 
 ## H, C, Z는 제거
 
-dose_result_df = dose_result_df[dose_result_df['ACTING'].map(lambda x: False if (('H' in x) or ('Z' in x) or ('C' in x)) else True)].reset_index(drop=True)
+dose_result_df = dose_result_df[dose_result_df['ACTING'].map(lambda x: False if (('H' in x) or ('Z' in x) or ('C' in x) or ('N' in x)) else True)].reset_index(drop=True)
 dose_result_df = dose_result_df.sort_values(['ID','DATETIME'], ascending=[True,False], ignore_index=True)
 dose_result_df['ETC_INFO_TREATED'] = ''
 

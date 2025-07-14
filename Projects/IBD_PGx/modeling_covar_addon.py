@@ -49,7 +49,7 @@ for c in list(totlab_df.columns)[2:]:  # break
 ## Modeling Data Loading
 
 for drug in ['infliximab','adalimumab']:
-    for mode_str in ['integrated','induction','maintenance']:
+    for mode_str in ['integrated','induction']:
         modeling_df = pd.read_csv(f'{output_dir}/{drug}_{mode_str}_datacheck.csv')
         modeling_df['UID']= modeling_df['UID'].astype(str)
         modeling_df['DATETIME'] = modeling_df['DATETIME'].map(lambda x:x.split('T')[0])
@@ -89,10 +89,12 @@ for drug in ['infliximab','adalimumab']:
         # raise ValueError
 
         ## Modeling Data Saving
-        data_check_cols = ['ID','UID','NAME','DATETIME','TIME','DV','MDV','AMT','DUR','CMT','AZERO','IBD_TYPE'] + list(modeling_df.loc[:,'DRUG':].iloc[:,1:].columns)
-        modeling_df[data_check_cols].to_csv(f'{output_dir}/{drug}_{mode_str}_datacheck_covar.csv', index=False, encoding='utf-8-sig')
+        # data_check_cols = ['ID','UID','NAME','DATETIME','TIME','DV','MDV','AMT','DUR','CMT','IBD_TYPE','ADDED_ADDL'] + list(modeling_df.loc[:,'DRUG':].iloc[:,1:].columns)
+        # modeling_df[data_check_cols].to_csv(f'{output_dir}/{drug}_{mode_str}_datacheck_covar.csv', index=False, encoding='utf-8-sig')
 
-        modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','AZERO','IBD_TYPE'] + list(modeling_df.loc[:,'DRUG':].iloc[:,1:].columns)
+
+        right_covar_col = 'ADDED_ADDL' if 'ADDED_ADDL' in modeling_df.columns else 'DRUG'
+        modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','IBD_TYPE'] + list(modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
         modeling_df['IBD_TYPE'] = modeling_df['IBD_TYPE'].map({'CD':1,'UC':2})
         modeling_df['AGE'] = modeling_df.apply(lambda x: int((datetime.strptime(x['DATETIME'],'%Y-%m-%d') - datetime.strptime(x['AGE'],'%Y-%m-%d')).days/365.25), axis=1)
         modeling_df['SEX'] = modeling_df['SEX'].map({'남':1,'여':2})

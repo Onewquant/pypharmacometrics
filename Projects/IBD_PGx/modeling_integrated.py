@@ -61,7 +61,7 @@ merged_df.to_csv(f'{output_dir}/merged_df.csv',index=False, encoding='utf-8-sig'
 # merged_df.drop_duplicates(['ID'])
 
 merged_df['DATE'] = merged_df['DATETIME'].map(lambda x:x.split('T')[0])
-merged_df['AZERO'] = 0
+# merged_df['AZERO'] = 0
 merged_df = merged_df.merge(induction_df[['ID','IBD_TYPE']], on=['ID'], how='left')
 
 # Induction Phase 불일치 환자 구분 (전체 합친 데이터에서)
@@ -70,6 +70,7 @@ min_dose_df = merged_df.groupby(['ID']).agg({'NAME':'min','DATETIME':'min','DRUG
 min_dose_df['MIN_DOSE_DATE'] = min_dose_df['DATETIME'].map(lambda x:x.split('T')[0])
 comp_df = min_dose_df.merge(induction_df[['ID','IND_START_DATE']], on=['ID'], how='left')
 comp_df = comp_df.reset_index(drop=True)
+# comp_df
 
 maint_cons_df = comp_df[comp_df['MIN_DOSE_DATE']==comp_df['IND_START_DATE']].reset_index(drop=True)
 maint_diff_df = comp_df[comp_df['MIN_DOSE_DATE']!=comp_df['IND_START_DATE']].reset_index(drop=True)
@@ -100,7 +101,7 @@ maint_diff_df = comp_df[comp_df['MIN_DOSE_DATE']!=comp_df['IND_START_DATE']].res
 # min_dose_df['ID']
 # comp_df['IND_START_DATE'].iloc[0]
 
-appended_frag_cols = ['UID', 'NAME', 'DRUG', 'ROUTE', 'TIME', 'WKTIME', 'DWKTIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'DATETIME','AZERO','IBD_TYPE']
+appended_frag_cols = ['UID', 'NAME', 'DRUG', 'ROUTE', 'TIME', 'WKTIME', 'DWKTIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'DATETIME','IBD_TYPE']
 
 ind_df = list()
 no_indconc_df = list()
@@ -143,12 +144,12 @@ for inx, row in maint_cons_df.iterrows():
                 raise ValueError
             elif (len(dupdv_df_frag)==2) and (len(dupmdv_df_frag)==1):
                 # if len(dupdv_df_frag) == 2: raise ValueError
-                dupdv_df_frag.iat[0,3] = (datetime.strptime(dupmdv_df_frag['DATETIME'].iloc[0],'%Y-%m-%dT%H:%M') - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
-                dupdv_df_frag.iat[-1, 3] = (datetime.strptime(dupmdv_df_frag['DATETIME'].iloc[0], '%Y-%m-%dT%H:%M') + timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
+                dupdv_df_frag.at[dupdv_df_frag.index[0],'DATETIME'] = (datetime.strptime(dupmdv_df_frag['DATETIME'].iloc[0],'%Y-%m-%dT%H:%M') - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
+                dupdv_df_frag.at[dupdv_df_frag.index[-1],'DATETIME'] = (datetime.strptime(dupmdv_df_frag['DATETIME'].iloc[0], '%Y-%m-%dT%H:%M') + timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
             elif (len(dupdv_df_frag)==1) and (len(dupmdv_df_frag)==2):
-                dupdv_df_frag.iat[0,3] = (datetime.strptime(dupmdv_df_frag['DATETIME'].iloc[0],'%Y-%m-%dT%H:%M')-timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
+                dupdv_df_frag.at[dupdv_df_frag.index[0],'DATETIME'] = (datetime.strptime(dupmdv_df_frag['DATETIME'].iloc[0],'%Y-%m-%dT%H:%M')-timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
             elif (len(dupdv_df_frag)==1) and (len(dupmdv_df_frag)==1):
-                dupdv_df_frag.iat[0,3] = (datetime.strptime(dupmdv_df_frag['DATETIME'].iloc[0],'%Y-%m-%dT%H:%M')-timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
+                dupdv_df_frag.at[dupdv_df_frag.index[0],'DATETIME'] = (datetime.strptime(dupmdv_df_frag['DATETIME'].iloc[0],'%Y-%m-%dT%H:%M')-timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
             elif (len(dupdv_df_frag)==0) or (len(dupmdv_df_frag)==0):
                 # print("No data")
                 # raise ValueError
@@ -320,9 +321,9 @@ ada_ind_df = ind_df[ind_df['DRUG']=='adalimumab'].copy()
 # ust_ind_df = ind_df[ind_df['DRUG']=='ustekinumab'].copy()
 
 inf_maint_df = maint_df[maint_df['DRUG']=='infliximab'].sort_values(['UID','DATETIME'], ignore_index=True)
-inf_maint_df['AZERO'] = (inf_maint_df['UID']!=(inf_maint_df['UID'].shift(1).fillna(0)))*1
+# inf_maint_df['AZERO'] = (inf_maint_df['UID']!=(inf_maint_df['UID'].shift(1).fillna(0)))*1
 ada_maint_df = maint_df[maint_df['DRUG']=='adalimumab'].sort_values(['UID','DATETIME'], ignore_index=True)
-ada_maint_df['AZERO'] =(ada_maint_df['UID']!=(ada_maint_df['UID'].shift(1).fillna(0)))*1
+# ada_maint_df['AZERO'] =(ada_maint_df['UID']!=(ada_maint_df['UID'].shift(1).fillna(0)))*1
 # ust_maint_df = maint_df[maint_df['DRUG']=='ustekinumab'].sort_values(['UID','DATETIME'], ignore_index=True)
 # ust_maint_df['AZERO'] =(ada_maint_df['UID']!=(ada_maint_df['UID'].shift(1).fillna(0)))*1
 
@@ -333,18 +334,40 @@ ada_df = pd.concat([ada_ind_df, ada_maint_df]).sort_values(['UID','DATETIME'], i
 inf_df['ID'] = inf_df['UID'].map({uid:uid_inx for uid_inx, uid in enumerate(list(inf_df['UID'].unique()))})
 ada_df['ID'] = ada_df['UID'].map({uid:uid_inx for uid_inx, uid in enumerate(list(ada_df['UID'].unique()))})
 
-ind_modeling_cols = ['ID','TIME','WKTIME','DWKTIME','DV','MDV','AMT','DUR','CMT','DATETIME','IBD_TYPE','AZERO','UID','NAME','ROUTE','DRUG']
+ind_modeling_cols = ['ID','TIME','WKTIME','DWKTIME','DV','MDV','AMT','DUR','CMT','DATETIME','IBD_TYPE','UID','NAME','ROUTE','DRUG']
 inf_df = inf_df[ind_modeling_cols].copy()
 ada_df = ada_df[ind_modeling_cols].copy()
 
 
+## SC 자가투약 된 것 투약력 정리
+inf_dose_df = pd.read_csv(f'{output_dir}/dose_df.csv')
+inf_dose_df = inf_dose_df[inf_dose_df['DRUG']=='infliximab'].rename(columns={'ID':'UID'})
+inf_dose_df['ETC_INFO_TREATED'] = inf_dose_df['ETC_INFO_TREATED'].replace(np.nan,'')
+inf_dose_df['ADDED_ADDL'] = inf_dose_df['ETC_INFO_TREATED'].map(lambda x: 'ADDL반영' in x)
+inf_df = inf_df.merge(inf_dose_df[['UID','DATETIME','ADDED_ADDL']], on=['UID','DATETIME'], how='left')
+inf_df['ADDED_ADDL'] = inf_df['ADDED_ADDL'].replace(np.nan, False)
+
+inf_del_df = inf_df[(inf_df['MDV']==1)].sort_values(['ID','TIME'])
+inf_del_df = inf_del_df[(inf_del_df['TIME'].diff() > 0)&(inf_del_df['TIME'].diff() <= 9*24) & (inf_del_df['ADDED_ADDL'])].copy()
+inf_df = inf_df[~inf_df.index.isin(inf_del_df.index)].copy()
 
 
+ada_dose_df = pd.read_csv(f'{output_dir}/dose_df.csv')
+ada_dose_df = ada_dose_df[ada_dose_df['DRUG']=='adalimumab'].rename(columns={'ID':'UID'})
+ada_dose_df['ETC_INFO_TREATED'] = ada_dose_df['ETC_INFO_TREATED'].replace(np.nan,'')
+ada_dose_df['ADDED_ADDL'] = ada_dose_df['ETC_INFO_TREATED'].map(lambda x: 'ADDL반영' in x)
+ada_df = ada_df.merge(ada_dose_df[['UID','DATETIME','ADDED_ADDL']], on=['UID','DATETIME'], how='left')
+ada_df['ADDED_ADDL'] = ada_df['ADDED_ADDL'].replace(np.nan, False)
 
+ada_del_df = ada_df[(ada_df['MDV']==1)].sort_values(['ID','TIME'])
+ada_del_df = ada_del_df[(ada_del_df['TIME'].diff() > 0)&(ada_del_df['TIME'].diff() <= 9*24) & (ada_del_df['ADDED_ADDL'])].copy()
+ada_df = ada_df[~ada_df.index.isin(ada_del_df.index)].copy()
+
+## 저장
 inf_df.to_csv(f'{output_dir}/infliximab_integrated_datacheck.csv',index=False, encoding='utf-8-sig')
 ada_df.to_csv(f'{output_dir}/adalimumab_integrated_datacheck.csv',index=False, encoding='utf-8-sig')
 
-ind_modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','AZERO','IBD_TYPE']
+ind_modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','IBD_TYPE']
 inf_df['IBD_TYPE'] = inf_df['IBD_TYPE'].map({'CD':1,'UC':2})
 ada_df['IBD_TYPE'] = ada_df['IBD_TYPE'].map({'CD':1,'UC':2})
 inf_df = inf_df[ind_modeling_cols].copy()
