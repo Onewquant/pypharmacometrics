@@ -39,7 +39,7 @@ lab_df = pd.read_csv(f"{output_dir}/conc_df.csv")
 # lab_df.columns
 # lab_df['DRUG']
 lab_df = lab_df.rename(columns={'CONC':'DV'})
-lab_df['MDV']='.'
+lab_df['MDV']=0
 lab_df['DUR']='.'
 lab_df['AMT']='.'
 lab_df['ROUTE']='.'
@@ -162,9 +162,10 @@ for inx, row in maint_cons_df.iterrows():
         ind_df_frag = pd.concat(ind_df_frag_list).drop_duplicates(['ID','DATETIME']).sort_values(['ID','DATETIME'], ignore_index=True)
     zero_conc_row = ind_df_frag.iloc[:1,:].copy()
     zero_conc_row['DV'] = 0.0
-    zero_conc_row['MDV'] = '.'
+    zero_conc_row['MDV'] = 0
     zero_conc_row['AMT'] = '.'
     zero_conc_row['DUR'] = '.'
+    zero_conc_row['ROUTE'] = '.'
     ind_df_frag = pd.concat([zero_conc_row, ind_df_frag]).sort_values(['ID','DATETIME'], ignore_index=True)
 
     # if row['ID']==11788526:
@@ -213,7 +214,7 @@ for inx, row in maint_diff_df.iterrows():
     # if len(ind_conc_df_frag)==0: # induction phase에 농도 데이터 부재시 나머지 데이터 중 첫 농도 값을 기준으로 maintenance 시작
     # ind_end_inx = id_df['MDV']
     # maint_df_frag = id_df.loc[ind_end_inx:].copy()
-    first_dv_inx = id_df[id_df['MDV']=='.'].iloc[0].name
+    first_dv_inx = id_df[id_df['MDV']==0].iloc[0].name
     maint_df_frag = id_df.loc[first_dv_inx:].copy()
     # else: # induction phase에 농도 데이터 있으면, induction phase의 마지막 농도 데이터 값을 기준으로 maintenance phase 설정
     #     last_dv_inx = ind_df_frag[ind_df_frag['MDV']=='.'].iloc[-1].name
@@ -249,8 +250,8 @@ for inx, row in maint_diff_df.iterrows():
             nodup_df_frag = maint_df_frag[~(maint_df_frag['DATE'].isin(unique_date_df['DATE']))].copy()
             dup_df_frag = maint_date_df_frag[maint_date_df_frag['DATE']==dup_date].copy()
 
-            dupdv_df_frag = dup_df_frag[dup_df_frag['MDV']=='.'].copy()
-            dupmdv_df_frag = dup_df_frag[dup_df_frag['MDV'] != '.'].copy()
+            dupdv_df_frag = dup_df_frag[dup_df_frag['MDV'] == 0].copy()
+            dupmdv_df_frag = dup_df_frag[dup_df_frag['MDV'] != 0].copy()
             if len(dupmdv_df_frag)>0:
                 maint_df_frag_list.append(pd.concat([nodup_df_frag, dupdv_df_frag, dupmdv_df_frag]))
                 dupdv_df_frag['DATETIME'] = (datetime.strptime(dupmdv_df_frag['DATETIME'].iloc[0], '%Y-%m-%dT%H:%M') - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
@@ -335,8 +336,8 @@ inf_df['ID'] = inf_df['UID'].map({uid:uid_inx for uid_inx, uid in enumerate(list
 ada_df['ID'] = ada_df['UID'].map({uid:uid_inx for uid_inx, uid in enumerate(list(ada_df['UID'].unique()))})
 
 ind_modeling_cols = ['ID','TIME','WKTIME','DWKTIME','DV','MDV','AMT','DUR','CMT','DATETIME','IBD_TYPE','UID','NAME','ROUTE','DRUG']
-inf_df = inf_df[ind_modeling_cols].copy()
-ada_df = ada_df[ind_modeling_cols].copy()
+inf_df = inf_df[ind_modeling_cols].sort_values(['ID','TIME','MDV'])
+ada_df = ada_df[ind_modeling_cols].sort_values(['ID','TIME','MDV'])
 
 
 ## SC 자가투약 된 것 투약력 정리
@@ -352,6 +353,7 @@ inf_del_df = inf_del_df[(inf_del_df['TIME'].diff() > 0)&(inf_del_df['TIME'].diff
 inf_df = inf_df[~inf_df.index.isin(inf_del_df.index)].copy()
 
 
+
 ada_dose_df = pd.read_csv(f'{output_dir}/dose_df.csv')
 ada_dose_df = ada_dose_df[ada_dose_df['DRUG']=='adalimumab'].rename(columns={'ID':'UID'})
 ada_dose_df['ETC_INFO_TREATED'] = ada_dose_df['ETC_INFO_TREATED'].replace(np.nan,'')
@@ -362,6 +364,39 @@ ada_df['ADDED_ADDL'] = ada_df['ADDED_ADDL'].replace(np.nan, False)
 ada_del_df = ada_df[(ada_df['MDV']==1)].sort_values(['ID','TIME'])
 ada_del_df = ada_del_df[(ada_del_df['TIME'].diff() > 0)&(ada_del_df['TIME'].diff() <= 9*24) & (ada_del_df['ADDED_ADDL'])].copy()
 ada_df = ada_df[~ada_df.index.isin(ada_del_df.index)].copy()
+
+## TIME==0 일때 CONC==0 만 DV로 가지고 있는 경우 제외
+
+inf_dv_exists_pids = inf_df[(inf_df['TIME']!=0)&(inf_df['DV']!=0)&(inf_df['MDV']!=1)].copy()
+inf_dv_exists_pids = inf_dv_exists_pids.groupby('UID',as_index=False).agg({'UID':'max','DV':'count'})['UID']
+inf_df = inf_df[inf_df['UID'].isin(inf_dv_exists_pids)].reset_index(drop=True)
+
+# no_dv.columns
+## CONC측정이 근처 투여 시간 이후인 경우 투약시간 재조정
+
+conc_first_rows = inf_df[(inf_df['TIME']!=0)&(inf_df['MDV']==0)&(inf_df['TIME'].diff(1).map(np.abs) < 72)&(inf_df['TIME'].diff(1).map(np.abs) > 0.5)].copy()
+for inx, row in conc_first_rows.iterrows():
+    near_dinx = inx-1
+    # 근처 Dosing된 포인트가 SC 추가투여로 구성한 데이터일때
+    if (inf_df.at[near_dinx, 'ID']==inf_df.at[near_dinx,'ID']):
+        if inf_df.at[near_dinx, 'ADDED_ADDL']:
+            inf_df.at[near_dinx, 'TIME'] = row['TIME'] + 0.5
+            inf_df.at[near_dinx,'DATETIME'] = (datetime.strptime(row['DATETIME'], '%Y-%m-%dT%H:%M') + timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
+        else:
+            # 근처 Dosing 날짜와 같은 날짜이긴 할때
+            if inf_df.at[near_dinx, 'DATETIME'].split('T')[0] == row['DATETIME'].split('T')[0]:
+                inf_df.at[inx, 'TIME'] = inf_df.at[near_dinx,'TIME'] - 0.5
+                inf_df.at[inx, 'DATETIME'] = (datetime.strptime(inf_df.at[near_dinx,'DATETIME'], '%Y-%m-%dT%H:%M') - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
+            else:
+                inf_df.at[inx, 'TIME'] = inf_df.at[near_dinx,'TIME'] - 0.5
+                inf_df.at[inx, 'DATETIME'] = (datetime.strptime(inf_df.at[near_dinx,'DATETIME'], '%Y-%m-%dT%H:%M') - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
+
+                # inf_df[inf_df.index==near_dinx].iloc[0]
+                # inf_df[inf_df.index==inx].iloc[0]
+                # raise ValueError
+
+inf_df = inf_df.sort_values(['ID','TIME','MDV'])
+
 
 ## 저장
 inf_df.to_csv(f'{output_dir}/infliximab_integrated_datacheck.csv',index=False, encoding='utf-8-sig')
