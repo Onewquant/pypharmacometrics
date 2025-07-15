@@ -120,9 +120,9 @@ for drug in ['infliximab','adalimumab']:
         # modeling_df['CREATININE'].median()
         # modeling_df['ALB'].median()
         # modeling_df['CRP'].median()
-        # raise ValueError
-
+        raise ValueError
         # modeling_df['A_0FLG'] = (modeling_df['ID'].shift(1)!=modeling_df['ID'])*1
+
 
         modeling_df.to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df.csv',index=False, encoding='utf-8-sig')
         modeling_df[~((modeling_df['TIME'] == 0) & (modeling_df['DV'] == '0.0'))].copy().to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df_without_zero_dv.csv',index=False, encoding='utf-8-sig')
