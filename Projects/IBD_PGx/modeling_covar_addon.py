@@ -49,9 +49,11 @@ totlab_df = totlab_df.drop_duplicates(['UID','DATETIME'])
 # totlab_df[~totlab_df['ALT'].isna()]['ALT']
 
 ## Modeling Data Loading
-
-for drug in ['infliximab','adalimumab']:
-    for mode_str in ['integrated','induction']:
+for drug in ['infliximab',]:
+# for drug in ['infliximab','adalimumab']:
+#     for mode_str in ['integrated','induction']:
+    for mode_str in ['integrated',]:
+    # for mode_str in ['integrated']:
         modeling_df = pd.read_csv(f'{output_dir}/{drug}_{mode_str}_datacheck.csv')
         modeling_df['UID']= modeling_df['UID'].astype(str)
         modeling_df['DATETIME'] = modeling_df['DATETIME'].map(lambda x:x.split('T')[0])
@@ -80,6 +82,8 @@ for drug in ['infliximab','adalimumab']:
 
         modeling_df.fillna(modeling_df.median(numeric_only=True), inplace=True)
 
+
+
         ## Covariates의 NA value 처리 (ffill 먼저 시도, 없으면 bfill, 그것도 없으면 전체의 median 값)
 
         # md_df_list = list()
@@ -96,10 +100,12 @@ for drug in ['infliximab','adalimumab']:
         ## Modeling Data Saving
         # data_check_cols = ['ID','UID','NAME','DATETIME','TIME','DV','MDV','AMT','DUR','CMT','IBD_TYPE','ADDED_ADDL'] + list(modeling_df.loc[:,'DRUG':].iloc[:,1:].columns)
         # modeling_df[data_check_cols].to_csv(f'{output_dir}/{drug}_{mode_str}_datacheck_covar.csv', index=False, encoding='utf-8-sig')
+        right_covar_col = 'TIME(WEEK)' if 'TIME(WEEK)' in modeling_df.columns else 'DRUG'
+        datacheck_cols = ['ID',	'UID', 'NAME', 'DATETIME','TIME(WEEK)','TIME(DAY)','TIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'IBD_TYPE', 'ROUTE','DRUG', 'ADDED_ADDL'] + list(modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
+        modeling_df[datacheck_cols].to_csv(f'{output_dir}/{drug}_{mode_str}_datacheck(covar).csv', index=False, encoding='utf-8-sig')
 
-
-        right_covar_col = 'ADDED_ADDL' if 'ADDED_ADDL' in modeling_df.columns else 'DRUG'
         modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','IBD_TYPE'] + list(modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
+
         modeling_df['IBD_TYPE'] = modeling_df['IBD_TYPE'].map({'CD':1,'UC':2})
         modeling_df['AGE'] = modeling_df.apply(lambda x: int((datetime.strptime(x['DATETIME'],'%Y-%m-%d') - datetime.strptime(x['AGE'],'%Y-%m-%d')).days/365.25), axis=1)
         modeling_df['SEX'] = modeling_df['SEX'].map({'남':1,'여':2})
@@ -120,14 +126,15 @@ for drug in ['infliximab','adalimumab']:
         # modeling_df['CREATININE'].median()
         # modeling_df['ALB'].median()
         # modeling_df['CRP'].median()
-        raise ValueError
+        # raise ValueError
         # modeling_df['A_0FLG'] = (modeling_df['ID'].shift(1)!=modeling_df['ID'])*1
 
 
         modeling_df.to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df.csv',index=False, encoding='utf-8-sig')
         modeling_df[~((modeling_df['TIME'] == 0) & (modeling_df['DV'] == '0.0'))].copy().to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df_without_zero_dv.csv',index=False, encoding='utf-8-sig')
         modeling_df['TIME']= modeling_df['TIME']/24
-        modeling_df.to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df_dayscale.csv',index=False, encoding='utf-8-sig')
+        modeling_df['DUR'] = modeling_df['DUR'].map(lambda x: float(x)/24 if x!='.' else x)
+        modeling_df.to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df_dayscale.csv',index=False, encoding='utf-8')
 
 
 

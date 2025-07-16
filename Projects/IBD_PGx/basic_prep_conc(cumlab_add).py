@@ -22,7 +22,10 @@ for finx, fpath in enumerate(cumlab_files): #break
     pname = fpath.split('\\')[-1].split('_')[-1].split('.txt')[0]
 
     print(f"({finx}) {pname} / {pid}")
-
+    # if pid=='21169146':
+    #     raise ValueError
+    # else:
+    #     continue
     # if pid in ("14188505", "17677819", "21169146", "21201336", "24028105", "24106625", "25269024", "29702679", "34560125", "34734236", "36325931"):       # cumlab 파일 다시 수집 필요
     #     continue
     # if pid in ("36898756"):       # lab 파일 다시 수집 필요 / 34665842 -> lab 파일에 중복되어 있으니 삭제요망
@@ -30,7 +33,7 @@ for finx, fpath in enumerate(cumlab_files): #break
     with open(fpath, mode='r', encoding='euc-kr') as f:
         raw_cum_lab = f.read()
 
-        raw_cum_lab_text = raw_cum_lab.strip().replace('\n*', '*').replace('\nPositive', 'Positive').replace('\nEquivocal', 'Equivocal').replace('재검한 결과입니다.\n', '재검한 결과입니다.')
+        raw_cum_lab_text = raw_cum_lab.strip().replace('\n*', '* ').replace('\nPositive', 'Positive').replace('\nEquivocal', 'Equivocal').replace('재검한 결과입니다.\n', '재검한 결과입니다.').replace('\nInfliximab 정량', '* Infliximab 정량')
         cumlab_frag_df = pd.DataFrame([c.split('\t') for c in raw_cum_lab_text.split('\n')]).copy()
         cumlab_frag_df = cumlab_frag_df.T.copy()
         cumlab_frag_cols = ['DT'] + [c.split('\t')[0] for c in cumlab_frag_df.iloc[0, 1:]]
@@ -38,9 +41,10 @@ for finx, fpath in enumerate(cumlab_files): #break
         cumlab_frag_df.columns = cumlab_frag_cols
         if '' in cumlab_frag_cols:
             cumlab_frag_df = cumlab_frag_df.drop('', axis=1)
-
+        # fdf[fdf['Lab'].map(lambda x:'infliximab' in x.lower())]['Lab']
         fdf = pd.melt(cumlab_frag_df.dropna(axis=1, how='all').reset_index(drop=True), id_vars=['DT'], var_name='Lab', value_name='Value')
         fdf['Value'] = fdf['Value'].replace({'':np.nan, None: np.nan})
+        # fdf[fdf['Lab'].map(lambda x:'infliximab' in x.lower())].dropna()
         fdf.to_excel(f"{resource_dir}/cumlab_추가/IBD_PGx_cumlab({pid}_{pname}).xlsx")
         # print(cumlab_frag_df.columns)
         # print(cumlab_frag_df.iloc[0])
@@ -71,7 +75,7 @@ for finx, fpath in enumerate(cumlab_files): #break
     conc_df = conc_df[~conc_df['CONC'].isna()].copy()
     conc_df['DATETIME'] = conc_df['DT']
 
-    conc_df[['ID', 'NAME', 'DATETIME', 'DRUG', 'CONC']]
+    # conc_df[['ID', 'NAME', 'DATETIME', 'DRUG', 'CONC']]
 
     # conc_result_df.append(conc_df[['ID','NAME','DATETIME','DRUG','CONC']])
     # conc_result_df['ID'].drop_duplicates()
