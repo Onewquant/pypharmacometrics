@@ -19,6 +19,7 @@ for drug in ['infliximab', 'adalimumab']:
 
     for mode_str in md_dict.keys():
         md_df = pd.read_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df.csv')
+        # raise ValueError
         # md_df = pd.read_csv(f'{output_dir}/{drug}_{mode_str}_datacheck.csv')
         md_dict[mode_str] = md_df.copy()
 
@@ -36,7 +37,7 @@ for drug in ['infliximab', 'adalimumab']:
         mddemo_dict['Maintenance only'] = f"{(subtotal_n-induction_n)} ({round(100 * (subtotal_n-induction_n)/subtotal_n,2)})"
 
         mddemo_dict['Demographics'] = ""
-        age_series = md_df[md_df['MDV']=='1'].drop_duplicates(['ID'])['AGE'].copy()
+        age_series = md_df[md_df['MDV']==1].drop_duplicates(['ID'])['AGE'].copy()
         mddemo_dict['AGE at the 1st Dose, mean (SD)'] = f"{round(np.mean(age_series), 2)} ({round(np.std(age_series), 2)})"
 
         sex_series = md_df.drop_duplicates(['ID'])['SEX'].copy()
@@ -55,7 +56,7 @@ for drug in ['infliximab', 'adalimumab']:
 
         ## Sampling
         mddemo_dict['Blood Sampling'] = ""
-        sampling_df = md_df[(md_df['MDV']!='1')&(~((md_df['DV']== '0.0') & (md_df['TIME'] == 0)))].copy()
+        sampling_df = md_df[(md_df['MDV']!=1)&(~((md_df['DV']== '0.0') & (md_df['TIME'] == 0)))].copy()
         sampling_desc = sampling_df.groupby('ID').agg(DV_COUNT=('DV', 'count'), DV_MIN=('DV', 'min')).reset_index(drop=False)
 
         mddemo_dict['Total samples, n (patients n)'] = f"{len(sampling_df)} ({len(sampling_desc)})"
@@ -73,11 +74,11 @@ for drug in ['infliximab', 'adalimumab']:
 
         mddemo_dict['total ATI samples, n (%)'] = f"{len(not_na_ati_df)} ({round(100, 2)})"
         mddemo_dict['high ATI samples, n (%)'] = f"{(not_na_ati_df['INFATI'] >= 10).sum()} ({round(((not_na_ati_df['INFATI'] >= 10).sum()) * 100 / len(not_na_ati_df), 2)})"
-        mddemo_dict['intermediate ATI samples, n (%)'] = f"{((not_na_ati_df['INFATI'] < 10)&(not_na_ati_df['INFATI'] > 2.5)).sum()} ({round(((not_na_ati_df['INFATI'] < 10)&(not_na_ati_df['INFATI'] > 2.5)) * 100 / len(not_na_ati_df), 2)})"
+        mddemo_dict['intermediate ATI samples, n (%)'] = f"{((not_na_ati_df['INFATI'] < 10)&(not_na_ati_df['INFATI'] > 2.5)).sum()} ({round(((not_na_ati_df['INFATI'] < 10)&(not_na_ati_df['INFATI'] > 2.5)).sum() * 100 / len(not_na_ati_df), 2)})"
         mddemo_dict['LLOQ ATI samples, n (%)'] = f"{(not_na_ati_df['INFATI'] <= 2.5).sum()} ({round(((not_na_ati_df['INFATI'] <= 2.5).sum()) * 100 / len(not_na_ati_df), 2)})"
 
         # not_na_ati_df[(not_na_ati_df['INFATI'] < 10)&(not_na_ati_df['INFATI'] > 2.5)][['ID','INFATI']]
-        raise ValueError
+        # raise ValueError
         # not_na_ati_df = md_df[~md_df['INFATI'].isna()].copy()
         # not_na_ati_df[not_na_ati_df['INFATI'] > 2.5].drop_duplicates(['ID'])['INFATI']
         # not_na_ati_df[not_na_ati_df['INFATI'] >= 10]
@@ -92,7 +93,7 @@ for drug in ['infliximab', 'adalimumab']:
         ## Dosing
         mddemo_dict['Dosing'] = ""
 
-        dosing_df = md_df[md_df['MDV']=='1'].copy()
+        dosing_df = md_df[md_df['MDV']==1].copy()
         pop_form_type_df = dosing_df['CMT'].value_counts()
         ind_form_type_df = dosing_df.groupby('ID')['CMT'].value_counts().unstack(fill_value=0).reset_index(drop=False)
         ind_form_type_df.columns.name=None

@@ -134,6 +134,11 @@ for finx, fpath in enumerate(order_files): #break
             # raise ValueError
             dose_series.append(dose_val)
         else:
+        #     if ('infliximab' in x.lower()) and (not ('Remsima 120mg pen (Infliximab) ▣ 120mg [SC]' in x)) and (not ('Remsima 120mg pen (Infliximab) 120mg [SC]' in x)):
+        #         raise ValueError
+        #     else:continue
+        # continue
+        # pid
             try: dose_val = int(re.findall(r'\d+mg',x)[1].replace('mg','').strip())
             except:
                 if '(Ustekinumab' in x:

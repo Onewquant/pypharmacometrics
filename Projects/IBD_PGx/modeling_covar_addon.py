@@ -51,8 +51,8 @@ totlab_df = totlab_df.drop_duplicates(['UID','DATETIME'])
 ## Modeling Data Loading
 for drug in ['infliximab',]:
 # for drug in ['infliximab','adalimumab']:
-#     for mode_str in ['integrated','induction']:
-    for mode_str in ['integrated',]:
+    for mode_str in ['integrated','induction']:
+    # for mode_str in ['integrated',]:
     # for mode_str in ['integrated']:
         modeling_df = pd.read_csv(f'{output_dir}/{drug}_{mode_str}_datacheck.csv')
         modeling_df['UID']= modeling_df['UID'].astype(str)
@@ -100,15 +100,18 @@ for drug in ['infliximab',]:
         ## Modeling Data Saving
         # data_check_cols = ['ID','UID','NAME','DATETIME','TIME','DV','MDV','AMT','DUR','CMT','IBD_TYPE','ADDED_ADDL'] + list(modeling_df.loc[:,'DRUG':].iloc[:,1:].columns)
         # modeling_df[data_check_cols].to_csv(f'{output_dir}/{drug}_{mode_str}_datacheck_covar.csv', index=False, encoding='utf-8-sig')
-        right_covar_col = 'TIME(WEEK)' if 'TIME(WEEK)' in modeling_df.columns else 'DRUG'
+        right_covar_col = 'TIME(WEEK)'
         datacheck_cols = ['ID',	'UID', 'NAME', 'DATETIME','TIME(WEEK)','TIME(DAY)','TIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'IBD_TYPE', 'ROUTE','DRUG', 'ADDED_ADDL'] + list(modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
         modeling_df[datacheck_cols].to_csv(f'{output_dir}/{drug}_{mode_str}_datacheck(covar).csv', index=False, encoding='utf-8-sig')
+        dcheck_df = modeling_df[~(modeling_df['DV'].isin(['.','0.0']))][['ID',	'UID', 'NAME', 'DATETIME', 'DV']].copy()
+        # dcheck_df[dcheck_df['DV'].map(float) > 40]
 
-        modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','IBD_TYPE'] + list(modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
+        modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','ROUTE','IBD_TYPE'] + list(modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
 
         modeling_df['IBD_TYPE'] = modeling_df['IBD_TYPE'].map({'CD':1,'UC':2})
         modeling_df['AGE'] = modeling_df.apply(lambda x: int((datetime.strptime(x['DATETIME'],'%Y-%m-%d') - datetime.strptime(x['AGE'],'%Y-%m-%d')).days/365.25), axis=1)
         modeling_df['SEX'] = modeling_df['SEX'].map({'남':1,'여':2})
+        modeling_df['ROUTE'] = modeling_df['ROUTE'].map({'IV':1,'SC':2,'.':'.'})
 
         modeling_df = modeling_df[modeling_cols].sort_values(['ID','TIME'], ignore_index=True)
 
@@ -135,10 +138,17 @@ for drug in ['infliximab',]:
         modeling_df['TIME']= modeling_df['TIME']/24
         modeling_df['DUR'] = modeling_df['DUR'].map(lambda x: float(x)/24 if x!='.' else x)
         modeling_df.to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df_dayscale.csv',index=False, encoding='utf-8')
+        # modeling_df['CALPRTSTL'].median()
+        # modeling_df[modeling_df['ROUTE'] == 2]['AMT'].unique()
+        # len(modeling_df['ID'].unique())
+        # len(modeling_df[(modeling_df['TIME']==0)&(modeling_df['MDV']==0)]['ID'].unique())
+        len(modeling_df[(modeling_df['TIME'] == 0)&(modeling_df['MDV'] == 1)]['ID'].unique())
 
+        # len(modeling_df[(modeling_df['TIME']==0)&(modeling_df['DV']=='0.0')]['ID'].unique())
+        # len(modeling_df[(modeling_df['TIME']==0)&(modeling_df['DV']!='0.0')&(modeling_df['MDV']!=1)]['ID'].unique())
+        raise ValueError
 
-
-"""
+""" 
 # 결과에서 Covariate 일부분이 비어있는 이유
 # - basic_prep_lab_covar에서 각 사람마다의 lab 수치가 존재하는 날짜 기준으로 date range 를 생성했는데, 
 # - 이게 order data (dosing date range)와 안 맞을 수 있다 

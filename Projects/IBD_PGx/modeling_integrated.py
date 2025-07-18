@@ -17,6 +17,10 @@ cumlab_df = pd.read_csv(f"{output_dir}/conc_df(cum_lab).csv")
 
 # totlab_df[totlab_df['ID']==21169146]
 # cumlab_df[cumlab_df['ID']==21169146]
+
+# totlab_df[totlab_df['ID']==21911051]
+# cumlab_df[cumlab_df['ID']==21911051]
+# raise ValueError
 lab_df = pd.concat([cumlab_df, totlab_df[['오더일','보고일']]], axis=1)
 lab_df['접수일'] = lab_df['DATETIME'].map(lambda x:x.split(' ')[0])
 lab_df['접수시간'] = lab_df['DATETIME'].map(lambda x:x.split(' ')[1])
@@ -326,18 +330,12 @@ print(f"# Induction 시작시점 불일치: {len(maint_diff_df)} (Infliximab: {l
 
 inf_ind_df = ind_df[ind_df['DRUG']=='infliximab'].copy()
 ada_ind_df = ind_df[ind_df['DRUG']=='adalimumab'].copy()
-# ust_ind_df = ind_df[ind_df['DRUG']=='ustekinumab'].copy()
 
 inf_maint_df = maint_df[maint_df['DRUG']=='infliximab'].sort_values(['UID','DATETIME'], ignore_index=True)
-# inf_maint_df['AZERO'] = (inf_maint_df['UID']!=(inf_maint_df['UID'].shift(1).fillna(0)))*1
 ada_maint_df = maint_df[maint_df['DRUG']=='adalimumab'].sort_values(['UID','DATETIME'], ignore_index=True)
-# ada_maint_df['AZERO'] =(ada_maint_df['UID']!=(ada_maint_df['UID'].shift(1).fillna(0)))*1
-# ust_maint_df = maint_df[maint_df['DRUG']=='ustekinumab'].sort_values(['UID','DATETIME'], ignore_index=True)
-# ust_maint_df['AZERO'] =(ada_maint_df['UID']!=(ada_maint_df['UID'].shift(1).fillna(0)))*1
 
 inf_df = pd.concat([inf_ind_df, inf_maint_df]).sort_values(['UID','DATETIME'], ignore_index=True)
 ada_df = pd.concat([ada_ind_df, ada_maint_df]).sort_values(['UID','DATETIME'], ignore_index=True)
-# ust_df = pd.concat([ust_ind_df, ust_maint_df]).sort_values(['UID','DATETIME'], ignore_index=True)
 
 inf_df['ID'] = inf_df['UID'].map({uid:uid_inx for uid_inx, uid in enumerate(list(inf_df['UID'].unique()))})
 ada_df['ID'] = ada_df['UID'].map({uid:uid_inx for uid_inx, uid in enumerate(list(ada_df['UID'].unique()))})
@@ -382,7 +380,8 @@ inf_df = inf_df[inf_df['UID'].isin(inf_dv_exists_pids)].reset_index(drop=True)
 ## CONC측정이 근처 투여 시간 이후인 경우 투약시간 재조정
 
 conc_first_rows = inf_df[(inf_df['ID']==(inf_df['ID'].shift(1)))&(inf_df['TIME']!=0)&(inf_df['MDV']==0)&(inf_df['TIME'].diff(1).map(np.abs) < 120)&(inf_df['TIME'].diff(1).map(np.abs) > 0)].copy()
-
+# inf_df[~inf_df['DV'].isin(['0.0','.'])].drop_duplicates(['DV']).sort_values(['DV'])[['ID','UID', 'NAME', 'TIME','DV', 'MDV','DATETIME']]
+# inf_df['DV'].dropna()
 # raise ValueError
 # conc_first_rows = inf_df[(inf_df['TIME']!=0)&(inf_df['MDV']==0)&(inf_df['TIME'].diff(1).map(np.abs) < 72)&(inf_df['TIME'].diff(1).map(np.abs) > 0.1)].copy()
 
