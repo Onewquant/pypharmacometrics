@@ -146,7 +146,7 @@ for drug in ['infliximab',]:
 
         # len(modeling_df[(modeling_df['TIME']==0)&(modeling_df['DV']=='0.0')]['ID'].unique())
         # len(modeling_df[(modeling_df['TIME']==0)&(modeling_df['DV']!='0.0')&(modeling_df['MDV']!=1)]['ID'].unique())
-        raise ValueError
+        # raise ValueError
 
 """ 
 # 결과에서 Covariate 일부분이 비어있는 이유
