@@ -215,15 +215,31 @@ for finx, fpath in enumerate(hx_files): #break
             try:cdai_dict['CDAI_ABDMASSSCORE'] = float(fct_str.split('헤마토크릿  남성   :')[0].split('x 10 =')[-1].strip())
             except:cdai_dict['CDAI_ABDMASSSCORE'] = np.nan
 
-            try:cdai_dict['CDAI_HEMATOCRIT'] = float(re.findall(r'헤마토크릿  남성   \: \( 47 \-\s*\d+', fct_str)[0].split('-')[-1].strip())
-            except:cdai_dict['CDAI_HEMATOCRIT'] = np.nan
-            try:cdai_dict['CDAI_HCTSCORE'] = float(fct_str.split('x 6 =')[-1].split('조정값')[0].strip())
-            except:cdai_dict['CDAI_HCTSCORE'] = np.nan
-            try:cdai_dict['CDAI_ADJHCTSCORE'] = float(fct_str.split('\n\n신장 :')[0].split('조정값')[-1].strip())
-            except:cdai_dict['CDAI_ADJHCTSCORE'] = np.nan
 
-            try:cdai_dict['CDAI_HEMATOCRIT'] = float(re.findall(r'헤마토크릿  남성   \: \( 47 \-\s*\d+', fct_str)[0].split('-')[-1].strip())
-            except:cdai_dict['CDAI_HEMATOCRIT'] = np.nan
+            if ('헤마토크릿\n\n남성' in fct_str) or ('헤마토크릿  남성' in fct_str):
+                try:cdai_dict['CDAI_HEMATOCRIT'] = float(re.findall(r'헤마토크릿[\s|\n][\s|\n]남성   \: \( 47 \-\s*\d+', fct_str)[0].split('-')[-1].strip())
+                except:cdai_dict['CDAI_HEMATOCRIT'] = np.nan
+                try:cdai_dict['CDAI_HCTSCORE'] = float(fct_str.split('x 6 =')[-1].split('조정값')[0].strip())
+                except:cdai_dict['CDAI_HCTSCORE'] = np.nan
+                try:cdai_dict['CDAI_ADJHCTSCORE'] = float(fct_str.split('\n\n신장 :')[0].split('조정값')[-1].strip())
+                except:cdai_dict['CDAI_ADJHCTSCORE'] = np.nan
+            elif ('헤마토크릿\n\n여성' in fct_str) or ('헤마토크릿  여성' in fct_str):
+                try:cdai_dict['CDAI_HEMATOCRIT'] = float(re.findall(r'헤마토크릿[\s|\n][\s|\n]여성   \: \( 47 \-\s*\d+', fct_str)[0].split('-')[-1].strip())
+                except:cdai_dict['CDAI_HEMATOCRIT'] = np.nan
+                try:cdai_dict['CDAI_HCTSCORE'] = float(fct_str.split('x 6 =')[-1].split('조정값')[0].strip())
+                except:cdai_dict['CDAI_HCTSCORE'] = np.nan
+                try:cdai_dict['CDAI_ADJHCTSCORE'] = float(fct_str.split('\n\n신장 :')[0].split('조정값')[-1].strip())
+                except:cdai_dict['CDAI_ADJHCTSCORE'] = np.nan
+            else:
+                cdai_dict['CDAI_HEMATOCRIT'] = np.nan
+                cdai_dict['CDAI_HCTSCORE'] = np.nan
+                cdai_dict['CDAI_ADJHCTSCORE'] = np.nan
+
+
+                # try:cdai_dict['CDAI_HEMATOCRIT'] = float(re.findall(r'헤마토크릿  남성   \: \( 47 \-\s*\d+', fct_str)[0].split('-')[-1].strip())
+                # except:cdai_dict['CDAI_HEMATOCRIT'] = np.nan
+
+
             try:cdai_dict['CDAI_HCTSCORE'] = float(fct_str.split('x 6 =')[-1].split('조정값')[0].strip())
             except:cdai_dict['CDAI_HCTSCORE'] = np.nan
             try:cdai_dict['CDAI_ADJHCTSCORE'] = float(fct_str.split('\n\n신장 :')[0].split('조정값')[-1].strip())
@@ -244,77 +260,201 @@ for finx, fpath in enumerate(hx_files): #break
             except:cdai_dict['CDAI_BMI'] = np.nan
             try:cdai_dict['CDAI_STDWEIGHT'] = float(re.findall(r'실제체중\s*:?\s*\d+[\.]?\d*\s*', fct_str)[0].split('표준체중')[-1].strip())
             except:cdai_dict['CDAI_STDWEIGHT'] = np.nan
+
             # raise ValueError
-            cdos_str = fct_str.split('통증 강도 :')[-1].split('약제 순응도')[0].strip()
+            fct_cdos_split = fct_str.split('Crohn’s Disease Obstructive Score')
+            cdos_str = fct_cdos_split[-1].split('약제 순응도')[0].strip()
             # try:cdai_dict['CDAI_CDOSTOTAL'] =
             # except:cdai_dict['CDAI_CDOSTOTAL'] = np.nan
-            if cdos_str=='없음':
-                cdai_dict['CDAI_CDOSTOTAL'] = 0
+            if cdos_str.split('통증 강도 :')[-1].split('연관 증상 :')[0].split('통증 기간 :')[0].strip()=='없음':
+                cdai_dict['CDAI_CDOS'] = 0
+                cdai_dict['CDAI_CDOSPAININT'] = np.nan
+                cdai_dict['CDAI_CDOSPAINPERIOD'] = np.nan
+                cdai_dict['CDAI_CDOSASSOSX'] = np.nan
+                cdai_dict['CDAI_CDOSASSOSXPERIOD'] = np.nan
+                cdai_dict['CDAI_CDOSEMERGENCY'] = np.nan
+
+            elif len(fct_cdos_split)>1:
+                cdai_dict['CDAI_CDOS'] = 1
+
+                try:cdai_dict['CDAI_CDOSPAININT'] = re.findall(r'통증\s*강도\s*:\s*(\S+)', cdos_str)[0].strip()
+                except:cdai_dict['CDAI_CDOSPAININT'] = np.nan
+
+                try:cdai_dict['CDAI_CDOSPAINPERIOD'] = re.findall(r'통증\s*기간\s*:\s*(\S+)', cdos_str)[0].strip()
+                except:cdai_dict['CDAI_CDOSPAINPERIOD'] = np.nan
+
+                try:cdai_dict['CDAI_CDOSASSOSX'] = re.findall(r'연관\s*증상\s*:\s*(\S+)', cdos_str)[0].strip()
+                except:cdai_dict['CDAI_CDOSASSOSX'] = np.nan
+
+                try:cdai_dict['CDAI_CDOSASSOSXPERIOD'] = re.findall(r'연관\s*증상기간\s*:\s*(\S+)', cdos_str)[0].strip()
+                except:cdai_dict['CDAI_CDOSASSOSXPERIOD'] = np.nan
+
+                try:cdai_dict['CDAI_CDOSEMERGENCY'] = re.findall(r'응급실\s*방문\s*혹은\s*입원\s*:\s*(\S+)', cdos_str)[0].strip()
+                except:cdai_dict['CDAI_CDOSEMERGENCY'] = np.nan
             else:
-                # cdai_dict['CDAI_CDOSTOTAL'] = 0
-                # try:cdai_dict['CDAI_PAINSTRENGTH'] = fct_str.split('통증 강도 :')[-1].split('약제 순응도')[0].strip()
-                # except:cdai_dict['CDAI_PAINSTRENGTH'] = np.nan
-                raise ValueError
+                cdai_dict['CDAI_CDOS'] = 0
+                cdai_dict['CDAI_CDOSPAININT'] = np.nan
+                cdai_dict['CDAI_CDOSPAINPERIOD'] = np.nan
+                cdai_dict['CDAI_CDOSASSOSX'] = np.nan
+                cdai_dict['CDAI_CDOSASSOSXPERIOD'] = np.nan
+                cdai_dict['CDAI_CDOSEMERGENCY'] = np.nan
+                # raise ValueError
 
             try:cdai_dict['CDAI_ADHERENCEPCT'] = float(fct_str.split('약제 순응도 (%)')[-1].split('Objective findings')[0].strip())
             except:cdai_dict['CDAI_ADHERENCEPCT'] = np.nan
 
-            #x 7일 x 2 =
-            # try:cdai_dict['PMS_NORMSTLCNT'] = float(re.findall(r'\(정상 횟수:\s*\d+\s*회', fct_str)[0].split(':')[-1].split('회')[0].strip())
-            # except:cdai_dict['PMS_NORMSTLCNT'] = np.nan
-            # try:cdai_dict['PMS_HEMATOCHEZIA'] = float(re.findall(r'혈변\s*\d+\s*', fct_str)[0].split('혈변')[-1].strip())
-            # except:cdai_dict['PMS_HEMATOCHEZIA'] = np.nan
-            # try:cdai_dict['PMS_TOTALEVAL'] = float(re.findall(r'전체적인 평가\s*\d+\s*', fct_str)[0].split('전체적인 평가')[-1].strip())
-            # except:cdai_dict['PMS_TOTALEVA'] = np.nan
-            # try:cdai_dict['PMS_URGENCY'] = isornot_dict[re.findall(r'급박감\s*[유|무]\s*', fct_str)[0].split('급박감')[-1].strip()]
-            # except:cdai_dict['PMS_URGENCY'] = np.nan
-            # try:cdai_dict['PMS_TENESMUS'] = isornot_dict[re.findall(r'잔변감\s*[유|무]\s*', fct_str)[0].split('잔변감')[-1].strip()]
-            # except:cdai_dict['PMS_TENESMU'] = np.nan
-            # try:cdai_dict['PMS_MUCOUSSTL'] = isornot_dict[re.findall(r'점액변\s*[유|무]\s*', fct_str)[0].split('점액변')[-1].strip()]
-            # except:cdai_dict['PMS_MUCOUSSTL'] = np.nan
-            # try:cdai_dict['PMS_NOCTSTL'] = isornot_dict[re.findall(r'야간배변\s*[유|무]\s*', fct_str)[0].split('야간배변')[-1].strip()]
-            # except:cdai_dict['PMS_NOCTSTL'] = np.nan
-            # try:
-            #     adherencepct = re.findall(r'약제 순응도\s*[처방받은 약제 없음|\d]+\s*', fct_str.replace('(%)', ''))[0].split('약제 순응도')[-1].strip()
-            #     if adherencepct in ['처방받은 약제 없음', '']:
-            #         adherencepct = np.nan
-            #     else:
-            #         try:
-            #             adherencepct = float(adherencepct)
-            #         except:
-            #             print("ADHERENCE // ", adherencepct)
-            #             raise ValueError
-            # except: adherencepct = np.nan
-            # cdai_dict['PMS_ADHERENCEPCT'] = adherencepct
-
-            # try:
-            # suppository_usepct = re.findall(r'관장액 사용도\(%\)\s*[처방받은 약제 없음|\d]*\n', fct_str)
-            # if len(suppository_usepct) == 0: suppository_usepct = np.nan
-            # else:
-            #     suppository_usepct = suppository_usepct[0].split('\n')[0].split(')')[-1].strip()
-            #     if suppository_usepct in ['처방받은 약제 없음', '']:
-            #         suppository_usepct = np.nan
-            #     else:
-            #         try:
-            #             suppository_usepct = float(suppository_usepct)
-            #         except:
-            #             print(suppository_usepct)
-            #             raise ValueError
-            #
-            # cdai_dict['PMS_SUPPOSITORY_USEPCT'] = suppository_usepct
-            # try:cdai_dict['PMS_HEIGHT'] = float(re.findall(r'[신장|키]\s*:?\s*\d+[\.]?\d*\s*', fct_str.replace('(cm)', ''))[0].split(':')[-1].split('키')[-1].split('cm')[0].strip())
-            # except:cdai_dict['PMS_HEIGHT'] = np.nan
-            # try:cdai_dict['PMS_WEIGHT'] = float(re.findall(r'체중\s*:?\s*\d+[\.]?\d*\s*', fct_str.replace('(kg)', ''))[0].split(':')[-1].split('체중')[-1].split('kg')[0].strip())
-            # except:cdai_dict['PMS_WEIGHT'] = np.nan
-            # try:cdai_dict['PMS_BMI'] = float(re.findall(r'BMI\s*:?\s*\d+[\.]?\d*\s*', fct_str.replace('(kg/㎡)', ''))[0].split(':')[-1].split('BMI')[-1].split('kg')[0].strip())
-            # except:cdai_dict['PMS_BMI'] = np.nan
-
             cdai_df.append(cdai_dict)
 
         elif "크론병 질병 활성도 평가를 위한 설문" in fct_str:
-            print('크론병 질병 활성도')
-            continue
-            raise ValueError
+            print('크론병 질병 활성도 설문')
+            cdsurvey_dict = {'ID': pid, 'NAME': pname}
+            cdsurvey_dict['DATE'] = re.findall(r'[\d][\d][\d][\d]-[\d][\d]-[\d][\d]', fct_str)[0]
+            fct_str = fct_str.split("< 크론병 질병 활성도 평가를 위한 설문 >")[-1]
+
+            try:cdsurvey_dict['CDAI_TOTALSCORE'] = float(re.findall(r'Total\s*:\s*\d+', fct_str)[0].split(':')[-1].strip())
+            except:cdsurvey_dict['CDAI_TOTALSCORE'] = np.nan
+
+            try:cdsurvey_dict['CDAI_DIARHEACNT'] = float(re.findall(r'1주일간의\s*설사횟수\s*하루평균\s*\d+', fct_str)[0].split('하루평균')[-1].strip())
+            except:cdsurvey_dict['CDAI_DIARHEACNT'] = np.nan
+            try:cdsurvey_dict['CDAI_DIARHEASCORE'] = float(re.findall(r'x 7일 x 2 =\s*\d+', fct_str)[0].split('x 7일 x 2 =')[-1].strip())
+            except:cdsurvey_dict['CDAI_DIARHEASCORE'] = np.nan
+
+            try:cdsurvey_dict['CDAI_ABDPAINCNT'] = float(re.findall(r'복통 :\s*\d+', fct_str)[0].split('복통 :')[-1].strip())
+            except:cdsurvey_dict['CDAI_ABDPAINCNT'] = np.nan
+            try:cdsurvey_dict['CDAI_ABDPAINSCORE'] = float(re.findall(r'x 7일 x 5 =\s*\d+', fct_str)[0].split('x 7일 x 5 =')[-1].strip())
+            except:cdsurvey_dict['CDAI_ABDPAINSCORE'] = np.nan
+
+            try:cdsurvey_dict['CDAI_GENWELLBEING'] = float(re.findall(r'전신 안녕감 :\s*\d+', fct_str)[0].split('전신 안녕감 :')[-1].strip())
+            except:cdsurvey_dict['CDAI_GENWELLBEING'] = np.nan
+            try:cdsurvey_dict['CDAI_GENWBSCORE'] = float(re.findall(r'x 7일 x 7 =\s*\d+', fct_str)[0].split('x 7일 x 7 =')[-1].strip())
+            except:cdsurvey_dict['CDAI_GENWBSCORE'] = np.nan
+
+            try:cdsurvey_dict['CDAI_ARTHSX'] = float(re.findall(r'관절염\/ 관절통 :\s*\d+', fct_str)[0].split(':')[-1].strip())
+            except:cdsurvey_dict['CDAI_ARTHSX'] = np.nan
+            try:cdsurvey_dict['CDAI_ARTHSXSCORE'] = fct_str.split('B. 홍채염/ 포도막염')[0].split('x 20 =')[-1].strip()
+            except:cdsurvey_dict['CDAI_ARTHSXSCORE'] = np.nan
+
+            try:cdsurvey_dict['CDAI_EYESX'] = float(re.findall(r'홍채염\/ 포도막염 :\s*\d+', fct_str)[0].split(':')[-1].strip())
+            except:cdsurvey_dict['CDAI_EYESX'] = np.nan
+            try:cdsurvey_dict['CDAI_EYESXSCORE'] = float(fct_str.split('C. 결절홍반/ 괴저농피증')[0].split('x 20 =')[-1].strip())
+            except:cdsurvey_dict['CDAI_EYESXSCORE'] = np.nan
+
+            try:cdsurvey_dict['CDAI_SKINSX'] = float(re.findall(r'결절홍반\/ 괴저농피증\/ 아프타구내염 :\s*\d+', fct_str)[0].split(':')[-1].strip())
+            except:cdsurvey_dict['CDAI_SKINSX'] = np.nan
+            try:cdsurvey_dict['CDAI_SKINSXSCORE'] = float(fct_str.split('D. 항문열창, 치루 또는 농양')[0].split('x 20 =')[-1].strip())
+            except:cdsurvey_dict['CDAI_SKINSXSCORE'] = np.nan
+
+            try:cdsurvey_dict['CDAI_ANALSX'] = float(re.findall(r'항문열창, 치루 또는 농양 :\s*\d+', fct_str)[0].split(':')[-1].strip())
+            except:cdsurvey_dict['CDAI_ANALSX'] = np.nan
+            try:cdsurvey_dict['CDAI_ANALSXSCORE'] = float(fct_str.split('E. 기타 누공')[0].split('x 20 =')[-1].strip())
+            except:cdsurvey_dict['CDAI_ANALSXSCORE'] = np.nan
+
+            try:cdsurvey_dict['CDAI_OTHERFIST'] = float(re.findall(r'기타 누공 :\s*\d+', fct_str)[0].split(':')[-1].strip())
+            except:cdsurvey_dict['CDAI_OTHERFIST'] = np.nan
+            try:cdsurvey_dict['CDAI_OTHERFISTSCORE'] = float(fct_str.split('F. 최근 7일동안 37.8')[0].split('x 20 =')[-1].strip())
+            except:cdsurvey_dict['CDAI_OTHERFISTSCORE'] = np.nan
+
+            try:cdsurvey_dict['CDAI_FEVER'] = float(re.findall(r'38\.3도 \(항문\) 이상의 열 :\s*\d+', fct_str)[0].split(':')[-1].strip())
+            except:cdsurvey_dict['CDAI_FEVER'] = np.nan
+            try:cdsurvey_dict['CDAI_FEVERSCORE'] = float(fct_str.split('최근 7일동안 지사제 치료')[0].split('x 20 =')[-1].strip())
+            except:cdsurvey_dict['CDAI_FEVERSCORE'] = np.nan
+
+            try:cdsurvey_dict['CDAI_ANTIDIARHMEDI'] = float(re.findall(r'지사제 치료를 받은적이 있는 경우 :\s*\d+', fct_str)[0].split(':')[-1].strip())
+            except:cdsurvey_dict['CDAI_ANTIDIARHMEDI'] = np.nan
+            try:cdsurvey_dict['CDAI_ANTIDIARHMEDISCORE'] = float(fct_str.split('복부 종괴 :')[0].split('x 30 =')[-1].strip())
+            except:cdsurvey_dict['CDAI_ANTIDIARHMEDISCORE'] = np.nan
+
+            try:cdsurvey_dict['CDAI_ABDMASS'] = float(re.findall(r'복부 종괴 :\s*\d+', fct_str)[0].split(':')[-1].strip())
+            except:cdsurvey_dict['CDAI_ABDMASS'] = np.nan
+            try:cdsurvey_dict['CDAI_ABDMASSSCORE'] = float(fct_str.split('헤마토크릿  남성   :')[0].split('x 10 =')[-1].strip())
+            except:cdsurvey_dict['CDAI_ABDMASSSCORE'] = np.nan
+
+            if ('헤마토크릿\n\n남성' in fct_str) or ('헤마토크릿  남성' in fct_str):
+                try:cdsurvey_dict['CDAI_HEMATOCRIT'] = float(re.findall(r'헤마토크릿[\s|\n][\s|\n]남성   \: \( 47 \-\s*\d+', fct_str)[0].split('-')[-1].strip())
+                except:cdsurvey_dict['CDAI_HEMATOCRIT'] = np.nan
+                try:cdsurvey_dict['CDAI_HCTSCORE'] = float(fct_str.split('x 6 =')[-1].split('조정값')[0].strip())
+                except:cdsurvey_dict['CDAI_HCTSCORE'] = np.nan
+                try:cdsurvey_dict['CDAI_ADJHCTSCORE'] = float(fct_str.split('\n\n신장 :')[0].split('조정값')[-1].strip())
+                except:cdsurvey_dict['CDAI_ADJHCTSCORE'] = np.nan
+            elif ('헤마토크릿\n\n여성' in fct_str) or ('헤마토크릿  여성' in fct_str):
+                try:cdsurvey_dict['CDAI_HEMATOCRIT'] = float(re.findall(r'헤마토크릿[\s|\n][\s|\n]여성   \: \( 47 \-\s*\d+', fct_str)[0].split('-')[-1].strip())
+                except:cdsurvey_dict['CDAI_HEMATOCRIT'] = np.nan
+                try:cdsurvey_dict['CDAI_HCTSCORE'] = float(fct_str.split('x 6 =')[-1].split('조정값')[0].strip())
+                except:cdsurvey_dict['CDAI_HCTSCORE'] = np.nan
+                try:cdsurvey_dict['CDAI_ADJHCTSCORE'] = float(fct_str.split('\n\n신장 :')[0].split('조정값')[-1].strip())
+                except:cdsurvey_dict['CDAI_ADJHCTSCORE'] = np.nan
+            else:
+                cdsurvey_dict['CDAI_HEMATOCRIT'] = np.nan
+                cdsurvey_dict['CDAI_HCTSCORE'] = np.nan
+                cdsurvey_dict['CDAI_ADJHCTSCORE'] = np.nan
+
+                # try:cdai_dict['CDAI_HEMATOCRIT'] = float(re.findall(r'헤마토크릿  남성   \: \( 47 \-\s*\d+', fct_str)[0].split('-')[-1].strip())
+                # except:cdai_dict['CDAI_HEMATOCRIT'] = np.nan
+
+            try:cdsurvey_dict['CDAI_HCTSCORE'] = float(fct_str.split('x 6 =')[-1].split('조정값')[0].strip())
+            except:cdsurvey_dict['CDAI_HCTSCORE'] = np.nan
+            try:cdsurvey_dict['CDAI_ADJHCTSCORE'] = float(fct_str.split('\n\n신장 :')[0].split('조정값')[-1].strip())
+            except:cdsurvey_dict['CDAI_ADJHCTSCORE'] = np.nan
+
+            try:cdsurvey_dict['CDAI_STDWEIGHT'] = float(re.findall(r'표준체중\s*:?\s*\d+[\.]?\d*\s*', fct_str)[0].split('표준체중')[-1].strip())
+            except:cdsurvey_dict['CDAI_STDWEIGHT'] = np.nan
+            try:cdsurvey_dict['CDAI_WEIGHT'] = float(re.findall(r'체중\s*:?\s*\d+[\.]?\d*\s*', fct_str.replace('(kg)', ''))[0].split(':')[-1].split('체중')[-1].split('kg')[0].strip())
+            except:cdsurvey_dict['CDAI_WEIGHT'] = np.nan
+            try:cdsurvey_dict['CDAI_WTSCORE'] = float(fct_str.split('x 100 =')[-1].split('조정값')[0].strip())
+            except:cdsurvey_dict['CDAI_WTSCORE'] = np.nan
+            try:cdsurvey_dict['CDAI_ADJWTSCORE'] = float(fct_str.split("Crohn’s Disease Obstructive Score")[0].split("조정값")[-1].strip())
+            except:cdsurvey_dict['CDAI_ADJWTSCORE'] = np.nan
+
+            try:cdsurvey_dict['CDAI_HEIGHT'] = float(re.findall(r'[신장|키]\s*:?\s*\d+[\.]?\d*\s*', fct_str.replace('(cm)', ''))[0].split(':')[-1].split('키')[-1].split('cm')[0].strip())
+            except:cdsurvey_dict['CDAI_HEIGHT'] = np.nan
+            try:cdsurvey_dict['CDAI_BMI'] = float(re.findall(r'BMI\s*:?\s*\d+[\.]?\d*\s*', fct_str.replace('(kg/㎡)', ''))[0].split(':')[-1].split('BMI')[-1].split('kg')[0].strip())
+            except:cdsurvey_dict['CDAI_BMI'] = np.nan
+            try:cdsurvey_dict['CDAI_STDWEIGHT'] = float(re.findall(r'실제체중\s*:?\s*\d+[\.]?\d*\s*', fct_str)[0].split('표준체중')[-1].strip())
+            except:cdsurvey_dict['CDAI_STDWEIGHT'] = np.nan
+
+            # raise ValueError
+            fct_cdos_split = fct_str.split('Crohn’s Disease Obstructive Score')
+            cdos_str = fct_cdos_split[-1].split('약제 순응도')[0].strip()
+            # try:cdai_dict['CDAI_CDOSTOTAL'] =
+            # except:cdai_dict['CDAI_CDOSTOTAL'] = np.nan
+            if cdos_str.split('통증 강도 :')[-1].split('연관 증상 :')[0].split('통증 기간 :')[0].strip() == '없음':
+                cdsurvey_dict['CDAI_CDOS'] = 0
+                cdsurvey_dict['CDAI_CDOSPAININT'] = np.nan
+                cdsurvey_dict['CDAI_CDOSPAINPERIOD'] = np.nan
+                cdsurvey_dict['CDAI_CDOSASSOSX'] = np.nan
+                cdsurvey_dict['CDAI_CDOSASSOSXPERIOD'] = np.nan
+                cdsurvey_dict['CDAI_CDOSEMERGENCY'] = np.nan
+
+            elif len(fct_cdos_split) > 1:
+                cdsurvey_dict['CDAI_CDOS'] = 1
+
+                try:cdsurvey_dict['CDAI_CDOSPAININT'] = re.findall(r'통증\s*강도\s*:\s*(\S+)', cdos_str)[0].strip()
+                except:cdsurvey_dict['CDAI_CDOSPAININT'] = np.nan
+
+                try:cdsurvey_dict['CDAI_CDOSPAINPERIOD'] = re.findall(r'통증\s*기간\s*:\s*(\S+)', cdos_str)[0].strip()
+                except:cdsurvey_dict['CDAI_CDOSPAINPERIOD'] = np.nan
+
+                try:cdsurvey_dict['CDAI_CDOSASSOSX'] = re.findall(r'연관\s*증상\s*:\s*(\S+)', cdos_str)[0].strip()
+                except:cdsurvey_dict['CDAI_CDOSASSOSX'] = np.nan
+
+                try:cdsurvey_dict['CDAI_CDOSASSOSXPERIOD'] = re.findall(r'연관\s*증상기간\s*:\s*(\S+)', cdos_str)[0].strip()
+                except:cdsurvey_dict['CDAI_CDOSASSOSXPERIOD'] = np.nan
+
+                try:cdsurvey_dict['CDAI_CDOSEMERGENCY'] = re.findall(r'응급실\s*방문\s*혹은\s*입원\s*:\s*(\S+)', cdos_str)[0].strip()
+                except:cdsurvey_dict['CDAI_CDOSEMERGENCY'] = np.nan
+            else:
+                cdsurvey_dict['CDAI_CDOS'] = 0
+                cdsurvey_dict['CDAI_CDOSPAININT'] = np.nan
+                cdsurvey_dict['CDAI_CDOSPAINPERIOD'] = np.nan
+                cdsurvey_dict['CDAI_CDOSASSOSX'] = np.nan
+                cdsurvey_dict['CDAI_CDOSASSOSXPERIOD'] = np.nan
+                cdsurvey_dict['CDAI_CDOSEMERGENCY'] = np.nan
+                # raise ValueError
+
+            try:cdsurvey_dict['CDAI_ADHERENCEPCT'] = float(fct_str.split('약제 순응도 (%)')[-1].split('Objective findings')[0].strip())
+            except:cdsurvey_dict['CDAI_ADHERENCEPCT'] = np.nan
+
+            cdsurvey_df.append(cdsurvey_dict)
         else:
             continue
             raise ValueError
@@ -326,4 +466,7 @@ mss_df = pd.DataFrame(mss_df)
 mss_df.to_csv(f"{output_dir}/pdmarker_mss_df.csv", encoding='utf-8-sig', index=False)
 cdai_df = pd.DataFrame(cdai_df)
 cdai_df.to_csv(f"{output_dir}/pdmarker_cdai_df.csv", encoding='utf-8-sig', index=False)
+cdsurvey_df = pd.DataFrame(cdsurvey_df)
+cdsurvey_df.to_csv(f"{output_dir}/pdmarker_cdsurvey_df.csv", encoding='utf-8-sig', index=False)
+
 print('COMPLETED')
