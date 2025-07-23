@@ -384,10 +384,12 @@ print(f"# 총 환자 수: 140")
 print(f"# Induction 시작시점 일치: {len(maint_cons_df)} (Infliximab: {len(maint_cons_df[maint_cons_df['DRUG']=='infliximab'])} / Adalimumab: {len(maint_cons_df[maint_cons_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(maint_cons_df[maint_cons_df['DRUG']=='ustekinumab'])}) ")
 print(f"# Induction 시작시점 불일치: {len(maint_diff_df)} (Infliximab: {len(maint_diff_df[maint_diff_df['DRUG']=='infliximab'])} / Adalimumab: {len(maint_diff_df[maint_diff_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(maint_diff_df[maint_diff_df['DRUG']=='ustekinumab'])}) ")
 # print(f"# No conc in Induction 시작시점 일치: {len(no_indconc_df)}")
-print(f"# No conc in Induction: {len(inf_no_indconc)}")
-print(f"# No conc in Maintenance: {len(no_maintconc_df)} (Infliximab: {len(no_maintconc_df[no_maintconc_df['DRUG']=='infliximab'])} / Adalimumab: {len(no_maintconc_df[no_maintconc_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(no_maintconc_df[no_maintconc_df['DRUG']=='ustekinumab'])}) ")
 
-inf_df = inf_df[inf_df['UID'].isin(inf_dv_exists_pids)].reset_index(drop=True)
+print(f"# Induction 시작시점 불일치: {len(maint_diff_df)} (Infliximab: {len(maint_diff_df[maint_diff_df['DRUG']=='infliximab'])} / Adalimumab: {len(maint_diff_df[maint_diff_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(maint_diff_df[maint_diff_df['DRUG']=='ustekinumab'])}) ")
+# print(f"# No conc in Induction: {len(inf_no_indconc)} (Infliximab: {len(inf_df[(inf_df.isin(inf_no_indconc))&(inf_df['DRUG']=='infliximab')]['UID'].drop_duplicates()} / Adalimumab: {len(inf_no_indconc[inf_no_indconc['DRUG']=='adalimumab'])} / Ustekinumab: {len(inf_no_indconc[inf_no_indconc['DRUG']=='ustekinumab'])}) ")
+print(f"# No conc in Maintenance: {len(no_maintconc_df)} (Infliximab: {len(no_maintconc_df[no_maintconc_df['DRUG']=='infliximab'])} / Adalimumab: {len(no_maintconc_df[no_maintconc_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(no_maintconc_df[no_maintconc_df['DRUG']=='ustekinumab'])}) ")
+# raise ValueError
+# inf_df = inf_df[inf_df['UID'].isin(inf_dv_exists_pids)].reset_index(drop=True)
 
 
 
@@ -432,7 +434,7 @@ for inx, row in conc_first_rows.iterrows():
         #     inf_df[inf_df.index==near_dinx].iloc[0]
         #     inf_df[inf_df.index==inx].iloc[0]
         #     raise ValueError
-
+# inf_df['UID'].drop_duplicates()
 
 inf_df = inf_df.sort_values(['ID','TIME','MDV'],ignore_index=True)
 inf_df['TIME(DAY)'] = inf_df['TIME']/24

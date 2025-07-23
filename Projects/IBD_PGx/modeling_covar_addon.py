@@ -58,7 +58,7 @@ for drug in ['infliximab',]:
         modeling_df['UID']= modeling_df['UID'].astype(str)
         modeling_df['DATETIME'] = modeling_df['DATETIME'].map(lambda x:x.split('T')[0])
 
-
+        # modeling_df['UID'].drop_duplicates()
         # raise ValueError
         """
         # list(totlab_df.columns)
@@ -94,7 +94,7 @@ for drug in ['infliximab',]:
         # modeling_df = pd.concat(md_df_list).reset_index(drop=True)
 
         # modeling_df.fillna('.', inplace=True)
-
+        # modeling_df['UID'].drop_duplicates()
         # raise ValueError
 
         ## Modeling Data Saving
@@ -132,9 +132,9 @@ for drug in ['infliximab',]:
         # raise ValueError
         # modeling_df['A_0FLG'] = (modeling_df['ID'].shift(1)!=modeling_df['ID'])*1
 
-
+        # raise ValueError
         modeling_df.to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df.csv',index=False, encoding='utf-8-sig')
-        modeling_df[~((modeling_df['TIME'] == 0) & (modeling_df['DV'] == '0.0'))].copy().to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df_without_zero_dv.csv',index=False, encoding='utf-8-sig')
+        # modeling_df[~((modeling_df['TIME'] == 0) & (modeling_df['DV'] == '0.0'))].copy().to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df_without_zero_dv.csv',index=False, encoding='utf-8-sig')
         modeling_df['TIME']= modeling_df['TIME']/24
         modeling_df['DUR'] = modeling_df['DUR'].map(lambda x: float(x)/24 if x!='.' else x)
         modeling_df.to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df_dayscale.csv',index=False, encoding='utf-8')
@@ -142,8 +142,8 @@ for drug in ['infliximab',]:
         # modeling_df[modeling_df['ROUTE'] == 2]['AMT'].unique()
         # len(modeling_df['ID'].unique())
         # len(modeling_df[(modeling_df['TIME']==0)&(modeling_df['MDV']==0)]['ID'].unique())
-        len(modeling_df[(modeling_df['TIME'] == 0)&(modeling_df['MDV'] == 1)]['ID'].unique())
-        raise ValueError
+        # len(modeling_df[(modeling_df['TIME'] == 0)&(modeling_df['MDV'] == 1)]['ID'].unique())
+        # raise ValueError
         # len(modeling_df[(modeling_df['TIME']==0)&(modeling_df['DV']=='0.0')]['ID'].unique())
         # len(modeling_df[(modeling_df['TIME']==0)&(modeling_df['DV']!='0.0')&(modeling_df['MDV']!=1)]['ID'].unique())
         # raise ValueError
