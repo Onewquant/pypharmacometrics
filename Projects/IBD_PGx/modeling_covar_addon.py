@@ -103,7 +103,7 @@ for drug in ['infliximab',]:
         right_covar_col = 'TIME(WEEK)'
         datacheck_cols = ['ID',	'UID', 'NAME', 'DATETIME','TIME(WEEK)','TIME(DAY)','TIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'IBD_TYPE', 'ROUTE','DRUG', 'ADDED_ADDL'] + list(modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
         modeling_df[datacheck_cols].to_csv(f'{output_dir}/{drug}_{mode_str}_datacheck(covar).csv', index=False, encoding='utf-8-sig')
-        dcheck_df = modeling_df[~(modeling_df['DV'].isin(['.','0.0']))][['ID',	'UID', 'NAME', 'DATETIME', 'DV']].copy()
+        # dcheck_df = modeling_df[~(modeling_df['DV'].isin(['.','0.0']))][['ID',	'UID', 'NAME', 'DATETIME', 'DV']].copy()
         # dcheck_df[dcheck_df['DV'].map(float) > 40]
 
         modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','ROUTE','IBD_TYPE'] + list(modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
@@ -143,7 +143,7 @@ for drug in ['infliximab',]:
         # len(modeling_df['ID'].unique())
         # len(modeling_df[(modeling_df['TIME']==0)&(modeling_df['MDV']==0)]['ID'].unique())
         len(modeling_df[(modeling_df['TIME'] == 0)&(modeling_df['MDV'] == 1)]['ID'].unique())
-
+        raise ValueError
         # len(modeling_df[(modeling_df['TIME']==0)&(modeling_df['DV']=='0.0')]['ID'].unique())
         # len(modeling_df[(modeling_df['TIME']==0)&(modeling_df['DV']!='0.0')&(modeling_df['MDV']!=1)]['ID'].unique())
         # raise ValueError

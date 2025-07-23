@@ -86,8 +86,6 @@ comp_df = comp_df.reset_index(drop=True)
 maint_cons_df = comp_df[comp_df['MIN_DOSE_DATE']==comp_df['IND_START_DATE']].reset_index(drop=True)
 maint_diff_df = comp_df[comp_df['MIN_DOSE_DATE']!=comp_df['IND_START_DATE']].reset_index(drop=True)
 
-# print(f"# Induction 시작시점 일치: {len(ind_cons_df)} (Infliximab: {len(ind_cons_df[ind_cons_df['DRUG']=='infliximab'])} / Adalimumab: {len(ind_cons_df[ind_cons_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(ind_cons_df[ind_cons_df['DRUG']=='ustekinumab'])}) ")
-# print(f"# Induction 시작시점 불일치: {len(ind_diff_df)} (Infliximab: {len(ind_diff_df[ind_diff_df['DRUG']=='infliximab'])} / Adalimumab: {len(ind_diff_df[ind_diff_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(ind_diff_df[ind_diff_df['DRUG']=='ustekinumab'])}) ")
 
 
 # merged_df[merged_df['DRUG']=='infliximab']
@@ -116,6 +114,8 @@ appended_frag_cols = ['UID', 'NAME', 'DRUG', 'ROUTE', 'TIME', 'DV', 'MDV', 'AMT'
 
 ind_df = list()
 no_indconc_df = list()
+no_indid_df = list()
+no_maintid_df = list()
 for inx, row in maint_cons_df.iterrows():
     # if inx
     # break
@@ -123,6 +123,7 @@ for inx, row in maint_cons_df.iterrows():
     # end_date = (datetime.strptime(start_date,'%Y-%m-%d') + timedelta(days=127)).strftime('%Y-%m-%d')
     id_df = merged_df[merged_df['ID']==row['ID']].copy()
     if (len(id_df)==0):
+        no_indid_df.append(pd.DataFrame([row]))
         continue
 
     # if row['ID']==10875838:
@@ -135,6 +136,7 @@ for inx, row in maint_cons_df.iterrows():
 
     ind_df_frag = ind_df_frag.sort_values(['ID', 'DATE', 'MDV'], ascending=[True, True, False])
     unique_date_df = ind_df_frag.groupby(['DATE'])['DV'].count().reset_index(drop=False)
+    # unique_date_df = unique_date_df[unique_date_df['DV'] >= 2].reset_index(drop=True)
     unique_date_df = unique_date_df[unique_date_df['DV'] >= 2].reset_index(drop=True)
     if len(unique_date_df)>0:
         # if row['ID']==34019533: raise ValueError
@@ -147,8 +149,8 @@ for inx, row in maint_cons_df.iterrows():
             nodup_df_frag = ind_df_frag[~(ind_df_frag['DATE'].isin(unique_date_df['DATE']))].copy()
             dup_df_frag = ind_date_df_frag[ind_date_df_frag['DATE']==dup_date].copy()
 
-            dupdv_df_frag = dup_df_frag[dup_df_frag['MDV']=='.'].copy().sort_values(['DV'])
-            dupmdv_df_frag = dup_df_frag[dup_df_frag['MDV'] != '.'].copy()
+            dupdv_df_frag = dup_df_frag[dup_df_frag['MDV']==0].copy().sort_values(['DV'])
+            dupmdv_df_frag = dup_df_frag[dup_df_frag['MDV'] !=0].copy()
             # dupdv_df_frag['DV']
             if len(dupdv_df_frag)>=3:
                 print("> 3")
@@ -212,6 +214,7 @@ for inx, row in maint_diff_df.iterrows():
     # end_date = (datetime.strptime(start_date,'%Y-%m-%d') + timedelta(days=127)).strftime('%Y-%m-%d')
     id_df = merged_df[merged_df['ID']==row['ID']].copy()
     if (len(id_df)==0):
+        no_maintid_df.append(pd.DataFrame([row]))
         continue
     # if (len((id_df['MDV']!=1).sum())<=2):
     #     continue
@@ -307,9 +310,6 @@ if len(no_maintconc_df)==0:
 else:
     no_maintconc_df = pd.concat(no_maintconc_df).reset_index(drop=True)
 
-print(f"# 총 환자 수: 140")
-print(f"# Induction 시작시점 일치: {len(maint_cons_df)} (Infliximab: {len(maint_cons_df[maint_cons_df['DRUG']=='infliximab'])} / Adalimumab: {len(maint_cons_df[maint_cons_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(maint_cons_df[maint_cons_df['DRUG']=='ustekinumab'])}) ")
-print(f"# Induction 시작시점 불일치: {len(maint_diff_df)} (Infliximab: {len(maint_diff_df[maint_diff_df['DRUG']=='infliximab'])} / Adalimumab: {len(maint_diff_df[maint_diff_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(maint_diff_df[maint_diff_df['DRUG']=='ustekinumab'])}) ")
 
 # print(f"# Induction 시작시점 일치: {len(maint_cons_df)} (Infliximab: {len(maint_cons_df[maint_cons_df['DRUG']=='infliximab'])} / Adalimumab: {len(maint_cons_df[maint_cons_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(maint_cons_df[maint_cons_df['DRUG']=='ustekinumab'])}) ")
 # print(f"# Induction 시작시점 불일치: {len(maint_diff_df)} (Infliximab: {len(maint_diff_df[maint_diff_df['DRUG']=='infliximab'])} / Adalimumab: {len(maint_diff_df[maint_diff_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(maint_diff_df[maint_diff_df['DRUG']=='ustekinumab'])}) ")
@@ -353,6 +353,7 @@ inf_dose_df['ADDED_ADDL'] = inf_dose_df['ETC_INFO_TREATED'].map(lambda x: 'ADDL�
 inf_df = inf_df.merge(inf_dose_df[['UID','DATETIME','ADDED_ADDL']], on=['UID','DATETIME'], how='left')
 inf_df['ADDED_ADDL'] = inf_df['ADDED_ADDL'].replace(np.nan, False)
 
+
 inf_del_df = inf_df[(inf_df['MDV']==1)].sort_values(['ID','TIME'])
 inf_del_df = inf_del_df[(inf_del_df['TIME'].diff() > 0)&(inf_del_df['TIME'].diff() <= 9*24) & (inf_del_df['ADDED_ADDL'])].copy()
 inf_df = inf_df[~inf_df.index.isin(inf_del_df.index)].copy()
@@ -371,10 +372,26 @@ ada_del_df = ada_del_df[(ada_del_df['TIME'].diff() > 0)&(ada_del_df['TIME'].diff
 ada_df = ada_df[~ada_df.index.isin(ada_del_df.index)].copy()
 
 ## TIME==0 일때 CONC==0 만 DV로 가지고 있는 경우 제외
+# set(inf_df[(inf_df['TIME']==0)&(inf_df['DV']==0)].drop_duplicates('UID')['UID']) - set(inf_df[(inf_df['TIME']==0)&(inf_df['DV']==0)].drop_duplicates('UID',keep=False)['UID'])
+
+# 34665842 -> TIME=0 일때 DV=0 두 번 들어감. 확인필요 !!!!!####################
 
 inf_dv_exists_pids = inf_df[(inf_df['TIME']!=0)&(inf_df['DV']!=0)&(inf_df['MDV']!=1)].copy()
 inf_dv_exists_pids = inf_dv_exists_pids.groupby('UID',as_index=False).agg({'UID':'max','DV':'count'})['UID']
+inf_no_indconc = set(inf_df[(inf_df['TIME']==0)&(inf_df['DV']==0)&(inf_df['MDV']!=1)].copy()['UID'])-set(inf_dv_exists_pids)
+
+print(f"# 총 환자 수: 140")
+print(f"# Induction 시작시점 일치: {len(maint_cons_df)} (Infliximab: {len(maint_cons_df[maint_cons_df['DRUG']=='infliximab'])} / Adalimumab: {len(maint_cons_df[maint_cons_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(maint_cons_df[maint_cons_df['DRUG']=='ustekinumab'])}) ")
+print(f"# Induction 시작시점 불일치: {len(maint_diff_df)} (Infliximab: {len(maint_diff_df[maint_diff_df['DRUG']=='infliximab'])} / Adalimumab: {len(maint_diff_df[maint_diff_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(maint_diff_df[maint_diff_df['DRUG']=='ustekinumab'])}) ")
+# print(f"# No conc in Induction 시작시점 일치: {len(no_indconc_df)}")
+print(f"# No conc in Induction: {len(inf_no_indconc)}")
+print(f"# No conc in Maintenance: {len(no_maintconc_df)} (Infliximab: {len(no_maintconc_df[no_maintconc_df['DRUG']=='infliximab'])} / Adalimumab: {len(no_maintconc_df[no_maintconc_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(no_maintconc_df[no_maintconc_df['DRUG']=='ustekinumab'])}) ")
+
 inf_df = inf_df[inf_df['UID'].isin(inf_dv_exists_pids)].reset_index(drop=True)
+
+
+
+
 
 # no_dv.columns
 ## CONC측정이 근처 투여 시간 이후인 경우 투약시간 재조정
@@ -436,5 +453,5 @@ ada_df.to_csv(f'{output_dir}/adalimumab_integrated_datacheck.csv',index=False, e
 # ada_df.to_csv(f'{output_dir}/adalimumab_integrated_df.csv',index=False, encoding='utf-8-sig')
 
 ################################
-# len(inf_ind_df['ID'].drop_duplicates())
+# len(inf_df['UID'].drop_duplicates())
 # ada_maint_df['AMT'] = ada_maint_df['AMT'].map({'1 pen':40,'2 pen':80, '2 pen':160})
