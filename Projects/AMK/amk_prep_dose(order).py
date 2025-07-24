@@ -25,7 +25,6 @@ no_dup_cols = [c for c in result_cols if c not in ['NAME','ETC_INFO']]
 for finx, fpath in enumerate(order_files): #break
 
 
-
     pid = fpath.split('(')[-1].split('_')[0]
     pname = fpath.split('_')[-1].split(')')[0]
 
@@ -128,7 +127,7 @@ for finx, fpath in enumerate(order_files): #break
         if len(seq_dose_patterns)>=1:
             dose_val = '_'.join(re.findall(r'\d+',seq_dose_patterns[0]))
         else:
-            try: dose_val = int(re.findall(r'\d+\.*\d*m',x)[1].replace('m','').strip())
+            try: dose_val = float(re.findall(r'\d+\.*\d*m',x)[1].replace('m','').strip())
             except:
                 """
                 (12) [D/C] Amikacin soln 500mg 신풍(Amikacin) (430-430)mg [IVS] x1 
@@ -143,9 +142,9 @@ for finx, fpath in enumerate(order_files): #break
                 이런 모양 처리 고민
                 """
                 if 'via' in x:
-                    via_count = int(re.findall(r'\d+ via', x)[0].replace('via', '').strip())
+                    via_count = float(re.findall(r'\d*\.?\d+ via', x)[0].replace('via', '').strip())
                 elif 'amp' in x:
-                    via_count = int(re.findall(r'\d+ amp', x)[0].replace('amp', '').strip())
+                    via_count = float(re.findall(r'\d*\.?\d+ amp', x)[0].replace('amp', '').strip())
                 else:
                     via_count = 1
                     print(f"({finx}) {pname} / {pid} / (No vial count) / {x}")
@@ -194,10 +193,11 @@ print(f"모든 DOSING 정보 존재 : {len(dose_result_df.drop_duplicates(['ID']
 
 # dose_result_df = pd.read_csv(f"{output_dir}/part_dose_df.csv")
 
-
+# dose_result_df[dose_result_df['NAME']=='박원필'][['DATETIME','ACTING']]
 
 ## 날짜T시간DOSE도스 형태로 정리
 
+dose_result_df['ID'] = dose_result_df['ID'].astype(str)
 dose_result_df['DATE'] = dose_result_df['DATETIME'].map(lambda x:x.split('T')[0])
 dose_result_df['ACTING'] = dose_result_df['ACTING'].map(lambda x:x.replace('MG','mg').replace('G','mg').replace('MD','12A').replace('MN',' 12P')) # # MG 이나 MICU 등 보정 (M 들어가 있어 아래 코드에서 잘못인식)
 dose_result_df['DOSE'] = dose_result_df['DOSE'].astype(str)
@@ -207,8 +207,14 @@ vacant_data = '0000-00-00TNN:NN'
 for inx, row in dose_result_df.iterrows():
     # raise ValueError
 
+    # if (row['ID']=='10023985')&(row['DATETIME']=='2004-04-19T06:51'):
+    #     raise ValueError
+    # else:
+    #     continue
+    rep_acting_str = row['ACTING'].replace('O.C,','').strip()
+
     new_actval_str=''
-    for actval in row['ACTING'].strip().split(','): #break
+    for actval in rep_acting_str.split(','): #break
 
         ## 빈칸일때
         if actval=='':
@@ -230,11 +236,15 @@ for inx, row in dose_result_df.iterrows():
             new_actval_str+=f'_{row["DATE"]}T{y_val[0].replace("/Y","")}'
             continue
 
+        ## 날짜 시간/Y일때
+
+
         ## 나머지 처리
         else:
+            # actval = actval
             vacant_y_val = re.findall(r"\d\d:\d\d/", actval)
             if len(vacant_y_val)>0:
-                new_actval_str += f'_{vacant_data}'
+                new_actval_str += f'_{vacant_data.replace("NN:NN",vacant_y_val[0][:-1])}'
                 continue
             elif ('X' in actval) or ('M' in actval) or ('H' in actval) or ('C' in actval) or ('N' in actval):
                 new_actval_str+= f'_{vacant_data}'
@@ -253,10 +263,10 @@ for inx, row in dose_result_df.iterrows():
                         # 시간 처리
                         if 'P' in time_pattern[0]:
                             time_pattern_split = time_pattern[0].split('P')
-                            hour_str = str(int(time_pattern_split[0]) + 12)
+                            hour_str = str(int(time_pattern_split[0]) + 12).zfill(2)
                         else:
                             time_pattern_split = time_pattern[0].split('A')
-                            hour_str = str(int(time_pattern_split[0]))
+                            hour_str = str(int(time_pattern_split[0])).zfill(2)
                         # 분 처리
                         if time_pattern_split[-1]=='':
                             minute_str = '00'
@@ -365,9 +375,84 @@ dose_unique_list.sort()
 ## 같은 DT에 다른 DOSE 값 가지고 있으면, SUM 하여 사용
 # final_dose_df = pd.read_csv(f"{output_dir}/final_dose_df.csv")
 final_dose_df['ETC_INFO'] = (final_dose_df['ETC_INFO'].replace(np.nan, '')+'||').replace('||', '')
-# print(final_dose_df[final_dose_df['ID']==18115888])
+final_dose_df['DATETIME'] = final_dose_df['DATE'] + 'T' + final_dose_df['TIME']
+final_dose_df = final_dose_df.sort_values(['ID','DATETIME'], ignore_index=True)
+# final_dose_df[final_dose_df['ID']=='10023985']
+
+## 중복 오더 처리
+final_result_df = list()
+for pid, frag_df in final_dose_df.groupby('ID'):
+    # if pid=='13415653':
+
+
+    ## 2시간 이내로 중복된 같은 값의 중복된 오더 있고, 그 앞뒤로 비어있는 날 있으면, 비어있는 날의 order로 설정
+    dose_pct_diff = np.abs(frag_df['DOSE'].diff() / frag_df['DOSE'])
+    dt = pd.to_datetime(frag_df['DATETIME'])
+    dt_diff = dt.diff().dt.total_seconds() / 3600
+
+    short_dosing_interval_rows = frag_df[(dt_diff < 2)&(dose_pct_diff==0)].copy()
+    if len(short_dosing_interval_rows) > 0:
+        min_date = frag_df['DATE'].min()
+        max_date = frag_df['DATE'].max()
+        dates_in_range = pd.date_range(start=min_date, end=max_date).astype(str)
+        dose_vacant_dates = set(dates_in_range) - set(frag_df['DATE'])
+
+
+        # if str(pid) not in ['13415653','10015489','10020669','10022083','10020669','10023985','10024128']:
+        #     raise ValueError
+
+        if len(dose_vacant_dates)==0:
+            pass
+        else:
+            for sdi_inx, sdi_row in short_dosing_interval_rows.iterrows():
+                prev_date = (datetime.strptime(sdi_row['DATE'],'%Y-%m-%d') - timedelta(days=1)).strftime('%Y-%m-%d')
+                next_date = (datetime.strptime(sdi_row['DATE'],'%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d')
+                if prev_date in dose_vacant_dates:
+                    frag_df.at[sdi_inx, 'DATE'] = prev_date
+                    frag_df.at[sdi_inx, 'DATETIME'] = prev_date + 'T' + frag_df.at[sdi_inx, 'DATETIME'].split('T')[-1]
+                elif next_date in dose_vacant_dates:
+                    frag_df.at[sdi_inx, 'DATE'] = next_date
+                    frag_df.at[sdi_inx, 'DATETIME'] = next_date + 'T' + frag_df.at[sdi_inx, 'DATETIME'].split('T')[-1]
+                else:
+                    pass
+                    # raise ValueError
+        frag_df = frag_df.sort_values(['ID','DATE','TIME'], ignore_index=True)
+    else:
+        pass
+
+    ## DOSE 투여 기록들의 DATETIME이 2시간 이내이고 DOSE 크기 차이가 40% 이상 나면 DOSE합치고, 크기 차이가 30% 미만이면 최근 것 하나만 선택
+    dose_pct_diff = np.abs(frag_df['DOSE'].diff() / frag_df['DOSE'])
+    dt = pd.to_datetime(frag_df['DATETIME'])
+    dt_diff = dt.diff().dt.total_seconds() / 3600
+
+    short_dosing_interval_rows = frag_df[(dt_diff < 2)].copy()
+    if len(short_dosing_interval_rows) > 0:
+        small_dose_diff_rows = frag_df[(dt_diff < 2)&(dose_pct_diff <= 0.3)].copy()
+        large_dose_diff_rows = frag_df[(dt_diff < 2)&(dose_pct_diff > 0.3)].copy()
+        for sdd_inx,sdd_row in small_dose_diff_rows.iterrows():
+            frag_df = frag_df[frag_df.index != (sdd_inx-1)].copy()
+
+        for sdd_inx,sdd_row in large_dose_diff_rows.iterrows():
+            modi_frag_df = frag_df[frag_df.index.isin([sdd_inx-1,sdd_inx])].copy()
+            modi_frag_df.at[modi_frag_df.index[-1],'DOSE'] = modi_frag_df['DOSE'].sum()
+            modi_frag_df = modi_frag_df.iloc[-1:,:]
+            keep_frag_df = frag_df[~frag_df.index.isin([sdd_inx-1,sdd_inx])].copy()
+            frag_df = pd.concat([modi_frag_df, keep_frag_df]).sort_values(['ID','DATE','TIME'])
+        frag_df = frag_df.sort_values(['ID','DATE','TIME']).reset_index(drop=True)
+
+        # raise ValueError
+
+    final_result_df.append(frag_df)
+    # break
+# print(final_dose_df[final_dose_df['ID']==13415653])
 # final_dose_df= final_dose_df.groupby(['ID','NAME','DRUG','PERIOD','DATE','TIME'],as_index=False).agg({'DOSE':'sum','ETC_INFO':'sum'})
-final_dose_df= final_dose_df.groupby(['ID','NAME','DRUG','DATE','TIME'],as_index=False).agg({'DOSE':'sum','ETC_INFO':'sum','PERIOD':'min'})
+
+# final_dose_df[final_dose_df['ID']=='13415653']
+# final_dose_df.to_csv(f"{output_dir}/final_dose_datacheck.csv", encoding='utf-8-sig', index=False)
+
+# final_dose_df.to_csv(f"{output_dir}/final_dose_datacheck.csv", encoding='utf-8-sig', index=False)
+# raise ValueError
+final_dose_df = final_dose_df.groupby(['ID','NAME','DRUG','DATE','TIME'],as_index=False).agg({'DOSE':'sum','ETC_INFO':'sum','PERIOD':'min'})
 # print(final_dose_df[final_dose_df['ID']==18115888])
 # print(len(final_dose_df['ETC_INFO'].unique()))
 # final_dose_df = final_dose_df[(final_dose_df['TIME']!=vacant_data.split('T')[-1])]
