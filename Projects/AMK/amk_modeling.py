@@ -11,6 +11,9 @@ pt_info = pd.read_csv(f"{output_dir}/patient_info.csv",encoding='utf-8-sig')
 pt_info['AGE'] = pt_info['AGE'].map(lambda x: float(x.replace('개월',''))/12 if '개월' in x else float(x.replace('세','')))
 adult_pids = pt_info[pt_info['AGE'] >= 19].copy()['ID']
 
+hd_df = pd.read_csv(f"{output_dir}/final_hd_df.csv",encoding='utf-8-sig')
+hd_pids = hd_df['ID'].drop_duplicates()
+
 conc_df = pd.read_csv(f"{output_dir}/final_conc_df(with sampling).csv")
 conc_df['DV'] = conc_df['CONC'].copy()
 conc_df['MDV'] = 0
@@ -47,7 +50,7 @@ modeling_df['DATETIME'] = modeling_df['TIME']
 
 
 ## 환자 수 필터링 (성인, Not HD)
-modeling_df = modeling_df[modeling_df['ID'].isin(adult_pids)].copy()
+modeling_df = modeling_df[(modeling_df['ID'].isin(adult_pids))&(~(modeling_df['ID'].isin(hd_pids)))].copy()
 
 
 # modeling_df['UID'] = modeling_df['ID']

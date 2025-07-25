@@ -22,7 +22,7 @@ hd_result_df = list()
 no_hd_data_pid_list = list()
 no_hd_dt_data_list = list()
 no_drug_keyword_pid_list = list()
-result_cols = ['ID','NAME','DATE','HD_TYPE','ACTING','PLACE']
+result_cols = ['ID','NAME','DATETIME','HD_TYPE','ACTING','PLACE']
 no_dup_cols = [c for c in result_cols if c not in ['NAME']]
 # len(order_files)
 # len(no_data_pid_list)
@@ -83,7 +83,7 @@ for finx, fpath in enumerate(order_files): #break
     hd_df['ACTING'] = hd_df['Acting']
 
     hd_df['DATETIME'] = '0000-00-00TNN:NN'
-    hd_df['HD_TYPE'] = 'HD'
+    hd_df['HD_TYPE'] =  hd_df['처방지시']
 
 
     # dose_df[['DATETIME','DOSE','ACTING']]
@@ -100,7 +100,10 @@ for finx, fpath in enumerate(order_files): #break
 hd_result_df = pd.concat(hd_result_df, ignore_index=True).sort_values(['ID','DATETIME'], ascending=[True,True], ignore_index=True)
 
 
-hd_result_df.to_csv(f"{output_dir}/final_hd_df.csv", encoding='utf-8-sig', index=False)
+hd_result_df.to_csv(f"{output_dir}/hd_df_datacheck.csv", encoding='utf-8-sig', index=False)
+# len(no_hd_data_pid_list)
+# hd_result_df['']
+
 # dose_result_df.columns
 
 # print(f"TOTAL 오더 파일 수 : {len(order_files)} 명")
@@ -123,7 +126,7 @@ hd_result_df['DATE'] = hd_result_df['DATETIME'].map(lambda x:x.split('T')[0])
 
 dt_dose_series = list()
 vacant_data = '0000-00-00TNN:NN'
-for inx, row in hd_df.iterrows():
+for inx, row in hd_result_df.iterrows():
     # raise ValueError
 
     # if (row['ID']=='10023985')&(row['DATETIME']=='2004-04-19T06:51'):
@@ -205,7 +208,7 @@ for inx, row in hd_df.iterrows():
                         # ACTING에 날짜만 기록되어 있고 시간 정보는 없을떄 -> 같은 날짜에 시간 기록 있는지 확인해서 그 기록으로 중복시킨 후 아래서 중복처리에 포함시킴
                         # rep_acting_str.split(',')
                         # dose_result_df
-                        same_date_other_rows = dose_result_df[(dose_result_df['ID']==row['ID'])&(dose_result_df.index!=inx)&(dose_result_df['DATE']==date_pattern[0])].copy()
+                        same_date_other_rows = hd_result_df[(hd_result_df['ID']==row['ID'])&(hd_result_df.index!=inx)&(hd_result_df['DATE']==date_pattern[0])].copy()
                         if len(same_date_other_rows)==1:
 
                             same_date_rec_times = [x.replace('/Y','') for x in re.findall(r"\d\d:\d\d/Y", same_date_other_rows['ACTING'].iloc[0])]
@@ -268,46 +271,9 @@ for inx, row in hd_df.iterrows():
     new_actval_str = new_actval_str[1:]
 
 
-    # DOSE 붙이기 작업
-    dose_split = row['DOSE'].strip().replace(')','').replace('(','').split('_')
-    dose_split_set = set(dose_split)
-    new_actval_split = new_actval_str.split('_')
-    if (len(dose_split_set)>1):
-        if len(dose_split)==len(new_actval_split):
-            print(f'({inx}) C / {new_actval_str}')
-            new_actval_str = '_'.join([f"{new_actval_split[nav_dose_inx]}DOSE{dose_split[nav_dose_inx]}" for nav_dose_inx in range(len(dose_split))])
-            # raise ValueError
-        else:
-            if len(new_actval_split)==1:
-                print(f'({inx}) N / {new_actval_str}')
-                new_actval_str += f"DOSE{dose_split[-1]}"
-            else:
-                if len(dose_split) > len(new_actval_split):
-                    # 500, 340 이면 뒤의 340만으로 Acting에 적용
-                    print(f'({inx}) N / {new_actval_str}')
-                    new_actval_str = '_'.join([f"{nav}DOSE{dose_split[-len(new_actval_split):][nav_inx]}" for nav_inx,nav in enumerate(new_actval_split)])
-                #elif len(dose_split) < len(new_actval_split):
-                else:
-                    # 500, 340, 340 이면 뒤의 340을 연장해서 Acting에 적용
-                    print(f'({inx}) N / {new_actval_str}')
-                    new_actval_str = '_'.join([f"{nav}DOSE{(dose_split+[dose_split[-1]]*(len(new_actval_split)-len(dose_split)))[nav_inx]}" for nav_inx,nav in enumerate(new_actval_split)])
-                # else:
-                #     pass
-                # '500_340_340' 이렇게 되어 있는 분 (11836850) 중 ACTING에 2개만 있는 row는 340_340으로 일단 처리
-                # '500_340_340' 인데, ['2007-11-08T02:18', '2007-11-08T11:18', '2007-11-08T16:55', '2007-11-08T23:26']
-    else:
-        print(f'({inx}) O / {new_actval_str}')
-        # print('one dose')
-        # Acting에 dose가 들어있는 경우도 생각해서 넣어줘야.
-        new_actval_str = '_'.join([f"{nav}DOSE{list(dose_split_set)[0]}" for nav in new_actval_split])
-
-        # raise ValueError
-
-        # Dose가 한 자리수인 경우도 존재 / dose_split 3개, acting_split 2개 인 경우 있음
-
     dt_dose_series.append(new_actval_str)
-dose_result_df['DT_DOSE'] = dt_dose_series
-dose_result_df.to_csv(f"{output_dir}/hd_df_df.csv", encoding='utf-8-sig', index=False)
+hd_result_df['DT'] = dt_dose_series
+# hd_result_df.to_csv(f"{output_dir}/final_hd_df.csv", encoding='utf-8-sig', index=False)
 
 # dose_result_df[['DATE','DOSE','ACTING','DT_DOSE']]
 
@@ -316,146 +282,23 @@ dose_result_df.to_csv(f"{output_dir}/hd_df_df.csv", encoding='utf-8-sig', index=
 # vacant_data = '0000-00-00TNN:NN'
 ## ACTING 기록 개별 분리작업
 
-final_dose_df = list()
+final_hd_df = list()
 cur_id = ''
-for inx, row in dose_result_df.iterrows(): #break
+for inx, row in hd_result_df.iterrows(): #break
     if cur_id!=row['ID']:
-        print(f"({inx} / {len(dose_result_df)}) {row['ID']} / ACTING 기록 개별 분리작업")
+        print(f"({inx} / {len(hd_result_df)}) {row['ID']} / ACTING 기록 개별 분리작업")
         cur_id=row['ID']
     row_df = pd.DataFrame(columns=['ID','NAME','DRUG','PERIOD','DT_DOSE','ETC_INFO'])
     row_df['DT_DOSE'] = row['DT_DOSE'].split('_')
     for c in ['ID','NAME','DRUG','PERIOD','ETC_INFO']:
         row_df[c] = row[c]
-    final_dose_df.append(row_df)
-final_dose_df = pd.concat(final_dose_df, ignore_index=True)
-final_dose_df['DATE'] = final_dose_df['DT_DOSE'].map(lambda x:x.split('T')[0])
-final_dose_df['TIME'] = final_dose_df['DT_DOSE'].map(lambda x:x.split('T')[-1].split('DOSE')[0])
-final_dose_df['DOSE'] = final_dose_df['DT_DOSE'].map(lambda x:float(x.split('DOSE')[-1]))
-final_dose_df = final_dose_df[(final_dose_df['DATE']!=vacant_data.split('T')[0])]
-
-# final_dose_df['DOSE'] = final_dose_df['DOSE'].replace(2.0,500.0)
-# sns.displot(final_dose_df['DOSE'].min())
-dose_unique_list = list(final_dose_df['DOSE'].unique())
-dose_unique_list.sort()
-# final_dose_df[final_dose_df['DOSE']==6]
-
-## 같은 DT에 다른 DOSE 값 가지고 있으면, SUM 하여 사용
-# final_dose_df = pd.read_csv(f"{output_dir}/final_dose_df.csv")
-final_dose_df['ETC_INFO'] = (final_dose_df['ETC_INFO'].replace(np.nan, '')+'||').replace('||', '')
-final_dose_df['DATETIME'] = final_dose_df['DATE'] + 'T' + final_dose_df['TIME']
-final_dose_df = final_dose_df.sort_values(['ID','DATETIME'], ignore_index=True)
-# final_dose_df[final_dose_df['ID']=='10023985']
-
-## 중복 오더 처리
-print('중복 오더 처리 작업 시작')
-final_result_df = list()
-cur_id==''
-cur_count = 1
-for pid, frag_df in final_dose_df.groupby('ID'):
-    # if pid=='13415653':
-    if cur_id!=pid:
-        print(f"({cur_count}) {pid} / {len(frag_df)} rows / 중복 오더 처리 작업 시작")
-        cur_count+=1
-        cur_id=pid
-
-
-    ## 2시간 이내로 중복된 같은 값의 중복된 오더 있고, 그 앞뒤로 비어있는 날 있으면, 비어있는 날의 order로 설정
-    dose_pct_diff = np.abs(frag_df['DOSE'].diff() / frag_df['DOSE'])
-    dt = pd.to_datetime(frag_df['DATETIME'])
-    dt_diff = dt.diff().dt.total_seconds() / 3600
-
-    short_dosing_interval_rows = frag_df[(dt_diff < 2)&(dose_pct_diff==0)].copy()
-    if len(short_dosing_interval_rows) > 0:
-        min_date = frag_df['DATE'].min()
-        max_date = frag_df['DATE'].max()
-        dates_in_range = pd.date_range(start=min_date, end=max_date).astype(str)
-        dose_vacant_dates = set(dates_in_range) - set(frag_df['DATE'])
-
-
-        # if str(pid) not in ['13415653','10015489','10020669','10022083','10020669','10023985','10024128']:
-        #     raise ValueError
-
-        if len(dose_vacant_dates)==0:
-            pass
-        else:
-            for sdi_inx, sdi_row in short_dosing_interval_rows.iterrows():
-                prev_date = (datetime.strptime(sdi_row['DATE'],'%Y-%m-%d') - timedelta(days=1)).strftime('%Y-%m-%d')
-                next_date = (datetime.strptime(sdi_row['DATE'],'%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d')
-                if prev_date in dose_vacant_dates:
-                    frag_df.at[sdi_inx, 'DATE'] = prev_date
-                    frag_df.at[sdi_inx, 'DATETIME'] = prev_date + 'T' + frag_df.at[sdi_inx, 'DATETIME'].split('T')[-1]
-                elif next_date in dose_vacant_dates:
-                    frag_df.at[sdi_inx, 'DATE'] = next_date
-                    frag_df.at[sdi_inx, 'DATETIME'] = next_date + 'T' + frag_df.at[sdi_inx, 'DATETIME'].split('T')[-1]
-                else:
-                    pass
-                    # raise ValueError
-        frag_df = frag_df.sort_values(['ID','DATE','TIME'], ignore_index=True)
-    else:
-        pass
-
-    ## DOSE 투여 기록들의 DATETIME이 2시간 이내이고 DOSE 크기 차이가 40% 이상 나면 DOSE합치고, 크기 차이가 30% 미만이면 최근 것 하나만 선택
-    dose_pct_diff = np.abs(frag_df['DOSE'].diff() / frag_df['DOSE'])
-    dt = pd.to_datetime(frag_df['DATETIME'])
-    dt_diff = dt.diff().dt.total_seconds() / 3600
-
-    short_dosing_interval_rows = frag_df[(dt_diff < 2)].copy()
-    if len(short_dosing_interval_rows) > 0:
-        small_dose_diff_rows = frag_df[(dt_diff < 2)&(dose_pct_diff <= 0.3)].copy()
-        large_dose_diff_rows = frag_df[(dt_diff < 2)&(dose_pct_diff > 0.3)].copy()
-        for sdd_inx,sdd_row in small_dose_diff_rows.iterrows():
-            frag_df = frag_df[frag_df.index != (sdd_inx-1)].copy()
-
-        for sdd_inx,sdd_row in large_dose_diff_rows.iterrows():
-            modi_frag_df = frag_df[frag_df.index.isin([sdd_inx-1,sdd_inx])].copy()
-            modi_frag_df.at[modi_frag_df.index[-1],'DOSE'] = modi_frag_df['DOSE'].sum()
-            modi_frag_df = modi_frag_df.iloc[-1:,:]
-            keep_frag_df = frag_df[~frag_df.index.isin([sdd_inx-1,sdd_inx])].copy()
-            frag_df = pd.concat([modi_frag_df, keep_frag_df]).sort_values(['ID','DATE','TIME'])
-        frag_df = frag_df.sort_values(['ID','DATE','TIME']).reset_index(drop=True)
-
-        # raise ValueError
-
-    final_result_df.append(frag_df)
-    # break
-# print(final_dose_df[final_dose_df['ID']==13415653])
-# final_dose_df= final_dose_df.groupby(['ID','NAME','DRUG','PERIOD','DATE','TIME'],as_index=False).agg({'DOSE':'sum','ETC_INFO':'sum'})
-
-# final_dose_df[final_dose_df['ID']=='13415653']
-# final_dose_df.to_csv(f"{output_dir}/final_dose_datacheck.csv", encoding='utf-8-sig', index=False)
-
-# final_dose_df.to_csv(f"{output_dir}/final_dose_datacheck.csv", encoding='utf-8-sig', index=False)
-# raise ValueError
-# final_dose_df = final_dose_df.groupby(['ID','NAME','DRUG','DATE','TIME'],as_index=False).agg({'DOSE':'sum','ETC_INFO':'sum','PERIOD':'min'})
-# print(final_dose_df[final_dose_df['ID']==18115888])
-# print(len(final_dose_df['ETC_INFO'].unique()))
-# final_dose_df = final_dose_df[(final_dose_df['TIME']!=vacant_data.split('T')[-1])]
-# raise ValueError
-
-# final_dose_df = final_dose_df[['ID','NAME','DRUG','PERIOD','DATE','TIME','DOSE','ETC_INFO']].sort_values(['ID','DATE','TIME'], ignore_index=True)
-# final_dose_df.to_csv(f"{output_dir}/final_dose_df.csv", encoding='utf-8-sig', index=False)
-
-final_dose_df = pd.concat(final_result_df).sort_values(['ID','DATE','TIME'], ignore_index=True)
-# final_dose_df.to_csv(f"{output_dir}/final_dose_datacheck.csv", encoding='utf-8-sig', index=False)
-# final_dose_df = final_dose_df[(final_dose_df['TIME']!=vacant_data.split('T')[-1])]
-final_dose_df.to_csv(f"{output_dir}/final_dose_df.csv", encoding='utf-8-sig', index=False)
-
-# final_dose_df = pd.read_csv(f"{output_dir}/final_dose_df.csv")
-# final_dose_df[final_dose_df['DOSE']==8]
-# sns.displot(final_dose_df['DOSE'])
-
-
-no_dosing_data_df = pd.DataFrame(columns=['ID'])
-no_dosing_data_df['ID'] = no_data_pid_list
-no_dosing_data_df.to_csv(f"{output_dir}/err_no_dose_df.csv", encoding='utf-8-sig', index=False)
-
-no_dosing_dt_df = pd.DataFrame(columns=['ID'])
-no_dosing_dt_df['ID'] = no_dosing_dt_data_list
-no_dosing_dt_df.to_csv(f"{output_dir}/err_no_dosing_dt_df.csv", encoding='utf-8-sig', index=False)
-
-
-no_no_drug_keyword_df = pd.DataFrame(columns=['ID'])
-no_no_drug_keyword_df['ID'] = no_drug_keyword_pid_list
-no_no_drug_keyword_df.to_csv(f"{output_dir}/err_no_drug_keyword_df.csv", encoding='utf-8-sig', index=False)
+    final_hd_df.append(row_df)
+final_hd_df = pd.concat(final_hd_df, ignore_index=True)
+final_hd_df['DATE'] = final_hd_df['DT'].map(lambda x:x.split('T')[0])
+final_hd_df['TIME'] = final_hd_df['DT'].map(lambda x:x.split('T')[-1])
+final_hd_df = final_hd_df[(final_hd_df['DATE']!=vacant_data.split('T')[0])]
+final_hd_df['DATETIME'] = final_hd_df['DATE'] + 'T' + final_hd_df['TIME']
+final_hd_df = final_hd_df.sort_values(['ID','DATETIME'], ignore_index=True)
+final_hd_df.to_csv(f"{output_dir}/final_dose_df.csv", encoding='utf-8-sig', index=False)
 
 
