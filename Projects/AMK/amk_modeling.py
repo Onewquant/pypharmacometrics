@@ -7,6 +7,10 @@ prj_dir = f'C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/{prj_name}
 resource_dir = f'{prj_dir}/resource'
 output_dir = f"{prj_dir}/results"
 
+pt_info = pd.read_csv(f"{output_dir}/patient_info.csv",encoding='utf-8-sig')
+pt_info['AGE'] = pt_info['AGE'].map(lambda x: float(x.replace('개월',''))/12 if '개월' in x else float(x.replace('세','')))
+adult_pids = pt_info[pt_info['AGE'] >= 19].copy()['ID']
+
 conc_df = pd.read_csv(f"{output_dir}/final_conc_df(with sampling).csv")
 conc_df['DV'] = conc_df['CONC'].copy()
 conc_df['MDV'] = 0
@@ -40,6 +44,12 @@ modeling_df = modeling_df.sort_values(['ID','TIME']).reset_index(drop=True)
 modeling_df['UID'] = modeling_df['ID']
 modeling_df['DVfloat'] = modeling_df['DV'].replace('.',np.nan).map(float)
 modeling_df['DATETIME'] = modeling_df['TIME']
+
+
+## 환자 수 필터링 (성인, Not HD)
+modeling_df = modeling_df[modeling_df['ID'].isin(adult_pids)].copy()
+
+
 # modeling_df['UID'] = modeling_df['ID']
 # len(modeling_df[modeling_df['TIME'].map(lambda x:x[:4] > '2007')]['ID'].unique())
 
@@ -60,6 +70,8 @@ neg_time_pids = set()
 short_dosing_interval_pids = set()
 mod_zero_non_dv_pids = set()
 del_zero_non_dv_pids = set()
+abnm_conc_moving_pids = set()
+abnm_conc_moving_row_count = 0
 for id, id_df in modeling_df.groupby('ID'): #break
     try:
         first_dose_dt = id_df[id_df['MDV']==1]['TIME'].iloc[0]
@@ -86,6 +98,14 @@ for id, id_df in modeling_df.groupby('ID'): #break
     zero_conc_row['AMT'] = '.'
     zero_conc_row['RATE'] = '.'
     id_df = pd.concat([zero_conc_row, id_df]).sort_values(['ID', 'DATETIME', 'MDV'], ignore_index=True)
+
+    ## 한 ID 내에서 농도 측정 사이에 투약기록 없는데, 농도가 증가하게 측정된 경우
+    # if id==10313051:
+    #     raise ValueError
+    abnm_conc_moving_pids.add(id)
+    abnm_conc_moving_row_count += len(id_df[((id_df['DVfloat'] / (id_df['DVfloat'].shift(1)) > 2) & (id_df['MDV'] == 0) & (id_df['MDV'].shift(1) == 0))])
+
+    id_df = id_df[~((id_df['DVfloat']/(id_df['DVfloat'].shift(1)) > 2) & (id_df['MDV']==0) & (id_df['MDV'].shift(1)==0))].copy()
 
     ## 투약 96시간 초과시 끊는다
     # next_cycle_rows = id_df[id_df['MDV'] == 1].copy()
@@ -159,6 +179,8 @@ modeling_datacheck_df['ID'] = modeling_datacheck_df['UID'].map(id_dict)
 modeling_datacheck_df.to_csv(f"{output_dir}/amk_modeling_datacheck.csv",index=False, encoding='utf-8-sig')
 
 
+
+
 final_modeling_df = modeling_datacheck_df[com_cols+['UID']].drop(['NAME'],axis=1)
 final_modeling_df.to_csv(f"{output_dir}/amk_modeling_df.csv",index=False, encoding='utf-8-sig')
 
@@ -167,10 +189,36 @@ print(f"CONC or DOSE Data 부재: {len(no_oneside_pids)} patients / NO CONC: {le
 print(f"Short dosing interval: {len(short_dosing_interval_pids)} patients")
 print(f"Modified (Non Zero CONC at TIME=0): {len(mod_zero_non_dv_pids)} patients")
 print(f"Deleted (Non Zero CONC at TIME=0): {len(del_zero_non_dv_pids)} patients")
+print(f"Abnormal conc movement: {len(abnm_conc_moving_pids)} patients / {abnm_conc_moving_row_count} rows")
 print(f"[Completed] Final Modeling Dataset: {len(modeling_datacheck_df['ID'].unique())} patients / {len(final_modeling_df['ID'])} rows")
 
 
-modeling_datacheck_df[(modeling_datacheck_df['DVfloat'] < 0.4)&(modeling_datacheck_df['TIME'] > 900)]
+recent_modeling_df = modeling_datacheck_df[modeling_datacheck_df['DATETIME'].map(lambda x:x.split('T')[0][0:4]) > '2020'].copy()
+recent_modeling_df.to_csv(f"{output_dir}/recent_amk_modeling_datacheck.csv",index=False, encoding='utf-8-sig')
+recent_modeling_df[com_cols+['UID']].drop(['NAME'],axis=1).to_csv(f"{output_dir}/recent_amk_modeling_df.csv",index=False, encoding='utf-8-sig')
+
+
+# final_modeling_df['ID']
+n_split = 30
+# id 기준 unique한 사람 목록 추출 및 셔플
+unique_ids = final_modeling_df['ID'].drop_duplicates().reset_index(drop=True)
+
+# 총 사람 수와 1/5씩 나누기
+n = len(unique_ids)
+split_size = n // n_split
+
+# 5개로 나누어서 저장
+for i in range(n_split):
+    if i < n_split-1:
+        ids_slice = unique_ids[i * split_size: (i + 1) * split_size]
+    else:  # 마지막 조각은 나머지까지 포함
+        ids_slice = unique_ids[i * split_size:]
+
+    df_slice = final_modeling_df[final_modeling_df['ID'].isin(ids_slice)]
+    df_slice.to_csv(f"{output_dir}/amk_modeling_df_{i + 1}.csv", index=False)
+
+
+# modeling_datacheck_df[(modeling_datacheck_df['DVfloat'] < 0.4)&(modeling_datacheck_df['TIME'] > 900)]
 
 # print(f"Total for modeling / {len(modeling_df)} rows / {len(modeling_df['ID'].unique())} patients")
 

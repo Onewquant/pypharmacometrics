@@ -32,7 +32,7 @@ for finx, fpath in enumerate(order_files): #break
     #     print(f"({finx}) {pname} / {pid} / 확인 완료")
     #     continue
 
-    # if pid=='17963774':
+    # if pid=='10908086':
     #     raise ValueError
     # else:
     #     continue
@@ -172,15 +172,18 @@ for finx, fpath in enumerate(order_files): #break
     dose_df['ETC_INFO'] = dose_df['처방지시'].map(lambda x:x.split(':')[-1].strip() if ':' in x else '')
     dose_df = dose_df[~dose_df['DOSE'].isna()].copy()
 
+    # dose_df[['DATETIME','DOSE','ACTING']]
+
     # dose_df.to_csv(f"{output_dir}/dose_df_lhj.csv", encoding='utf-8-sig', index=False)
     # dose_df.loc[3203,'처방지시']
 
-    dose_result_df.append(dose_df[result_cols].drop_duplicates(no_dup_cols))
+    dose_result_df.append(dose_df[result_cols])
 
     # drug_order_set = drug_order_set.union(set(dose_df['처방지시'].map(lambda x:''.join(x.split(':')[0].replace('  ',' ').split(') ')[1:]).replace('[원내]','').replace('[D/C]','').replace('[보류]','').replace('[반납]','').replace('[Em] ','').strip()).drop_duplicates()))
 
-
-dose_result_df = pd.concat(dose_result_df, ignore_index=True).sort_values(['ID','DATETIME'], ascending=[True,False], ignore_index=True)
+# dose_result_df = dose_result_df.sort_values(['ID','DATETIME'], ascending=[True,True], ignore_index=True)
+# dose_result_df = pd.concat(dose_result_df, ignore_index=True).sort_values(['ID','DATETIME'], ascending=[True,False], ignore_index=True)
+dose_result_df = pd.concat(dose_result_df, ignore_index=True).sort_values(['ID','DATETIME'], ascending=[True,True], ignore_index=True)
 dose_result_df.to_csv(f"{output_dir}/part_dose_df.csv", encoding='utf-8-sig', index=False)
 # dose_result_df.columns
 
@@ -211,6 +214,12 @@ for inx, row in dose_result_df.iterrows():
     #     raise ValueError
     # else:
     #     continue
+
+    # if (row['DATETIME']=='2005-06-27T20:00'):
+    #     raise ValueError
+    # else:
+    #     continue
+
     rep_acting_str = row['ACTING'].replace('O.C,','').strip()
 
     new_actval_str=''
@@ -255,7 +264,7 @@ for inx, row in dose_result_df.iterrows():
                 """
                 # 확인 필요한 부분: D나 N은 투약이 된것인지?
                 """
-                if ('Y ' in rest_y_val) or ('O ' in rest_y_val):
+                if (('Y ' in rest_y_val) or ('O ' in rest_y_val)):
                 # if ('Y ' in rest_y_val) or ('O ' in rest_y_val) or ('N ' in rest_y_val):
                     date_pattern = re.findall(r"\d\d\d\d-\d\d-\d\d",actval)
                     time_pattern = re.findall(r"\d+[P|A]\d*",actval.upper())
@@ -277,16 +286,52 @@ for inx, row in dose_result_df.iterrows():
                         continue
 
                     elif (len(date_pattern) > 0) and (len(time_pattern) == 0):
-                        new_actval_str += f'_{date_pattern[0]}TNN:NN'
-                        """
-                        ID         /  약국_검사                                           Acting
-                        10908086   / 접수 [2005-06-27 20:00]   2005-06-27 20:00:53		/Y 2005-06-27(반납), 
-                        10948899  / 접수 [2004-05-06 06:00]   2004-05-06 06:00:34		12:00/ 2004-05-06(), /Y 2004-05-06(OA), 
+                        # ACTING에 날짜만 기록되어 있고 시간 정보는 없을떄 -> 같은 날짜에 시간 기록 있는지 확인해서 그 기록으로 중복시킨 후 아래서 중복처리에 포함시킴
+                        # rep_acting_str.split(',')
+                        # dose_result_df
+                        same_date_other_rows = dose_result_df[(dose_result_df['ID']==row['ID'])&(dose_result_df.index!=inx)&(dose_result_df['DATE']==date_pattern[0])].copy()
+                        if len(same_date_other_rows)==1:
 
-                        
-                        
-                        
-                        """
+                            same_date_rec_times = [x.replace('/Y','') for x in re.findall(r"\d\d:\d\d/Y", same_date_other_rows['ACTING'].iloc[0])]
+                            if same_date_other_rows.index[0] < inx:
+                                reversed_sorting = True
+                            else:
+                                reversed_sorting = False
+                            same_date_rec_times.sort(reverse=reversed_sorting)
+                            # new_actval_str = ''
+                            add_actval_completion = False
+                            for sdr_time in same_date_rec_times:
+                                add_actval_str = f'{date_pattern[0]}T{sdr_time}'
+                                if add_actval_str not in new_actval_str:
+                                    new_actval_str += f'_{add_actval_str}'
+                                    add_actval_completion = True
+                                    break
+                                else:
+                                    continue
+
+                            if add_actval_completion==False:
+                                print('날짜만 존재하는 Acting 정보에 시간 정보 추가 어려움')
+                                raise ValueError
+
+                            """
+                            ID         /  약국_검사                                           Acting
+                            10908086   / 접수 [2005-06-27 20:00]   2005-06-27 20:00:53		/Y 2005-06-27(반납), 
+                            10948899  / 접수 [2004-05-06 06:00]   2004-05-06 06:00:34		12:00/ 2004-05-06(), /Y 2004-05-06(OA), 
+                            """
+                        elif len(same_date_other_rows)==0:
+                            print('같은 날짜 기록 0 개')
+
+                        else:
+                            print('같은 날짜 기록 여러개')
+                            if ('(비품용)' in rest_y_val):
+                                new_actval_str += f'_{vacant_data}'
+                            else:
+                                raise ValueError
+                            # dose_result_df[(dose_result_df['ID'] == row['ID'])][['DATETIME','ACTING','PERIOD','DOSE']]
+                            # raise ValueError
+                        # pid
+
+
                         continue
                     elif (len(date_pattern) == 0) and (len(time_pattern) > 0):
                         new_actval_str += f'_{row["DATE"]}T{time_pattern[0]}'
@@ -348,13 +393,19 @@ for inx, row in dose_result_df.iterrows():
 dose_result_df['DT_DOSE'] = dt_dose_series
 dose_result_df.to_csv(f"{output_dir}/dt_dose_df.csv", encoding='utf-8-sig', index=False)
 
-
+# dose_result_df[['DATE','DOSE','ACTING','DT_DOSE']]
 
 #
 # dose_result_df = pd.read_csv(f"{output_dir}/dt_dose_df.csv")
 # vacant_data = '0000-00-00TNN:NN'
+## ACTING 기록 개별 분리작업
+
 final_dose_df = list()
+cur_id = ''
 for inx, row in dose_result_df.iterrows(): #break
+    if cur_id!=row['ID']:
+        print(f"({inx} / {len(dose_result_df)}) {row['ID']} / ACTING 기록 개별 분리작업")
+        cur_id=row['ID']
     row_df = pd.DataFrame(columns=['ID','NAME','DRUG','PERIOD','DT_DOSE','ETC_INFO'])
     row_df['DT_DOSE'] = row['DT_DOSE'].split('_')
     for c in ['ID','NAME','DRUG','PERIOD','ETC_INFO']:
@@ -380,9 +431,16 @@ final_dose_df = final_dose_df.sort_values(['ID','DATETIME'], ignore_index=True)
 # final_dose_df[final_dose_df['ID']=='10023985']
 
 ## 중복 오더 처리
+print('중복 오더 처리 작업 시작')
 final_result_df = list()
+cur_id==''
+cur_count = 1
 for pid, frag_df in final_dose_df.groupby('ID'):
     # if pid=='13415653':
+    if cur_id!=pid:
+        print(f"({cur_count}) {pid} / {len(frag_df)} rows / 중복 오더 처리 작업 시작")
+        cur_count+=1
+        cur_id=pid
 
 
     ## 2시간 이내로 중복된 같은 값의 중복된 오더 있고, 그 앞뒤로 비어있는 날 있으면, 비어있는 날의 order로 설정
@@ -452,11 +510,18 @@ for pid, frag_df in final_dose_df.groupby('ID'):
 
 # final_dose_df.to_csv(f"{output_dir}/final_dose_datacheck.csv", encoding='utf-8-sig', index=False)
 # raise ValueError
-final_dose_df = final_dose_df.groupby(['ID','NAME','DRUG','DATE','TIME'],as_index=False).agg({'DOSE':'sum','ETC_INFO':'sum','PERIOD':'min'})
+# final_dose_df = final_dose_df.groupby(['ID','NAME','DRUG','DATE','TIME'],as_index=False).agg({'DOSE':'sum','ETC_INFO':'sum','PERIOD':'min'})
 # print(final_dose_df[final_dose_df['ID']==18115888])
 # print(len(final_dose_df['ETC_INFO'].unique()))
 # final_dose_df = final_dose_df[(final_dose_df['TIME']!=vacant_data.split('T')[-1])]
-final_dose_df = final_dose_df[['ID','NAME','DRUG','PERIOD','DATE','TIME','DOSE','ETC_INFO']].sort_values(['ID','DATE','TIME'], ignore_index=True)
+# raise ValueError
+
+# final_dose_df = final_dose_df[['ID','NAME','DRUG','PERIOD','DATE','TIME','DOSE','ETC_INFO']].sort_values(['ID','DATE','TIME'], ignore_index=True)
+# final_dose_df.to_csv(f"{output_dir}/final_dose_df.csv", encoding='utf-8-sig', index=False)
+
+final_dose_df = pd.concat(final_result_df).sort_values(['ID','DATE','TIME'], ignore_index=True)
+# final_dose_df.to_csv(f"{output_dir}/final_dose_datacheck.csv", encoding='utf-8-sig', index=False)
+# final_dose_df = final_dose_df[(final_dose_df['TIME']!=vacant_data.split('T')[-1])]
 final_dose_df.to_csv(f"{output_dir}/final_dose_df.csv", encoding='utf-8-sig', index=False)
 
 # final_dose_df = pd.read_csv(f"{output_dir}/final_dose_df.csv")
