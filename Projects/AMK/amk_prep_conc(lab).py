@@ -82,7 +82,6 @@ for finx, fpath in enumerate(conc_files): #break
     conc_df['CONC'] = conc_df['검사결과'].map(lambda x:float(x.split('(')[0].replace('<','').replace('>','').strip()) if x.lower()!='nan' else np.nan)
     conc_df['POTENTIAL_SAMPLING_INFO'] = conc_df['검사결과'].map(lambda x:x.split('(')[-1].strip() if x.lower() != 'nan' else np.nan)
 
-
     conc_df = conc_df[~conc_df['CONC'].isna()].copy()
     # conc_df[] = conc_df[['보고일','오더일']].max(axis=1)
 

@@ -108,7 +108,7 @@ for finx, fpath in enumerate(pt_files): #break
     res_frag_df = id_conc_df.copy()
     # res_frag_df = id_conc_df.sort_values(['오더일'], ascending=True)
     # pd.to_datetime(res_frag_df['오더일']).diff().dt.days
-    for c in ['SAMP_DT','채혈DT', '라벨DT', '접수DT', '시행DT', '보고DT']:
+    for c in ['SAMP_DT','채혈DT', '라벨DT', '접수DT', '시행DT', '보고DT','REC_REASON']:
         res_frag_df[c] = ''
         # res_frag_df['CONC']
     samp_time_in_conc_etc_info_dict = {'16685088':['2008-10-29T09:05','2008-10-29T07:30','2008-10-21T09:50','2008-10-21T06:45','2008-10-18T09:30','2008-10-18T07:50','2008-10-14T10:35','2008-10-14T08:35','2008-10-04T11:30','2008-10-04T09:20'],
@@ -145,7 +145,7 @@ for finx, fpath in enumerate(pt_files): #break
     # res_frag_df.columns
 
     # POT채혈DT 있는 경우
-    pot_dt_rows = res_frag_df[(res_frag_df['POT채혈DT'] != '') & (~res_frag_df['POT채혈DT'].isna())].copy()
+    pot_dt_rows = res_frag_df[(res_frag_df['POT채혈DT']!='') & (~res_frag_df['POT채혈DT'].isna())].copy()
     if len(pot_dt_rows)!=0:
         print(f"({finx}) {pname} / {pid} / POT채혈DT 결과 존재")
         for potdt_inx, potdt_row in pot_dt_rows.iterrows(): #break
@@ -155,7 +155,9 @@ for finx, fpath in enumerate(pt_files): #break
             if bool(re.search(r'\d\d\d\d-\d\d-\d\dT\d\d:\d\d',potdt_row['POT채혈DT'])):
                 if res_frag_df.at[potdt_inx, 'SAMP_DT'] == '':
                     res_frag_df.at[potdt_inx, 'SAMP_DT'] = potdt_row['POT채혈DT']
+                    res_frag_df.at[potdt_inx, 'REC_REASON'] += '랩결과옆(POT채혈날짜시간)/'
                 else:
+                    res_frag_df.at[potdt_inx, 'REC_REASON'] += '랩결과옆(POT채혈날짜시간)/ 이미 DATETIME 존재'
                     continue
                 error_passing_pids.add(pid)
             # res_frag_df['POT채혈DT']
@@ -164,17 +166,18 @@ for finx, fpath in enumerate(pt_files): #break
             elif bool(re.search(r'T\d\d:\d\d',potdt_row['POT채혈DT'])):
                 if res_frag_df.at[potdt_inx, 'SAMP_DT'] == '':
                     if pid in uniq_sampling_pids:
-                        print("POT채혈DT 결과 존재 / SAMPLING DATA 있어 아래서 처리")
+                        print("POT채혈DT의 TIME만 결과 존재 / SAMPLING DATA 있어 아래서 처리")
                         error_passing_pids.add(pid)
-                        pass
+                        res_frag_df.at[potdt_inx, 'REC_REASON'] += '랩결과옆(POT채혈시간만)/'
                     else:
-                        print("POT채혈DT 결과 존재 하는데 / SAMPLING DATA 없는 경우 입니다")
+                        print("POT채혈DT의 TIME만 결과 존재 하는데 / SAMPLING DATA 없는 경우 입니다")
                         # POT채혈DT, Dosing 기록으로 유추해야.
 
                         # 농도측정의 오더일과 보고일이 같은 날짜인 경우는 그 날짜로 사용
                         if potdt_row['오더일']==potdt_row['보고일']:
                             if res_frag_df.at[potdt_inx, 'SAMP_DT'] == '':
                                 res_frag_df.at[potdt_inx, 'SAMP_DT'] = potdt_row['오더일'] + 'T' + potdt_row['POT채혈DT'].split('T')[-1]
+                                res_frag_df.at[potdt_inx, 'REC_REASON'] += '랩결과옆(POT채혈시간만)/(NO SAMP)오더일==보고일로 추정/'
 
                         # 농도측정의 오더일과 보고일이 다른 날짜들의 경우
                         ord_noteq_rep_rows = res_frag_df[(res_frag_df['오더일'] != res_frag_df['보고일'])&(res_frag_df['SAMP_DT']=='')].copy()
@@ -183,10 +186,12 @@ for finx, fpath in enumerate(pt_files): #break
                             if len(ord_noteq_rep_rows['오더일'].drop_duplicates()) == 1:
                                 for oneqr_inx, oneqr_row in ord_noteq_rep_rows.iterrows():
                                     res_frag_df.at[oneqr_inx, 'SAMP_DT'] = oneqr_row['오더일'] + 'T' + potdt_row['POT채혈DT'].split('T')[-1]
+                                    res_frag_df.at[oneqr_inx, 'REC_REASON'] += '랩결과옆(채혈시간만)/(NO SAMP)오더일!=보고일,오더일로 추정/'
                             # 농도채혈 오더 난 날짜가 1개 이상 존재할 때 있을때
                             else:
                                 print("POT채혈DT 결과 존재 / SAMPLING DATA 없음 / 농도채혈 오더 난 날짜가 1개 이상 존재")
                                 raise ValueError
+
 
                         # error_passing_pids.add(pid)
 
@@ -211,8 +216,10 @@ for finx, fpath in enumerate(pt_files): #break
 
                         if res_frag_df.at[potdt_inx, 'CONC'] < mean_conc:
                             res_frag_df.at[potdt_inx, 'SAMP_DT'] = potdt_row['POT채혈DT'] + 'T' + est_conc_dt_tups[0].split('T')[-1]
+                            res_frag_df.at[potdt_inx, 'REC_REASON'] += '랩결과옆(채혈날짜만)/(NO SAMP)평균농도이상,해당일Peak로배정/'
                         else:
                             res_frag_df.at[potdt_inx, 'SAMP_DT'] = potdt_row['POT채혈DT'] + 'T' + est_conc_dt_tups[1].split('T')[-1]
+                            res_frag_df.at[potdt_inx, 'REC_REASON'] += '랩결과옆(채혈날짜만)/(NO SAMP)평균농도미만,해당일Trough로배정/'
                     else:
                         print(f"({finx}) {pname} / {pid} / POT채혈DT에 날짜만 존재 / 해당 날짜 dose기록 3개 이상")
                         raise ValueError
@@ -278,6 +285,7 @@ for finx, fpath in enumerate(pt_files): #break
                 for dd_inx, dd_row in date_dose_rows.iterrows():
                     if dd_row[dd_col] not in list(res_frag_df['SAMP_DT']):
                         res_frag_df.at[oer_inx, 'SAMP_DT'] = oer_row['오더일'] + 'T' + dd_row[dd_col].split('T')[-1]
+                        res_frag_df.at[oer_inx, 'REC_REASON'] += f'(NO SAMP,YES DOSE)오더일==보고일로, 해당일{dd_col}로추정/'
                         break
                     else:
                         continue
@@ -305,16 +313,19 @@ for finx, fpath in enumerate(pt_files): #break
             # 오더일과 같은날 Dosing된 날짜 존재시 -> Conc 측정 날짜를 오더일에 되었다고 추정
             if len(temp_id_dose_df[(temp_id_dose_df['DOSE_DATE'] == conc_order_date_list[0])])>0:
                 temp_id_dose_df = temp_id_dose_df[(temp_id_dose_df['DOSE_DATE'] == conc_order_date_list[0])].copy()
-                ascending_orders = [True,True]
+                ascending_orders = [True, True]
+                rec_date_reason = '오더일'
 
             # 보고일과 같은날 Dosing된 날짜 존재시 -> Conc 측정 날짜를 보고일에 되었다고 추정
             elif len(temp_id_dose_df[(temp_id_dose_df['DOSE_DATE'] == conc_report_date_list[0])])>0:
                 temp_id_dose_df = temp_id_dose_df[(temp_id_dose_df['DOSE_DATE'] == conc_report_date_list[0])].copy()
                 ascending_orders = [True, True]
+                rec_date_reason = '보고일'
 
             # 일치되는 날짜가 없을 경우 -> DOSE 날짜 범위 중 가장 Latest 에 Conc 측정되었다고 추정
             else:
                 ascending_orders = [False, True]
+                rec_date_reason = '범위내DOSING날짜없어LATEST투약일'
 
             mean_conc = (res_frag_df['CONC'].max()+res_frag_df['CONC'].min())/2
             # temp_id_dose_df = temp_id_dose_df.sort_values(['DOSE_DATE','DOSE_TIME'],ascending=ascending_orders)
@@ -338,6 +349,7 @@ for finx, fpath in enumerate(pt_files): #break
                         for dd_inx, dd_row in temp_id_dose_df.iterrows():
                             if dd_row[dd_col] not in list(res_frag_df['SAMP_DT']):
                                 res_frag_df.at[resf_inx, 'SAMP_DT'] = dd_row[dd_col]
+                                res_frag_df.at[resf_inx, 'REC_REASON'] += f'(NO SAMP,YES DOSE)오더일!=보고일로, {rec_date_reason}에{dd_col}로추정/'
                                 break
                             else:
                                 continue
@@ -425,8 +437,10 @@ for finx, fpath in enumerate(pt_files): #break
                             for dd_inx, dd_row in dose_ord_frag.iterrows():
                                 if dd_row[dd_col] not in list(res_frag_df['SAMP_DT']):
                                     res_frag_df.at[resf_inx, 'SAMP_DT'] = dd_row[dd_col]
+                                    res_frag_df.at[resf_inx, 'REC_REASON'] += f'(NO SAMP,YES DOSE) 오더일!=보고일(농도측정오더일 2개 이상, {conc_ord_date_type}기준FITTING, {dd_col}로 추정/'
                                     break
                                 else:
+                                    # res_frag_df.at[resf_inx, 'REC_REASON'] += f'(NO SAMP,YES DOSE) 오더일!=보고일(농도측정오더일 2개 이상, {conc_ord_date_type}기준FITTING, {dd_col}로 추정/이미 DATETIME 존재'
                                     continue
 
                         # concord_date_rows = concord_date_rows.sort_values(['CONC']).reset_index(drop=False)
@@ -524,6 +538,7 @@ for finx, fpath in enumerate(pt_files): #break
 
                         if pid in outpatient_list:
                             print("외래 베이스로 투여된 환자라 정확한 dosing time 추정 어려움")
+                            res_frag_df['REC_REASON']='외래 베이스 환자라 정확한 dosing time 추정 어려움'
                             continue
                         else:
                             raise ValueError
@@ -568,12 +583,14 @@ for finx, fpath in enumerate(pt_files): #break
                         if dd_row['채혈DT'] not in list(res_frag_df['SAMP_DT']):
                             # print('기록')
                             res_frag_df.at[dd_inx, 'SAMP_DT'] = dd_row['채혈DT']
+                            res_frag_df.at[dd_inx, 'REC_REASON'] += f'(YES SAMP,YES DOSE) 채혈 기록 1개, 농도 및 채혈 기록일치/'
                             # break
                         else:
                             # res_frag_df.at[dd_inx, 'SAMP_DT'] = dd_row['채혈DT']
                             # res_frag_df['채혈DT']
                             # res_frag_df['SAMP_DT']
                             # res_frag_df['POT채혈DT']
+                            res_frag_df.at[dd_inx, 'REC_REASON'] += f'(YES SAMP,YES DOSE) 채혈 기록 1개, 농도 및 채혈 기록일치/ 이미 DATETIME 존재'
 
                             print('이미 날짜 DT가 존재합니다')
                 else:
@@ -639,6 +656,7 @@ for finx, fpath in enumerate(pt_files): #break
                                 # print('기록')
                                 res_frag_df.at[dd_inx, 'SAMP_DT'] = dd_row['채혈DT']
                                 res_frag_df.at[dd_inx, 'CONC'] = dd_row['CONC']
+                                res_frag_df.at[dd_inx, 'REC_REASON'] += f'(YES SAMP,YES DOSE, 두 기록 일치) 채혈 기록 2개 이하, 채혈 사이 DOSING 기록 여러 개, 농도 값과 DOSING 고려해서 배열'
                                 # break
                             else:
                                 # res_frag_df.at[dd_inx, 'SAMP_DT'] = dd_row['채혈DT']
@@ -670,6 +688,7 @@ for finx, fpath in enumerate(pt_files): #break
                         if ((COND2 & COND3).sum() > 0) and COND4:  # 시간이 거의 일치하는데 상대적으로 완만한 변화 -> Toxic 후 감소하는 것으로 간주. 그러나 그 측정시간이 서로 너무 가까운 경우 예측이 어려우므로 하나는 날린다
                             arranged_conc_samp_rows = concord_date_rows.sort_values(['CONC'], ascending=False).iloc[0:1,:].copy()
                             arranged_conc_samp_rows['채혈DT'] = samp_date_rows.iloc[0]['채혈DT']
+                            between_dosing_rec_count = '고려하며, 시간이 거의 일치하는데 상대적으로 완만한 변화 -> Toxic 후 감소하는 것으로 간주(시간 너무 가까우면 날림)'
                         elif ((COND1 & COND3).sum() > 0) and COND4:  # 시간이 거의 일치하는데 급격한 변화 -> 가장 가까운 Dosing time 기준 trough, peak로 간주
                             min_diff_dosing_dt = np.abs(id_dose_df['DOSE_DT'].map(lambda x:datetime.strptime(x,'%Y-%m-%dT%H:%M').timestamp()) - datetime.strptime(samp_date_rows.iloc[0]['채혈DT'],'%Y-%m-%dT%H:%M').timestamp())/3600
                             min_inx = min_diff_dosing_dt[min_diff_dosing_dt==min_diff_dosing_dt.min()].index[0]
@@ -682,11 +701,13 @@ for finx, fpath in enumerate(pt_files): #break
 
                             arranged_conc_samp_rows = cond_check_conc_date_rows.copy()
                             arranged_conc_samp_rows['채혈DT'] = est_conc_dt_list
+                            between_dosing_rec_count = '고려하며, 시간이 거의 일치하는데 급격한 변화 -> 가장 가까운 Dosing time 기준 trough, peak로 간주'
                         else:
                             # CONC 데이터 길이 == SAMP 데이터 길이 / sampling 사이에 dose 기록이 한 개 존재
                             if len(dose_between_samps) == 1:
                                 conc_ascending_sort = True
                                 samp_ascending_sort = True
+                                between_dosing_rec_count = '1개'
                                 # print(f'CONC 데이터 길이 == SAMP 데이터 길이 / sampling 사이에 dose 기록이 한 개 존재')
                                 # raise ValueError
 
@@ -694,6 +715,7 @@ for finx, fpath in enumerate(pt_files): #break
                             else:
                                 conc_ascending_sort = False
                                 samp_ascending_sort = True
+                                between_dosing_rec_count = '0개'
                             arranged_conc_samp_rows = concord_date_rows.sort_values(['CONC'], ascending=conc_ascending_sort)
                             arranged_conc_samp_rows['채혈DT'] = list(samp_date_rows.sort_values(['채혈DT'], ascending=samp_ascending_sort)['채혈DT'])
 
@@ -701,8 +723,12 @@ for finx, fpath in enumerate(pt_files): #break
                             if dd_row['채혈DT'] not in list(res_frag_df['SAMP_DT']):
                                 print('기록')
                                 res_frag_df.at[dd_inx, 'SAMP_DT'] = dd_row['채혈DT']
+                                res_frag_df.at[dd_inx, 'REC_REASON'] += f'(YES SAMP, YES DOSE, 두 기록 일치) 채혈 기록 2개 이하, 채혈 사이 DOSING 기록 {between_dosing_rec_count}, 농도값 고려하여 추정'
                                 # break
                             else:
+                                res_frag_df.at[dd_inx, 'REC_REASON'] += f'(YES SAMP, YES DOSE, 두 기록 일치) 채혈 기록 2개 이하, 채혈 사이 DOSING 기록 {between_dosing_rec_count}, 농도값 고려하여 추정 / 이미 DATETIME 존재'
+
+
                             #     res_frag_df.at[dd_inx, 'SAMP_DT'] = dd_row['채혈DT']
                             # res_frag_df['CONC']
                                 # res_frag_df['채혈DT']
@@ -845,8 +871,11 @@ for finx, fpath in enumerate(pt_files): #break
                                     # print('기록')
                                     res_frag_df.at[dd_inx, 'SAMP_DT'] = dd_row['채혈DT']
                                     res_frag_df.at[dd_inx, 'CONC'] = dd_row['CONC']
+                                    res_frag_df.at[dd_inx, 'REC_REASON'] += f'(YES SAMP, YES DOSE, 두 기록 일치) 채혈 기록 3개 이상, 채혈 사이 DOSING 기록, 농도값 고려하여 추정'
+
                                     # break
                                 else:
+                                    res_frag_df.at[dd_inx, 'REC_REASON'] += f'(YES SAMP, YES DOSE, 두 기록 일치) 채혈 기록 3개 이상, 채혈 사이 DOSING 기록, 농도값 고려하여 추정 / 이미 DATETIME 존재'
                                     # res_frag_df.at[dd_inx, 'SAMP_DT'] = dd_row['채혈DT']
                                     # res_frag_df['채혈DT']
                                     # res_frag_df['SAMP_DT']
@@ -874,6 +903,7 @@ for finx, fpath in enumerate(pt_files): #break
 
 
             #################################        아래는 날렸음        ################################################
+
             elif len(concord_date_rows) > len(samp_date_rows):   ################# 채혈정보랑 안 맞는 부정확한 정보라 날린다
 
 
@@ -982,6 +1012,7 @@ for finx, fpath in enumerate(pt_files): #break
                         # check_input_samp_date_rows = input_samp_date_rows.copy()
                         input_samp_dt = input_samp_date_rows['채혈DT'].iloc[-1]
                         res_frag_df.at[dd_inx, 'SAMP_DT'] = input_samp_dt
+                        res_frag_df.at[dd_inx, 'REC_REASON'] = '날린 곳'
                         used_dt_list.append(input_samp_dt)
 
                         peak_samp_date_rows = peak_samp_date_rows[~peak_samp_date_rows['채혈DT'].isin(used_dt_list)]
@@ -1032,6 +1063,7 @@ for finx, fpath in enumerate(pt_files): #break
                         if dd_row['채혈DT'] not in list(res_frag_df['SAMP_DT']):
                             print('기록')
                             res_frag_df.at[dd_inx, 'SAMP_DT'] = dd_row['채혈DT']
+                            res_frag_df.at[dd_inx, 'REC_REASON'] = '날린 곳'
                             # break
                         else:
                             # res_frag_df.at[dd_inx, 'SAMP_DT'] = dd_row['채혈DT']
@@ -1073,6 +1105,7 @@ for finx, fpath in enumerate(pt_files): #break
                         if samp_dt_input not in list(res_frag_df['SAMP_DT']):
                             # print('기록')
                             res_frag_df.at[dd_inx, 'SAMP_DT'] = samp_dt_input
+                            res_frag_df.at[dd_inx, 'REC_REASON'] = '날린 곳'
                         else:
 
                             print('이미 날짜 DT가 존재합니다')
@@ -1156,6 +1189,7 @@ for finx, fpath in enumerate(pt_files): #break
                             if input_samp_dt not in list(res_frag_df['SAMP_DT']):
                                 print('기록')
                                 res_frag_df.at[dd_inx, 'SAMP_DT'] = input_samp_dt
+                                res_frag_df.at[dd_inx, 'REC_REASON'] = '날린 곳'
                                 used_dt_list.append(input_samp_dt)
                             else:
                                 input_samp_dt = input_samp_date_rows['채혈DT'].iloc[-2]

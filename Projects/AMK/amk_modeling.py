@@ -3,9 +3,11 @@ from pynca.tools import *
 
 prj_name = 'AMK'
 prj_dir = f'C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/{prj_name}'
+nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
 # prj_dir = f'./Projects/{prj_name}'
 resource_dir = f'{prj_dir}/resource'
 output_dir = f"{prj_dir}/results"
+
 
 pt_info = pd.read_csv(f"{output_dir}/patient_info.csv",encoding='utf-8-sig')
 pt_info['AGE'] = pt_info['AGE'].map(lambda x: float(x.replace('개월',''))/12 if '개월' in x else float(x.replace('세','')))
@@ -178,12 +180,19 @@ modeling_datacheck_df = pd.concat(modeling_datacheck_df).sort_values(['ID', 'DAT
 id_dict = {uid:id for id, uid in enumerate(modeling_datacheck_df['UID'].drop_duplicates())}
 modeling_datacheck_df['ID'] = modeling_datacheck_df['UID'].map(id_dict)
 # raise ValueError
+# raise ValueError
+# pt_info.columns
+filt_based_on_date = pt_info.rename(columns={'ID':'UID'})[['UID','TDM_REQ_DATE']].copy()
+modeling_datacheck_df = modeling_datacheck_df.merge(filt_based_on_date, on='UID', how='left')
+modeling_datacheck_df['TDM_YEAR'] = modeling_datacheck_df['TDM_REQ_DATE'].map(lambda x:x.split('-')[0])
 
 modeling_datacheck_df.to_csv(f"{output_dir}/amk_modeling_datacheck.csv",index=False, encoding='utf-8-sig')
 
 
 
-
+final_modeling_df = modeling_datacheck_df[com_cols+['UID','TDM_YEAR']].drop(['NAME'],axis=1)
+# final_modeling_df = modeling_datacheck_df[com_cols+['UID']].drop(['NAME'],axis=1)
+final_modeling_df.to_csv(f"{output_dir}/amk_modeling_df_tdmyrs.csv",index=False, encoding='utf-8-sig')
 final_modeling_df = modeling_datacheck_df[com_cols+['UID']].drop(['NAME'],axis=1)
 final_modeling_df.to_csv(f"{output_dir}/amk_modeling_df.csv",index=False, encoding='utf-8-sig')
 
@@ -198,27 +207,64 @@ print(f"[Completed] Final Modeling Dataset: {len(modeling_datacheck_df['ID'].uni
 
 recent_modeling_df = modeling_datacheck_df[modeling_datacheck_df['DATETIME'].map(lambda x:x.split('T')[0][0:4]) > '2020'].copy()
 recent_modeling_df.to_csv(f"{output_dir}/recent_amk_modeling_datacheck.csv",index=False, encoding='utf-8-sig')
-recent_modeling_df[com_cols+['UID']].drop(['NAME'],axis=1).to_csv(f"{output_dir}/recent_amk_modeling_df.csv",index=False, encoding='utf-8-sig')
+recent_modeling_df.drop(['NAME'],axis=1).to_csv(f"{output_dir}/recent_amk_modeling_df.csv",index=False, encoding='utf-8-sig')
+
+# len(recent_modeling_df.drop(['NAME'],axis=1))
+
+past_modeling_df = modeling_datacheck_df[modeling_datacheck_df['DATETIME'].map(lambda x:x.split('T')[0][0:4]) < '2008'].copy()
+past_modeling_df.to_csv(f"{output_dir}/past_amk_modeling_datacheck.csv",index=False, encoding='utf-8-sig')
+past_modeling_df[com_cols+['UID']].drop(['NAME'],axis=1).to_csv(f"{output_dir}/past_amk_modeling_df.csv",index=False, encoding='utf-8-sig')
+
+####### NONMEM SDTAB
+
+nmsdtab_df = pd.read_csv(f"{nonmem_dir}/run/sdtab105",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
+nmsdtab_df['ID'] = nmsdtab_df['ID'].astype(int)
+nmsdtab_df['TDM_YEAR'] = nmsdtab_df['TDM_YEAR'].astype(int)
+under_pred_df = nmsdtab_df[(nmsdtab_df['DV'] > 10)&(nmsdtab_df['IPRED'] < 7)].copy()
+over_pred_df = nmsdtab_df[(nmsdtab_df['DV'] < 7)&(nmsdtab_df['IPRED'] > 10)].copy()
+mis_pred_df = pd.concat([under_pred_df, over_pred_df])
+
+yr_mispred_df = mis_pred_df.groupby(['TDM_YEAR'])['DV'].count().reset_index(drop=False)
+sns.barplot(yr_mispred_df, x='TDM_YEAR', y='DV')
+plt.xticks(rotation=90)  # x축 라벨을 90도 회전
+plt.tight_layout()       # 레이아웃 깨짐 방지 (선택 사항)
+plt.show()
+
+# yr_mispred_df
+# mis_pred_df['ID'].drop_duplicates()
+
+filt_modeling_df = final_modeling_df[~(final_modeling_df['ID'].isin(mis_pred_df['ID'].drop_duplicates()))]
+filt_modeling_df.to_csv(f"{output_dir}/amk_modeling_df_filt.csv",index=False, encoding='utf-8-sig')
+# final_modeling_df['ID'].iloc[0]
+
+# 연도별
+
+# for year in np.arange(2003,2025):
+#     year_str = str(year)
+#     recent_modeling_df = modeling_datacheck_df[modeling_datacheck_df['DATETIME'].map(lambda x: x.split('T')[0][0:4]) > year_str].copy()
+#     recent_modeling_df.to_csv(f"{output_dir}/recent_amk_modeling_datacheck_{year_str}.csv", index=False, encoding='utf-8-sig')
+#     recent_modeling_df[com_cols + ['UID']].drop(['NAME'], axis=1).to_csv(f"{output_dir}/recent_amk_modeling_df_{year_str}.csv",index=False, encoding='utf-8-sig')
+# recent_modeling_df = modeling_datacheck_df[modeling_datacheck_df['DATETIME'].map(lambda x:x.split('T')[0][0:4]) > '2020'].copy()
 
 
-# final_modeling_df['ID']
-n_split = 30
-# id 기준 unique한 사람 목록 추출 및 셔플
-unique_ids = final_modeling_df['ID'].drop_duplicates().reset_index(drop=True)
-
-# 총 사람 수와 1/5씩 나누기
-n = len(unique_ids)
-split_size = n // n_split
-
-# 5개로 나누어서 저장
-for i in range(n_split):
-    if i < n_split-1:
-        ids_slice = unique_ids[i * split_size: (i + 1) * split_size]
-    else:  # 마지막 조각은 나머지까지 포함
-        ids_slice = unique_ids[i * split_size:]
-
-    df_slice = final_modeling_df[final_modeling_df['ID'].isin(ids_slice)]
-    df_slice.to_csv(f"{output_dir}/amk_modeling_df_{i + 1}.csv", index=False)
+# # final_modeling_df['ID']
+# n_split = 30
+# # id 기준 unique한 사람 목록 추출 및 셔플
+# unique_ids = final_modeling_df['ID'].drop_duplicates().reset_index(drop=True)
+#
+# # 총 사람 수와 1/5씩 나누기
+# n = len(unique_ids)
+# split_size = n // n_split
+#
+# # 5개로 나누어서 저장
+# for i in range(n_split):
+#     if i < n_split-1:
+#         ids_slice = unique_ids[i * split_size: (i + 1) * split_size]
+#     else:  # 마지막 조각은 나머지까지 포함
+#         ids_slice = unique_ids[i * split_size:]
+#
+#     df_slice = final_modeling_df[final_modeling_df['ID'].isin(ids_slice)]
+#     df_slice.to_csv(f"{output_dir}/amk_modeling_df_{i + 1}.csv", index=False)
 
 
 # modeling_datacheck_df[(modeling_datacheck_df['DVfloat'] < 0.4)&(modeling_datacheck_df['TIME'] > 900)]
