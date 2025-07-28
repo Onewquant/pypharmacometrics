@@ -14,11 +14,27 @@ demo_df['AGE'] = demo_df['AGE'].map(lambda x: float(x.replace('개월',''))/12 i
 demo_df = demo_df.rename(columns={'ID':'UID'})
 demo_df = demo_df[['UID', 'AGE', 'SEX', 'HT', 'WT']].copy()
 demo_df['UID'] = demo_df['UID'].astype(str)
+demo_df['HT'] = demo_df['HT'].replace('44.5/45',np.nan).replace('R)600',np.nan).astype(float)
+demo_df['WT'] = demo_df['WT'].replace('71.4(+0.8)',72.2).astype(float)
+# demo_df['WT'].median()
+
+"""
+# 10036912 - 키가 44.5/45 이렇게 되어 있음.
+# 10070501 - 키가 비어있음
+"""
 
 ## LAB Covariates Loading
+lab_covar_rawcols = ['UID', 'DATETIME', 'Albumin', 'AST', 'AST(GOT)', 'ALT', 'ALT(GPT)', 'CRP', 'T. Bil.', 'γ-GT', 'Glucose', 'iCa','Cr (S)', 'Creatinine']
+lab_covar_modelcols = ['UID', 'DATETIME', 'ALB', 'AST', 'ALT','TBIL','GGT', 'CRP', 'CREATININE','ICAL']
 
-totlab_df = pd.read_csv(f"{output_dir}/final_lab_df.csv")
-totlab_df = totlab_df[['UID', 'DATETIME', 'Albumin', 'AST', 'AST(GOT)', 'ALT', 'ALT(GPT)', 'CRP', 'Calprotectin (Serum)', 'Calprotectin (Stool)', 'eGFR-CKD-EPI', 'Cr (S)', 'Creatinine']].copy()
+uid_fulldt_flist = glob.glob(f"{output_dir}/uid_lab_df/uid_fulldt_df(*).csv")
+totlab_df = list()
+for inx, fpath in enumerate(uid_fulldt_flist):
+    print(f'({inx}) {fpath.split("uid_lab_df")[-1][1:]}')
+    uid_lab_df = pd.read_csv(fpath)[lab_covar_rawcols].copy()
+    totlab_df.append(uid_lab_df)
+totlab_df = pd.concat(totlab_df, ignore_index=True)
+# totlab_df = totlab_df[lab_covar_rawcols].copy()
 for c in list(totlab_df.columns)[2:]:  # break
     totlab_df[c] = totlab_df[c].map(lambda x: x if type(x) == float else float(re.findall(r'[\d]+.*[\d]*', str(x))[0]))
 totlab_df['UID'] = totlab_df['UID'].astype(str)
@@ -27,12 +43,13 @@ totlab_df['ALT'] = totlab_df[['ALT', 'ALT(GPT)']].max(axis=1)
 totlab_df['CREATININE'] = totlab_df[['Cr (S)', 'Creatinine']].max(axis=1)
 # set(totlab_df['Anti-Infliximab Ab [정밀면역검사] (정량)'].unique())
 totlab_df = totlab_df.rename(columns={'Albumin': 'ALB','T. Bil.':'TBIL','γ-GT':'GGT','Glucose':'GLU','iCa':'ICAL'})
-totlab_df = totlab_df[['UID', 'DATETIME', 'ALB', 'AST', 'ALT','TBIL','GGT', 'CRP', 'CREATININE','ICAL']].copy()
+totlab_df = totlab_df[lab_covar_modelcols].copy()
 # totlab_df = totlab_df[['UID', 'DATETIME', 'ALB', 'AST', 'ALT', 'CRP', 'CALPRTSTL', 'CREATININE']].copy()
 for c in list(totlab_df.columns)[2:]:  # break
     totlab_df[c] = totlab_df[c].map(lambda x: x if type(x) == float else float(re.findall(r'[\d]+.*[\d]*', str(x))[0]))
 
 totlab_df = totlab_df.drop_duplicates(['UID','DATETIME'])
+# totlab_df.to_csv(f"{output_dir}/totlab_df.csv", encoding='utf-8-sig', index=False)
 
 # [c for c in totlab_df.columns.unique() if 'ada' in c.lower()]
 
@@ -65,8 +82,7 @@ for md_inx,md_df in modeling_df.groupby(['UID']):
     md_df_list.append(md_df)
 modeling_df = pd.concat(md_df_list).reset_index(drop=True)
 
-modeling_df.fillna(modeling_df.median(numeric_only=True), inplace=True)
-
+modeling_df = modeling_df.fillna(modeling_df.median(numeric_only=True))
 
 
 ## Covariates의 NA value 처리 (ffill 먼저 시도, 없으면 bfill, 그것도 없으면 전체의 median 값)
@@ -87,15 +103,14 @@ modeling_df.fillna(modeling_df.median(numeric_only=True), inplace=True)
 # modeling_df[data_check_cols].to_csv(f'{output_dir}/{drug}_{mode_str}_datacheck_covar.csv', index=False, encoding='utf-8-sig')
 # raise ValueError
 right_covar_col = 'TDM_REQ_DATE'
-datacheck_cols = ['ID',	'UID', 'NAME', 'DATETIME', 'TIME', 'DV', 'MDV', 'AMT', 'RATE', 'CMT','DRUG'] + list(modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
+datacheck_cols = ['ID',	'UID', 'NAME', 'DATETIME', 'TIME', 'DV', 'MDV', 'AMT', 'RATE', 'CMT'] + list(modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
 modeling_df[datacheck_cols].to_csv(f'{output_dir}/{drug}_modeling_datacheck_covar.csv', index=False, encoding='utf-8-sig')
 # dcheck_df = modeling_df[~(modeling_df['DV'].isin(['.','0.0']))][['ID',	'UID', 'NAME', 'DATETIME', 'DV']].copy()
 # dcheck_df[dcheck_df['DV'].map(float) > 40]
-
 modeling_cols = ['ID','NAME','TIME','DV','MDV','CMT','AMT','RATE','UID'] + list(modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
 
-modeling_df['AGE'] = modeling_df.apply(lambda x: int((datetime.strptime(x['DATETIME'],'%Y-%m-%d') - datetime.strptime(x['AGE'],'%Y-%m-%d')).days/365.25), axis=1)
-modeling_df['SEX'] = modeling_df['SEX'].map({'남':1,'여':2})
+# modeling_df['AGE'] = modeling_df.apply(lambda x: int((datetime.strptime(x['DATETIME'],'%Y-%m-%d') - datetime.strptime(x['AGE'],'%Y-%m-%d')).days/365.25), axis=1)
+modeling_df['SEX'] = modeling_df['SEX'].map({'M':1,'F':2})
 
 modeling_df = modeling_df[modeling_cols].sort_values(['ID','TIME'], ignore_index=True)
 
