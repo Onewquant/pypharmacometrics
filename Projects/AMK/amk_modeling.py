@@ -37,12 +37,14 @@ dose_df['AMT'] = dose_df['DOSE']
 dose_df['RATE'] = dose_df['AMT'] / 0.5
 print(f"Deleted / Ambiguous dosing time : {len(dose_df[(dose_df['TIME'].map(lambda x:x.split('T')[-1]=='NN:NN'))])} rows / {len(dose_df[(dose_df['TIME'].map(lambda x:x.split('T')[-1]=='NN:NN'))]['ID'].unique())} patients")
 dose_df = dose_df[~(dose_df['TIME'].map(lambda x:x.split('T')[-1]=='NN:NN'))]
+dose_df['REC_REASON'] = ''
 
 com_cols = ['ID','NAME','TIME','DV','MDV','CMT','AMT','RATE']
-
+datacheck_basic_cols = ['ID','NAME','TIME','DV','MDV','CMT','AMT','RATE','REC_REASON']
 # id_df['TIME'].unique()
 
-modeling_df = pd.concat([conc_df[com_cols], dose_df[com_cols]]).sort_values(['ID','TIME'])
+modeling_df = pd.concat([conc_df[datacheck_basic_cols], dose_df[datacheck_basic_cols]]).sort_values(['ID','TIME'])
+# modeling_df = pd.concat([conc_df[com_cols], dose_df[com_cols]]).sort_values(['ID','TIME'])
 modeling_df = modeling_df[~modeling_df['TIME'].isna()].copy()
 modeling_df = modeling_df.sort_values(['ID','TIME']).reset_index(drop=True)
 
@@ -68,6 +70,7 @@ modeling_df = modeling_df[(modeling_df['ID'].isin(adult_pids))&(~(modeling_df['I
 # print(f"CONC or DOSE Data 부재: {len(no_oneside_pids)} patients")
 # modeling_df = modeling_df[~modeling_df['ID'].isin(no_oneside_pids)].copy()
 
+
 modeling_datacheck_df = list()
 no_conc_pids = set()
 no_dose_pids = set()
@@ -92,7 +95,8 @@ for id, id_df in modeling_df.groupby('ID'): #break
         continue
 
     ## DV > 100 필터링 (채혈라인/투약라인 일치 or SAMPLING DATA 오류 가능성)
-    id_df = id_df[~(id_df['DVfloat'] > 100)].copy()
+    # id_df = id_df[~(id_df['DVfloat'] > 100)].copy()
+    id_df = id_df[~(id_df['DVfloat'] > 80)].copy()
 
     ## TIME=0 DV=0 추가
     zero_conc_row = id_df.iloc[:1, :].copy()
@@ -188,11 +192,12 @@ modeling_datacheck_df['TDM_YEAR'] = modeling_datacheck_df['TDM_REQ_DATE'].map(la
 
 modeling_datacheck_df.to_csv(f"{output_dir}/amk_modeling_datacheck.csv",index=False, encoding='utf-8-sig')
 
-
+# final_modeling_df.columns
 
 final_modeling_df = modeling_datacheck_df[com_cols+['UID','TDM_YEAR']].drop(['NAME'],axis=1)
-# final_modeling_df = modeling_datacheck_df[com_cols+['UID']].drop(['NAME'],axis=1)
+# final_modeling_df = modeling_datacheck_df[datacheck_basic_cols+['UID','DATETIME']].drop(['NAME'],axis=1)
 final_modeling_df.to_csv(f"{output_dir}/amk_modeling_df_tdmyrs.csv",index=False, encoding='utf-8-sig')
+# final_modeling_df = modeling_datacheck_df[datacheck_basic_cols+['UID']].drop(['NAME'],axis=1)
 final_modeling_df = modeling_datacheck_df[com_cols+['UID']].drop(['NAME'],axis=1)
 final_modeling_df.to_csv(f"{output_dir}/amk_modeling_df.csv",index=False, encoding='utf-8-sig')
 
@@ -232,6 +237,11 @@ plt.show()
 
 # yr_mispred_df
 # mis_pred_df['ID'].drop_duplicates()
+
+# strange_modeling_df = final_modeling_df[(final_modeling_df['ID'].isin(mis_pred_df['ID'].drop_duplicates()))].copy()
+# strange_conc_modeling_df = final_modeling_df[(final_modeling_df['MDV']==0)&(final_modeling_df['ID'].isin(mis_pred_df['ID'].drop_duplicates()))].copy()
+# strange_modeling_df.to_csv(f"{output_dir}/strange_df.csv",index=False, encoding='utf-8-sig')
+# strange_conc_modeling_df.to_csv(f"{output_dir}/strange_conc_df.csv",index=False, encoding='utf-8-sig')
 
 filt_modeling_df = final_modeling_df[~(final_modeling_df['ID'].isin(mis_pred_df['ID'].drop_duplicates()))]
 filt_modeling_df.to_csv(f"{output_dir}/amk_modeling_df_filt.csv",index=False, encoding='utf-8-sig')
