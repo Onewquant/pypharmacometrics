@@ -60,6 +60,7 @@ totlab_df.to_csv(f"{output_dir}/totlab_df.csv", encoding='utf-8-sig', index=Fals
 ## Modeling Data Loading
 drug='amk'
 covar_modeling_df = pd.read_csv(f'{output_dir}/{drug}_modeling_datacheck.csv')
+
 # covar_modeling_df = pd.read_csv(f"{output_dir}/{drug}_modeling_df_filt.csv")
 covar_modeling_df['UID']= covar_modeling_df['UID'].astype(str)
 covar_modeling_df['DATETIME'] = covar_modeling_df['DATETIME'].map(lambda x:x.split('T')[0])
@@ -81,7 +82,7 @@ covar_modeling_df = covar_modeling_df.merge(demo_df, on=['UID'], how='left')
 
 md_df_list = list()
 for md_inx,md_df in covar_modeling_df.groupby(['UID']):
-    md_df = md_df.sort_values(['DATETIME']).fillna(method='ffill').fillna(method='bfill')
+    md_df = md_df.sort_values(['TIME']).fillna(method='ffill').fillna(method='bfill')
     md_df_list.append(md_df)
 covar_modeling_df = pd.concat(md_df_list).reset_index(drop=True)
 
@@ -110,10 +111,42 @@ datacheck_cols = ['ID',	'UID', 'NAME', 'DATETIME', 'TIME', 'DV', 'MDV', 'AMT', '
 covar_modeling_df[datacheck_cols].to_csv(f'{output_dir}/{drug}_modeling_datacheck_covar.csv', index=False, encoding='utf-8-sig')
 # dcheck_df = modeling_df[~(modeling_df['DV'].isin(['.','0.0']))][['ID',	'UID', 'NAME', 'DATETIME', 'DV']].copy()
 # dcheck_df[dcheck_df['DV'].map(float) > 40]
-modeling_cols = ['ID','NAME','TIME','DV','MDV','CMT','AMT','RATE','UID'] + list(covar_modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
+modeling_cols = ['ID','NAME','TIME','TAD','DV','MDV','CMT','AMT','RATE','UID'] + list(covar_modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
 
 # modeling_df['AGE'] = modeling_df.apply(lambda x: int((datetime.strptime(x['DATETIME'],'%Y-%m-%d') - datetime.strptime(x['AGE'],'%Y-%m-%d')).days/365.25), axis=1)
 covar_modeling_df['SEX'] = covar_modeling_df['SEX'].map({'M':1,'F':2})
+
+## 최근 투약 기준 시간으로 TAD 설정
+covar_modeling_df['TAD'] = np.nan
+
+# 농도값 바로 전에 투약기록 있는 경우
+tad_cond0 = (covar_modeling_df['MDV']==0)
+tad_cond1 = (covar_modeling_df['MDV'].shift(1).fillna(1.0)==1)
+tad_cond2 = (covar_modeling_df['ID']==covar_modeling_df['ID'].shift(1))
+tad_cond3 = (covar_modeling_df['TAD'].isna())
+for inx in covar_modeling_df[tad_cond0&tad_cond1&tad_cond2&tad_cond3].index:
+    covar_modeling_df.at[inx,'TAD'] = covar_modeling_df.at[inx,'TIME']-covar_modeling_df.at[inx-1,'TIME']
+
+# 농도값 바로 전에 농도기록 있는 경우
+tad_cond0 = (covar_modeling_df['MDV']==0)
+tad_cond1 = (covar_modeling_df['MDV'].shift(1).fillna(1.0)==1)
+tad_cond2 = (covar_modeling_df['ID']==covar_modeling_df['ID'].shift(1))
+tad_cond3 = (covar_modeling_df['TAD'].isna())
+tad_cond4 = (~(covar_modeling_df['TAD'].shift(1).isna()))
+while len(covar_modeling_df[tad_cond0&(~tad_cond1)&tad_cond2&tad_cond3&tad_cond4])!=0:
+
+# covar_modeling_df[covar_modeling_df['TAD']<0]
+# covar_modeling_df.to_csv(f'{output_dir}/{drug}_checkcheck.csv',index=False, encoding='utf-8-sig')
+    for inx in covar_modeling_df[tad_cond0&(~tad_cond1)&tad_cond2&tad_cond3&tad_cond4].index:
+        covar_modeling_df.at[inx, 'TAD'] = covar_modeling_df.at[inx-1, 'TAD'] + covar_modeling_df.at[inx, 'TIME'] - covar_modeling_df.at[inx - 1, 'TIME']
+
+    tad_cond0 = (covar_modeling_df['MDV'] == 0)
+    tad_cond1 = (covar_modeling_df['MDV'].shift(1).fillna(1.0) == 1)
+    tad_cond2 = (covar_modeling_df['ID'] == covar_modeling_df['ID'].shift(1))
+    tad_cond3 = (covar_modeling_df['TAD'].isna())
+    tad_cond4 = (~(covar_modeling_df['TAD'].shift(1).isna()))
+
+covar_modeling_df['TAD'] = covar_modeling_df['TAD'].replace(np.nan,0)
 
 covar_modeling_df = covar_modeling_df[modeling_cols].sort_values(['ID','TIME'], ignore_index=True)
 
@@ -136,7 +169,7 @@ mis_pred_df = pd.concat([under_pred_df, over_pred_df])
 
 covar_modeling_df = covar_modeling_df[~(covar_modeling_df['ID'].isin(mis_pred_df['ID'].drop_duplicates()))]
 # covar_modeling_df['SEX'] = covar_modeling_df['SEX'].map({'M':1,'F':2})
-covar_modeling_df = covar_modeling_df.drop(['NAME'], axis=1)[['ID','TIME','DV','MDV','CMT','AMT','RATE','UID'] + list(covar_modeling_df.loc[:,'ALB':].iloc[:,:].columns)]
+covar_modeling_df = covar_modeling_df.drop(['NAME'], axis=1)[['ID','TIME','TAD','DV','MDV','CMT','AMT','RATE','UID'] + list(covar_modeling_df.loc[:,'ALB':].iloc[:,:].columns)]
 covar_modeling_df.to_csv(f"{output_dir}/amk_modeling_df_covar_filt.csv",index=False, encoding='utf-8-sig')
 
 # covar_modeling_df.drop(['NAME','DATETIME'], axis=1).applymap(lambda x:x if (type(x)==str) else np.nan).dropna(axis=1)

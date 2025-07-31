@@ -179,7 +179,7 @@ for id, id_df in modeling_df.groupby('ID'): #break
 no_oneside_pids = no_conc_pids.union(no_dose_pids)
 
 
-modeling_datacheck_df = pd.concat(modeling_datacheck_df).sort_values(['ID', 'DATETIME', 'MDV'], ignore_index=True)
+modeling_datacheck_df = pd.concat(modeling_datacheck_df).sort_values(['ID', 'TIME', 'MDV'], ignore_index=True)
 
 id_dict = {uid:id for id, uid in enumerate(modeling_datacheck_df['UID'].drop_duplicates())}
 modeling_datacheck_df['ID'] = modeling_datacheck_df['UID'].map(id_dict)
@@ -229,11 +229,11 @@ under_pred_df = nmsdtab_df[(nmsdtab_df['DV'] > 10)&(nmsdtab_df['IPRED'] < 7)].co
 over_pred_df = nmsdtab_df[(nmsdtab_df['DV'] < 7)&(nmsdtab_df['IPRED'] > 10)].copy()
 mis_pred_df = pd.concat([under_pred_df, over_pred_df])
 
-yr_mispred_df = mis_pred_df.groupby(['TDM_YEAR'])['DV'].count().reset_index(drop=False)
-sns.barplot(yr_mispred_df, x='TDM_YEAR', y='DV')
-plt.xticks(rotation=90)  # x축 라벨을 90도 회전
-plt.tight_layout()       # 레이아웃 깨짐 방지 (선택 사항)
-plt.show()
+# yr_mispred_df = mis_pred_df.groupby(['TDM_YEAR'])['DV'].count().reset_index(drop=False)
+# sns.barplot(yr_mispred_df, x='TDM_YEAR', y='DV')
+# plt.xticks(rotation=90)  # x축 라벨을 90도 회전
+# plt.tight_layout()       # 레이아웃 깨짐 방지 (선택 사항)
+# plt.show()
 
 # yr_mispred_df
 # mis_pred_df['ID'].drop_duplicates()
