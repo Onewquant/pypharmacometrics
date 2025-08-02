@@ -19,10 +19,81 @@ demo_df = demo_df.rename(columns={'EMR ID':'UID','birthdate':'AGE','sex':'SEX','
 demo_df = demo_df[['UID','AGE', 'SEX']].copy()
 demo_df['UID'] = demo_df['UID'].astype(str)
 
-demo2_df = pd.read_csv(f"{resource_dir}/demo2/IBD_PGx_demo2.csv")
-demo2_df = demo2_df.rename(columns={'EMR ID':'UID','height':'HT','weight':'WT','bmi':'BMI','bsa':'BSA'})
-demo2_df = demo2_df[['UID','HT', 'WT', 'BMI','BSA']].copy()
-demo2_df['UID'] = demo2_df['UID'].astype(str)
+# demo2_df = pd.read_csv(f"{resource_dir}/demo2/IBD_PGx_demo2.csv")
+# demo2_df = demo2_df.rename(columns={'EMR ID':'UID','height':'HT','weight':'WT','bmi':'BMI','bsa':'BSA'})
+# demo2_df = demo2_df[['UID','HT', 'WT', 'BMI','BSA']].copy()
+# demo2_df['UID'] = demo2_df['UID'].astype(str)
+
+## WT, HT, ADHERENCE Covariates Loading
+
+cdai_hx_df = pd.read_csv(f"{output_dir}/pdmarker_cdai_df.csv")
+cdai_hx_df = cdai_hx_df.rename(columns={'ID':'UID','DATE':'DATETIME','CDAI_ADHERENCEPCT':'ADHERENCE','CDAI_WEIGHT':'WT','CDAI_HEIGHT':'HT', 'CDAI_BMI':'BMI'})
+cdai_hx_df['UID'] = cdai_hx_df['UID'].astype(str)
+# cdai_adh_df.columns
+
+pms_hx_df = pd.read_csv(f"{output_dir}/pdmarker_pms_df.csv")
+pms_hx_df = pms_hx_df.rename(columns={'ID':'UID'}).rename(columns={'ID':'UID','DATE':'DATETIME','PMS_ADHERENCEPCT':'ADHERENCE','PMS_WEIGHT':'WT','PMS_HEIGHT':'HT', 'PMS_BMI':'BMI'})
+pms_hx_df['UID'] = pms_hx_df['UID'].astype(str)
+# pms_adh_df.columns
+
+adh_df = pd.concat([cdai_hx_df[['UID','DATETIME','ADHERENCE']], pms_hx_df[['UID','DATETIME','ADHERENCE']]]).drop_duplicates(['UID','DATETIME']).sort_values(['UID','DATETIME'])
+bsize_df = pd.concat([cdai_hx_df[['UID','DATETIME','WT','HT','BMI']], pms_hx_df[['UID','DATETIME','WT','HT','BMI']]]).drop_duplicates(['UID','DATETIME']).sort_values(['UID','DATETIME'])
+# adh_df[adh_df['WT'].isna()]
+# adh_df[adh_df['HT'].isna()]
+
+full_result_df = list()
+count = 0
+for uid, uid_df in adh_df.groupby('UID',as_index=False): #break
+
+    min_lab_date = uid_df['DATETIME'].min()
+    max_lab_date = uid_df['DATETIME'].max()
+
+    print(f"({count}) {uid} / Date Range : ({min_lab_date},  {max_lab_date})")
+
+    uid_fulldt_df = pd.DataFrame(columns=['UID','DATETIME'])
+    uid_fulldt_df['DATETIME'] = pd.date_range(start=min_lab_date,end=max_lab_date).astype(str)
+    uid_fulldt_df['UID'] = uid
+
+    uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left').fillna(method='bfill')
+    # uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left')
+
+    if count==0:
+        full_result_df = uid_fulldt_df.copy()
+    else:
+        full_result_df = pd.concat([full_result_df, uid_fulldt_df.copy()])
+
+    count+=1
+adh_df = full_result_df.fillna(full_result_df.median(numeric_only=True))
+
+
+full_result_df = list()
+count = 0
+for uid, uid_df in bsize_df.groupby('UID',as_index=False): #break
+
+    min_lab_date = uid_df['DATETIME'].min()
+    max_lab_date = uid_df['DATETIME'].max()
+
+    print(f"({count}) {uid} / Date Range : ({min_lab_date},  {max_lab_date})")
+
+    uid_fulldt_df = pd.DataFrame(columns=['UID','DATETIME'])
+    uid_fulldt_df['DATETIME'] = pd.date_range(start=min_lab_date,end=max_lab_date).astype(str)
+    uid_fulldt_df['UID'] = uid
+
+    uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left').fillna(method='ffill')
+    # uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left')
+
+    if count==0:
+        full_result_df = uid_fulldt_df.copy()
+    else:
+        full_result_df = pd.concat([full_result_df, uid_fulldt_df.copy()])
+
+    count+=1
+bsize_df = full_result_df.fillna(full_result_df.median(numeric_only=True))
+
+# adh_df['ADHERENCE'].drop_duplicates()
+# adh_df['UID'].drop_duplicates()
+# adh_df.to_csv(f"{output_dir}/adherence_df.csv", encoding='utf-8-sig', index=False)
+
 
 ## LAB Covariates Loading
 
@@ -51,7 +122,8 @@ totlab_df = totlab_df.drop_duplicates(['UID','DATETIME'])
 ## Modeling Data Loading
 for drug in ['infliximab',]:
 # for drug in ['infliximab','adalimumab']:
-    for mode_str in ['integrated','induction']:
+#     for mode_str in ['integrated','induction']:
+    for mode_str in ['integrated',]:
     # for mode_str in ['integrated',]:
     # for mode_str in ['integrated']:
         modeling_df = pd.read_csv(f'{output_dir}/{drug}_{mode_str}_datacheck.csv')
@@ -65,10 +137,13 @@ for drug in ['infliximab',]:
         # ['UID', 'DATETIME', '1,25-VitD3', '25-OH VIT D TOTAL', '25-OH Vit. D3(초진용)', '25-OH Vit.D (D3/D2)', '25-OH Vit.D (Total)', '25-OH Vit.D2', '25-OH Vit.D3', '3-methoxytyramine (Plasma)', '5-HIAA (24h urine)', 'ABO', 'ACL, IgG', 'ACL, IgM', 'ACTH', 'ACTHSTbase', 'ADA', 'AFP', 'AFP-L3(%)', 'ALT', 'ALT(GPT)', 'AMA', 'ANC', 'ANCA', 'ARR', 'ASCA IgA & IgG', 'ASO', 'AST', 'AST(GOT)', 'AT III', 'Ab scr', 'Acetoacetate', 'Adalimumab Quantification', 'Albumin', 'Aldo(B)', 'Alk. phos', 'Alk. phos.', 'Ammo', 'Amylase(Flu)', 'Amylase(S)', 'Anion gap', 'Anti - ccp', 'Anti Mullerian Hormone (AMH)', 'Anti RNP Ab', 'Anti Sm Antibody', 'Anti ds DNA', 'Anti-HBs', 'Anti-HCV', 'Anti-Infliximab Ab [정밀면역검사] (정량)', 'Anti-LKM', 'Anti-TSH receptor', 'ApoA1', 'ApoB', 'AtypicalLc', 'B2-MG(S)', 'B2-MG(U)', 'BE', 'BIL', 'BLD', 'BNP', 'BST', 'BUN', 'Bact.', 'Bacteria', 'Band.neut.', 'Basophil', 'Beta hydroxybutyric acid', 'Blast', 'C-Peptide(S)', 'C. difficile GDH', 'C. difficile toxin', 'C.diffcile toxin', 'C3', 'C4', 'CA 125', 'CA 15-3', 'CA 19-9', 'CBC (em) (diff), RDW제외', 'CEA', 'CK', 'CK(CPK)', 'CK-MB (em)', 'CMV Ag', 'CMV IgM', 'CORT30', 'CORT60', 'CORTbasal', 'CPEPSTbase', 'CRP', 'CTx (C-telopeptide)', 'Ca', 'Ca, total', 'Calcium', 'Calprotectin (Serum)', 'Calprotectin (Stool)', 'Cast', 'Casts', 'Cerulo', 'Chol.', 'Chromogranin A', 'Cl', 'Cl(U) (em)', 'Codfish IgE (F3)', 'Collagen 4', 'Color', 'Cortisol', 'Cortisol(S)', 'Cotinine', "Cow's milk IgE (F2)", 'Cr (S)', 'Cr (U)', 'Cr(u)', 'Creatinine', 'Cryoglobu.', 'Crystal', 'Crystals', 'Cu (24h Urine)', 'Cu (Serum)', 'Cystatin C', 'D-dimer', 'D-dimer(em)', 'D. Bil.', 'D. farinae IgE (D2)', 'D. farinae IgG4 (D2)', 'D. pteronyssinus IgE (D1)', 'D. pteronyssinus IgG4 (D1)', 'DHEA-S', 'DRBC', 'Delta ratio', 'Dopamine', 'ECP', 'ESR', 'Egg white IgE (F1)', 'Entero C', 'Eos.count', 'Eosinophil', 'Epinephrine', 'Erythropoiet', 'Erythropoietin', 'Estradiol', 'F. acid', 'FANA', 'FANA Titer', 'FBS', 'FDP정량', 'FSH', 'FT3', 'Factor 10', 'Factor 11', 'Factor 12', 'Factor 2', 'Factor 5', 'Factor 8', 'Factor 9', 'Ferritin', 'Fibrinogen', 'Folate', 'Free Fatty Acid', 'Free PSA', 'Free PSA%', 'Free T3', 'Free T4', 'GLU', 'Gastrin', 'Glu', 'Glucagon', 'Glucose', 'H. pylori IgG Ab', 'H.pylo IgG', 'HA', 'HAV Ab IgG', 'HAV Ab(IgG)', 'HAV Ab(IgM)', 'HAVAb IgM', 'HBcAb IgM', 'HBcAb Total (IgM+IgG) (진단검사의학)', 'HBcAb(IgG)', 'HBeAb', 'HBeAg', 'HBs Ag', 'HBsAb', 'HBsAg', 'HCO3-', 'HCV Ab', 'HDL Chol.', 'HE4 (Human Epididymis Protein 4)', 'HFR', 'HGH', 'HIV Ag/Ab', 'HIV Ag/Ab (건강검진용)', 'Hapto', 'Hb', 'HbA1c-IFCC', 'HbA1c-IFCC (건강증진센타용)', 'HbA1c-NGSP', 'HbA1c-NGSP (건강증진센타용)', 'HbA1c-eAG', 'HbA1c-eAG (건강증진센타용)', 'Hct', 'Helm,ova', 'Human Hb', 'I/Ⅱratio', 'IGF 1', 'IGFBP 3', 'IMA (Ischemia Modified Albumin Test) (em)', 'IRF', 'Ig A', 'Ig G', 'IgE(Total)', 'IgG sub 4', 'IgG sub1', 'IgG sub2', 'IgG sub3', 'IgG sub4', 'IgM', 'Imm.cell', 'Imm.lympho', 'Imm.mono', 'Infliximab Quantification', 'Influenza A&B Ag', 'Insulin', 'Insulin Ab', 'Interleukin-6', 'Iron', 'K', 'K (U) (em)', 'KET', 'Ketone (Beta-hydroxybutyrate)', 'LA', 'LD', 'LD(LDH)', 'LD-R', 'LD-R(B)', 'LDL Chol.', 'LH', 'LUC', 'Lactate', 'Lactic', 'Li', 'Lipase', 'Lp(a)', 'Lymph', 'Lympho', 'Lymphocyte', 'M/C ratio', 'MCH', 'MCHC', 'MCV', 'MFR', 'MN(Mononuclear cell)', 'MPV', 'MTX', 'Metamyelo', 'Metanephrine (Plasma)', 'Mg', 'Mic-Ab', 'MicroAlb', 'Mixing test (PT, aPTT 제외)', 'Monocyte', 'Mycopl. Ab', 'Mycoplasma Ab IgG', 'Mycoplasma Ab IgM', 'Myelocyte', 'Myoglobin', 'Myoglobin (em)', 'N. fat', 'NCV2019 응급용 선별검사 (교수용)', 'NCV2019 입원 선별 1단계 [분자진단]', 'NCV2019 입원 선별 2단계 [분자진단]', 'NIT', 'NMP 22', 'NSE', 'Na', 'Na(U) (em)', 'Norepinephrine', 'Normetanephrine (Plasma)', 'Normoblast', 'O2 CT', 'O2 SAT', 'Osmo-S', 'Osmo-U', 'Osteocalcin', 'Other', 'Others', 'O₂SAT', 'P', 'P. cyst', 'P. troph', 'P1NP', 'PCT', 'PDW', 'PIVKA II', 'PLT', 'PMN(Polymorphonuclear cell)', 'PP2', 'PRO', 'PSA', 'PSA (건증용)', 'PT %', 'PT % (MIX)', 'PT INR', 'PT INR (MIX)', 'PT sec', 'PT sec (MIX)', 'PTH', 'PTH(intact)', 'Pb(Blood)', 'Peanut IgE (F13)', 'PepsinogenⅠ', 'PepsinogenⅡ', 'Phosphorus', 'Pl. Hb', 'Plas.cell', 'Platelet', 'Poly', 'PreAlb', 'Prealbumin', 'Procalcitonin', 'Prolactin', 'Promyelo', 'Prostate Health Index', 'Protein', 'Protein C activity', 'Protein S activity', 'Protein/Creatinine ratio', 'Protozo', 'Pyruvate', 'RBC', 'RDW(CV)', 'RDW(SD)', 'RF', 'ROMA (postmenopausal)', 'ROMA (premenopausal)', 'RPR (VDRL, Auto) (serum)', 'RPR 정량 (serum)', 'RT', 'RTE', 'Renin(B)', 'Reticulocyte', 'Rh D', 'S.G', 'SAA (Serum Amyloid A) (em)', 'SARS-CoV-2 Ag(외래, 응급실, 중환자실 전용)', 'SCC(TA-4)', 'SG', 'SHBG', 'SQE', 'SS-A/Ro(52) Ab', 'SS-A/Ro(60) Ab', 'SS-B/La Ab', 'Salt intake', 'Seg.neut.', 'Selenium', 'Smooth muscle Ab', 'Sodium (random urine)', 'Soybean IgE (F14)', 'Sperm', 'T CO2', 'T. Bil.', 'T. Protein', 'T.B', 'T.P Ab Total (IgM+IgG) 정밀면역', 'T3', 'TCO2', 'TG', 'TIBC', 'TRE', 'TSH', 'Testosterone', 'Total IgE (진단검사의학과)', 'Total ketone', 'Toxo IgM', 'Toxocariasis (ELISA, IgG antibody)', 'Toxopla.Ab', 'Transferrin', 'Troponin I (em) [ng/mL]', 'Troponin I (em) [pg/mL]', 'Troponin T [ng/mL]', 'Troponin T [pg/mL]', 'Tryptase', 'Tur', 'Turbidity', 'UA', 'UIBC', 'URO', 'Uric acid', 'Urine S. pneumoniae Ag', 'VWF rel Ag', 'VWFrist co', 'VZV Ab IgG', 'Valproic', 'Vanco', 'Vitamin B12', 'Vitamin B₁ (Thiamin)', 'WBC', 'WBC(s)', 'Wheat IgE (F4)', 'X-mat', 'Yeast like organism', 'Zn (serum)', 'aPTT', 'aPTT (MIX)', 'alpha1-Antitrypsin (stool)', 'd1', 'd2', 'eGFR (CKD-EPI Cr-Cys)', 'eGFR (CKD-EPI Cys)', 'eGFR-CKD-EPI', 'eGFR-Cockcroft-Gault', 'eGFR-MDRD', 'eGFR-Schwartz(소아)', 'em.WBC', 'epine(U)', 'hCG', 'hsCRP', 'i6', 'iCa', 'iMg', 'metanephrine(U)', 'mito Ab', 'norepine(U)', 'p2PSA', 'pCO₂', 'pH', 'pO₂', 'proBNP (em)', 'tHcyst', 'u.RBC', 'u.WBC', 'β2 GP1-IgG', 'β2 GP1-IgM', 'γ-GT', '검체처리 1단계(채혈TUBE1~5개)', '마약선별검사', '모발 중금속 및 미네랄 40종 검사', '연구검체보관', '연구용채혈+검체처리1단계(채혈TUBE1~5개)', '연구용채혈+검체처리2단계', '절대단구수', '절대림프구수']
         """
         # len(modeling_df)
-
+        # modeling_df
         modeling_df = modeling_df.merge(totlab_df, on=['UID','DATETIME'], how='left')
         modeling_df = modeling_df.merge(demo_df, on=['UID'], how='left')
-        modeling_df = modeling_df.merge(demo2_df, on=['UID'], how='left')
+        # modeling_df = modeling_df.merge(demo2_df, on=['UID'], how='left')
+        modeling_df = modeling_df.merge(adh_df, on=['UID','DATETIME'], how='left')
+        modeling_df = modeling_df.merge(bsize_df, on=['UID','DATETIME'], how='left')
+
         # modeling_df['UID'].iloc[0]
         # demo_df['UID'].iloc[0]
 
@@ -137,7 +212,18 @@ for drug in ['infliximab',]:
         # modeling_df[~((modeling_df['TIME'] == 0) & (modeling_df['DV'] == '0.0'))].copy().to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df_without_zero_dv.csv',index=False, encoding='utf-8-sig')
         modeling_df['TIME']= modeling_df['TIME']/24
         modeling_df['DUR'] = modeling_df['DUR'].map(lambda x: float(x)/24 if x!='.' else x)
-        modeling_df.to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df_dayscale.csv',index=False, encoding='utf-8')
+
+
+        # modeling_df.to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df_dayscale.csv',index=False, encoding='utf-8')
+
+
+        # modeling_df['AMT'] = (modeling_df['AMT'].replace('.',0).map(float)) * (np.abs((modeling_df['ADHERENCE'].replace(0,0.0001)) / 100)).replace(0,'.')
+        # modeling_df.to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df_dayscale_adherence.csv', index=False, encoding='utf-8')
+
+        raise ValueError
+        modeling_df['AMT'] = ((modeling_df['AMT'].replace('.', 0).map(float)) * ((((modeling_df['CMT']==1)&(modeling_df['MDV']==1))*1.5) + ((modeling_df['CMT']==2)&(modeling_df['MDV']==1))*1)).replace(0, '.')
+        modeling_df.to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df_dayscale_scdouble.csv', index=False, encoding='utf-8')
+
         # modeling_df['CALPRTSTL'].median()
         # modeling_df[modeling_df['ROUTE'] == 2]['AMT'].unique()
         # len(modeling_df['ID'].unique())
@@ -156,3 +242,14 @@ for drug in ['infliximab',]:
 
 # modeling_df[modeling_df['AST'].isna()]['UID'].unique()
 
+####### NONMEM SDTAB
+# nonmem_dir = 'C:/Users/ilma0/NONMEMProjects/IBDPGx/run'
+#
+# nmsdtab_df = pd.read_csv(f"{nonmem_dir}/sdtab39",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
+# nmsdtab_df['ID'] = nmsdtab_df['ID'].astype(int)
+# # nmsdtab_df['TDM_YEAR'] = nmsdtab_df['TDM_YEAR'].astype(int)
+# under_pred_df = nmsdtab_df[(nmsdtab_df['MDV'] != 1)&(nmsdtab_df['DV'] > 5)&(nmsdtab_df['IPRED'] < 3)].copy()
+# over_pred_df = nmsdtab_df[(nmsdtab_df['MDV'] != 1)&(nmsdtab_df['DV'] < 3)&(nmsdtab_df['IPRED'] > 5)].copy()
+# mis_pred_df = pd.concat([under_pred_df, over_pred_df])
+#
+# modeling_df
