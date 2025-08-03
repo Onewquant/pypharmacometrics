@@ -214,15 +214,15 @@ for drug in ['infliximab',]:
         modeling_df['DUR'] = modeling_df['DUR'].map(lambda x: float(x)/24 if x!='.' else x)
 
 
-        # modeling_df.to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df_dayscale.csv',index=False, encoding='utf-8')
+        modeling_df.to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df_dayscale.csv',index=False, encoding='utf-8')
 
 
         # modeling_df['AMT'] = (modeling_df['AMT'].replace('.',0).map(float)) * (np.abs((modeling_df['ADHERENCE'].replace(0,0.0001)) / 100)).replace(0,'.')
         # modeling_df.to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df_dayscale_adherence.csv', index=False, encoding='utf-8')
 
-        raise ValueError
-        modeling_df['AMT'] = ((modeling_df['AMT'].replace('.', 0).map(float)) * ((((modeling_df['CMT']==1)&(modeling_df['MDV']==1))*1.5) + ((modeling_df['CMT']==2)&(modeling_df['MDV']==1))*1)).replace(0, '.')
-        modeling_df.to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df_dayscale_scdouble.csv', index=False, encoding='utf-8')
+        # raise ValueError
+        # modeling_df['AMT'] = ((modeling_df['AMT'].replace('.', 0).map(float)) * ((((modeling_df['CMT']==1)&(modeling_df['MDV']==1))*1.5) + ((modeling_df['CMT']==2)&(modeling_df['MDV']==1))*1)).replace(0, '.')
+        # modeling_df.to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df_dayscale_scdouble.csv', index=False, encoding='utf-8')
 
         # modeling_df['CALPRTSTL'].median()
         # modeling_df[modeling_df['ROUTE'] == 2]['AMT'].unique()
