@@ -116,37 +116,39 @@ modeling_cols = ['ID','NAME','TIME','TAD','DV','MDV','CMT','AMT','RATE','UID'] +
 # modeling_df['AGE'] = modeling_df.apply(lambda x: int((datetime.strptime(x['DATETIME'],'%Y-%m-%d') - datetime.strptime(x['AGE'],'%Y-%m-%d')).days/365.25), axis=1)
 covar_modeling_df['SEX'] = covar_modeling_df['SEX'].map({'M':1,'F':2})
 
-## 최근 투약 기준 시간으로 TAD 설정
-covar_modeling_df['TAD'] = np.nan
+# ## 최근 투약 기준 시간으로 TAD 설정
+# covar_modeling_df['TAD'] = np.nan
+#
+# # 농도값 바로 전에 투약기록 있는 경우
+# tad_cond0 = (covar_modeling_df['MDV']==0)
+# tad_cond1 = (covar_modeling_df['MDV'].shift(1).fillna(1.0)==1)
+# tad_cond2 = (covar_modeling_df['ID']==covar_modeling_df['ID'].shift(1))
+# tad_cond3 = (covar_modeling_df['TAD'].isna())
+# for inx in covar_modeling_df[tad_cond0&tad_cond1&tad_cond2&tad_cond3].index:
+#     covar_modeling_df.at[inx,'TAD'] = covar_modeling_df.at[inx,'TIME']-covar_modeling_df.at[inx-1,'TIME']
+#
+# # 농도값 바로 전에 농도기록 있는 경우
+# tad_cond0 = (covar_modeling_df['MDV']==0)
+# tad_cond1 = (covar_modeling_df['MDV'].shift(1).fillna(1.0)==1)
+# tad_cond2 = (covar_modeling_df['ID']==covar_modeling_df['ID'].shift(1))
+# tad_cond3 = (covar_modeling_df['TAD'].isna())
+# tad_cond4 = (~(covar_modeling_df['TAD'].shift(1).isna()))
+# while len(covar_modeling_df[tad_cond0&(~tad_cond1)&tad_cond2&tad_cond3&tad_cond4])!=0:
+#
+# # covar_modeling_df[covar_modeling_df['TAD']<0]
+# # covar_modeling_df.to_csv(f'{output_dir}/{drug}_checkcheck.csv',index=False, encoding='utf-8-sig')
+#     for inx in covar_modeling_df[tad_cond0&(~tad_cond1)&tad_cond2&tad_cond3&tad_cond4].index:
+#         covar_modeling_df.at[inx, 'TAD'] = covar_modeling_df.at[inx-1, 'TAD'] + covar_modeling_df.at[inx, 'TIME'] - covar_modeling_df.at[inx - 1, 'TIME']
+#
+#     tad_cond0 = (covar_modeling_df['MDV'] == 0)
+#     tad_cond1 = (covar_modeling_df['MDV'].shift(1).fillna(1.0) == 1)
+#     tad_cond2 = (covar_modeling_df['ID'] == covar_modeling_df['ID'].shift(1))
+#     tad_cond3 = (covar_modeling_df['TAD'].isna())
+#     tad_cond4 = (~(covar_modeling_df['TAD'].shift(1).isna()))
+#
+# covar_modeling_df['TAD'] = covar_modeling_df['TAD'].replace(np.nan,0)
+covar_modeling_df['TAD'] = add_time_after_dosing_column(df=covar_modeling_df)
 
-# 농도값 바로 전에 투약기록 있는 경우
-tad_cond0 = (covar_modeling_df['MDV']==0)
-tad_cond1 = (covar_modeling_df['MDV'].shift(1).fillna(1.0)==1)
-tad_cond2 = (covar_modeling_df['ID']==covar_modeling_df['ID'].shift(1))
-tad_cond3 = (covar_modeling_df['TAD'].isna())
-for inx in covar_modeling_df[tad_cond0&tad_cond1&tad_cond2&tad_cond3].index:
-    covar_modeling_df.at[inx,'TAD'] = covar_modeling_df.at[inx,'TIME']-covar_modeling_df.at[inx-1,'TIME']
-
-# 농도값 바로 전에 농도기록 있는 경우
-tad_cond0 = (covar_modeling_df['MDV']==0)
-tad_cond1 = (covar_modeling_df['MDV'].shift(1).fillna(1.0)==1)
-tad_cond2 = (covar_modeling_df['ID']==covar_modeling_df['ID'].shift(1))
-tad_cond3 = (covar_modeling_df['TAD'].isna())
-tad_cond4 = (~(covar_modeling_df['TAD'].shift(1).isna()))
-while len(covar_modeling_df[tad_cond0&(~tad_cond1)&tad_cond2&tad_cond3&tad_cond4])!=0:
-
-# covar_modeling_df[covar_modeling_df['TAD']<0]
-# covar_modeling_df.to_csv(f'{output_dir}/{drug}_checkcheck.csv',index=False, encoding='utf-8-sig')
-    for inx in covar_modeling_df[tad_cond0&(~tad_cond1)&tad_cond2&tad_cond3&tad_cond4].index:
-        covar_modeling_df.at[inx, 'TAD'] = covar_modeling_df.at[inx-1, 'TAD'] + covar_modeling_df.at[inx, 'TIME'] - covar_modeling_df.at[inx - 1, 'TIME']
-
-    tad_cond0 = (covar_modeling_df['MDV'] == 0)
-    tad_cond1 = (covar_modeling_df['MDV'].shift(1).fillna(1.0) == 1)
-    tad_cond2 = (covar_modeling_df['ID'] == covar_modeling_df['ID'].shift(1))
-    tad_cond3 = (covar_modeling_df['TAD'].isna())
-    tad_cond4 = (~(covar_modeling_df['TAD'].shift(1).isna()))
-
-covar_modeling_df['TAD'] = covar_modeling_df['TAD'].replace(np.nan,0)
 
 covar_modeling_df = covar_modeling_df[modeling_cols].sort_values(['ID','TIME'], ignore_index=True)
 

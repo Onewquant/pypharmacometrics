@@ -617,3 +617,38 @@ def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_di
             ## Covariates
 
 
+def add_time_after_dosing_column(df):
+    ## 최근 투약 기준 시간으로 TAD 설정
+    tad_df = df.copy()
+    tad_df['TAD'] = np.nan
+
+    # 농도값 바로 전에 투약기록 있는 경우
+    tad_cond0 = (tad_df['MDV'] == 0)
+    tad_cond1 = (tad_df['MDV'].shift(1).fillna(1.0) == 1)
+    tad_cond2 = (tad_df['ID'] == tad_df['ID'].shift(1))
+    tad_cond3 = (tad_df['TAD'].isna())
+    for inx in tad_df[tad_cond0 & tad_cond1 & tad_cond2 & tad_cond3].index:
+        tad_df.at[inx, 'TAD'] = tad_df.at[inx, 'TIME'] - tad_df.at[inx - 1, 'TIME']
+
+    # 농도값 바로 전에 농도기록 있는 경우
+    tad_cond0 = (tad_df['MDV'] == 0)
+    tad_cond1 = (tad_df['MDV'].shift(1).fillna(1.0) == 1)
+    tad_cond2 = (tad_df['ID'] == tad_df['ID'].shift(1))
+    tad_cond3 = (tad_df['TAD'].isna())
+    tad_cond4 = (~(tad_df['TAD'].shift(1).isna()))
+    while len(tad_df[tad_cond0 & (~tad_cond1) & tad_cond2 & tad_cond3 & tad_cond4]) != 0:
+
+        # covar_modeling_df[covar_modeling_df['TAD']<0]
+        # covar_modeling_df.to_csv(f'{output_dir}/{drug}_checkcheck.csv',index=False, encoding='utf-8-sig')
+        for inx in tad_df[tad_cond0 & (~tad_cond1) & tad_cond2 & tad_cond3 & tad_cond4].index:
+            tad_df.at[inx, 'TAD'] = tad_df.at[inx - 1, 'TAD'] + tad_df.at[inx, 'TIME'] - tad_df.at[inx - 1, 'TIME']
+
+        tad_cond0 = (tad_df['MDV'] == 0)
+        tad_cond1 = (tad_df['MDV'].shift(1).fillna(1.0) == 1)
+        tad_cond2 = (tad_df['ID'] == tad_df['ID'].shift(1))
+        tad_cond3 = (tad_df['TAD'].isna())
+        tad_cond4 = (~(tad_df['TAD'].shift(1).isna()))
+
+    tad_df['TAD'] = tad_df['TAD'].replace(np.nan, 0)
+    return tad_df['TAD']
+
