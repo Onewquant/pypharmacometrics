@@ -385,7 +385,7 @@ print(f"# Induction 시작시점 일치: {len(maint_cons_df)} (Infliximab: {len(
 print(f"# Induction 시작시점 불일치: {len(maint_diff_df)} (Infliximab: {len(maint_diff_df[maint_diff_df['DRUG']=='infliximab'])} / Adalimumab: {len(maint_diff_df[maint_diff_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(maint_diff_df[maint_diff_df['DRUG']=='ustekinumab'])}) ")
 # print(f"# No conc in Induction 시작시점 일치: {len(no_indconc_df)}")
 
-print(f"# Induction 시작시점 불일치: {len(maint_diff_df)} (Infliximab: {len(maint_diff_df[maint_diff_df['DRUG']=='infliximab'])} / Adalimumab: {len(maint_diff_df[maint_diff_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(maint_diff_df[maint_diff_df['DRUG']=='ustekinumab'])}) ")
+# print(f"# Induction 시작시점 불일치: {len(maint_diff_df)} (Infliximab: {len(maint_diff_df[maint_diff_df['DRUG']=='infliximab'])} / Adalimumab: {len(maint_diff_df[maint_diff_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(maint_diff_df[maint_diff_df['DRUG']=='ustekinumab'])}) ")
 # print(f"# No conc in Induction: {len(inf_no_indconc)} (Infliximab: {len(inf_df[(inf_df.isin(inf_no_indconc))&(inf_df['DRUG']=='infliximab')]['UID'].drop_duplicates()} / Adalimumab: {len(inf_no_indconc[inf_no_indconc['DRUG']=='adalimumab'])} / Ustekinumab: {len(inf_no_indconc[inf_no_indconc['DRUG']=='ustekinumab'])}) ")
 print(f"# No conc in Maintenance: {len(no_maintconc_df)} (Infliximab: {len(no_maintconc_df[no_maintconc_df['DRUG']=='infliximab'])} / Adalimumab: {len(no_maintconc_df[no_maintconc_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(no_maintconc_df[no_maintconc_df['DRUG']=='ustekinumab'])}) ")
 # raise ValueError
@@ -398,19 +398,10 @@ print(f"# No conc in Maintenance: {len(no_maintconc_df)} (Infliximab: {len(no_ma
 # no_dv.columns
 ## CONC측정이 근처 투여 시간 이후인 경우 투약시간 재조정
 
-conc_first_rows = inf_df[(inf_df['ID']==(inf_df['ID'].shift(1)))&(inf_df['TIME']!=0)&(inf_df['MDV']==0)&(inf_df['TIME'].diff(1).map(np.abs) < 120)&(inf_df['TIME'].diff(1).map(np.abs) > 0)].copy()
-# inf_df[~inf_df['DV'].isin(['0.0','.'])].drop_duplicates(['DV']).sort_values(['DV'])[['ID','UID', 'NAME', 'TIME','DV', 'MDV','DATETIME']]
-# inf_df['DV'].dropna()
-# raise ValueError
-# conc_first_rows = inf_df[(inf_df['TIME']!=0)&(inf_df['MDV']==0)&(inf_df['TIME'].diff(1).map(np.abs) < 72)&(inf_df['TIME'].diff(1).map(np.abs) > 0.1)].copy()
+inf_conc_first_rows = inf_df[(inf_df['ID']==(inf_df['ID'].shift(1)))&(inf_df['TIME']!=0)&(inf_df['MDV']==0)&(inf_df['TIME'].diff(1).map(np.abs) < 120)&(inf_df['TIME'].diff(1).map(np.abs) > 0)].copy()
+ada_conc_first_rows = ada_df[(ada_df['ID']==(ada_df['ID'].shift(1)))&(ada_df['TIME']!=0)&(ada_df['MDV']==0)&(ada_df['TIME'].diff(1).map(np.abs) < 120)&(ada_df['TIME'].diff(1).map(np.abs) > 0)].copy()
 
-# inf_df[(inf_df['TIME']!=0)&(inf_df['MDV']==0)&(inf_df['TIME'].diff(1).map(np.abs) < 72)&(inf_df['TIME'].diff(1).map(np.abs) > 0)][['ID', 'NAME', 'TIME(DAY)','DV', 'MDV',]].copy()
-
-# inf_df[inf_df['ID']==27][['ID', 'NAME', 'TIME(DAY)', 'TIME','DV', 'MDV',]]
-
-# inf_df[(inf_df['ID']==27)&(inf_df['TIME']>55000)&(inf_df['TIME']<66000)][['ID','UID', 'NAME', 'TIME','DV', 'MDV','DATETIME']]
-
-for inx, row in conc_first_rows.iterrows():
+for inx, row in inf_conc_first_rows.iterrows():
     near_dinx = inx-1
 
     # if (inf_df.at[inx, 'ID']==inf_df.at[near_dinx,'ID']):
@@ -423,22 +414,31 @@ for inx, row in conc_first_rows.iterrows():
         inf_df.at[inx, 'TIME'] = inf_df.at[near_dinx, 'TIME'] - 0.5
         inf_df.at[inx, 'DATETIME'] = (datetime.strptime(inf_df.at[near_dinx, 'DATETIME'], '%Y-%m-%dT%H:%M') - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
 
+# inf_df['UID'].drop_duplicates()
 
-        # if inf_df.at[near_dinx, 'DATETIME'].split('T')[0] == row['DATETIME'].split('T')[0]:
-        #     inf_df.at[inx, 'TIME'] = inf_df.at[near_dinx,'TIME'] - 0.5
-        #     inf_df.at[inx, 'DATETIME'] = (datetime.strptime(inf_df.at[near_dinx,'DATETIME'], '%Y-%m-%dT%H:%M') - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
-        # else:
-        #     inf_df.at[inx, 'TIME'] = inf_df.at[near_dinx,'TIME'] - 0.5
-        #     inf_df.at[inx, 'DATETIME'] = (datetime.strptime(inf_df.at[near_dinx,'DATETIME'], '%Y-%m-%dT%H:%M') - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
-        #
-        #     inf_df[inf_df.index==near_dinx].iloc[0]
-        #     inf_df[inf_df.index==inx].iloc[0]
-        #     raise ValueError
+for inx, row in ada_conc_first_rows.iterrows():
+    near_dinx = inx-1
+
+    # if (inf_df.at[inx, 'ID']==inf_df.at[near_dinx,'ID']):
+        # 근처 Dosing된 포인트가 SC 추가투여로 구성한 데이터일때
+    if ada_df.at[near_dinx, 'ADDED_ADDL']:
+        ada_df.at[near_dinx, 'TIME'] = row['TIME'] + 0.5
+        ada_df.at[near_dinx,'DATETIME'] = (datetime.strptime(row['DATETIME'], '%Y-%m-%dT%H:%M') + timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
+    else:
+        # 근처 Dosing 날짜와 같은 날짜이긴 할때
+        ada_df.at[inx, 'TIME'] = ada_df.at[near_dinx, 'TIME'] - 0.5
+        ada_df.at[inx, 'DATETIME'] = (datetime.strptime(ada_df.at[near_dinx, 'DATETIME'], '%Y-%m-%dT%H:%M') - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
+
 # inf_df['UID'].drop_duplicates()
 
 inf_df = inf_df.sort_values(['ID','TIME','MDV'],ignore_index=True)
+ada_df = ada_df.sort_values(['ID','TIME','MDV'],ignore_index=True)
+
 inf_df['TIME(DAY)'] = inf_df['TIME']/24
+ada_df['TIME(DAY)'] = ada_df['TIME']/24
+
 inf_df['TIME(WEEK)'] = inf_df['TIME']/(7*24)
+ada_df['TIME(WEEK)'] = ada_df['TIME']/(7*24)
 
 ## 저장
 inf_df.to_csv(f'{output_dir}/infliximab_integrated_datacheck.csv',index=False, encoding='utf-8-sig')

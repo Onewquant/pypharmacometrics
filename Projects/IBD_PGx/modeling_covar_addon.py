@@ -24,19 +24,21 @@ demo_df['UID'] = demo_df['UID'].astype(str)
 # demo2_df = demo2_df[['UID','HT', 'WT', 'BMI','BSA']].copy()
 # demo2_df['UID'] = demo2_df['UID'].astype(str)
 
-## WT, HT, ADHERENCE Covariates Loading
+## WT, HT, ADHERENCE Covariates / PD markers Loading
 
 cdai_hx_df = pd.read_csv(f"{output_dir}/pdmarker_cdai_df.csv")
-cdai_hx_df = cdai_hx_df.rename(columns={'ID':'UID','DATE':'DATETIME','CDAI_ADHERENCEPCT':'ADHERENCE','CDAI_WEIGHT':'WT','CDAI_HEIGHT':'HT', 'CDAI_BMI':'BMI'})
+cdai_hx_df = cdai_hx_df.rename(columns={'ID':'UID','DATE':'DATETIME','CDAI_TOTALSCORE':'PD_MARKER','CDAI_ADHERENCEPCT':'ADHERENCE','CDAI_WEIGHT':'WT','CDAI_HEIGHT':'HT', 'CDAI_BMI':'BMI'})
 cdai_hx_df['UID'] = cdai_hx_df['UID'].astype(str)
+cdai_hx_df['IBD_TYPE'] = 'CD'
 # cdai_adh_df.columns
 
 pms_hx_df = pd.read_csv(f"{output_dir}/pdmarker_pms_df.csv")
-pms_hx_df = pms_hx_df.rename(columns={'ID':'UID'}).rename(columns={'ID':'UID','DATE':'DATETIME','PMS_ADHERENCEPCT':'ADHERENCE','PMS_WEIGHT':'WT','PMS_HEIGHT':'HT', 'PMS_BMI':'BMI'})
+pms_hx_df = pms_hx_df.rename(columns={'ID':'UID'}).rename(columns={'ID':'UID','DATE':'DATETIME','PMS_TOTALSCORE':'PD_MARKER','PMS_ADHERENCEPCT':'ADHERENCE','PMS_WEIGHT':'WT','PMS_HEIGHT':'HT', 'PMS_BMI':'BMI'})
 pms_hx_df['UID'] = pms_hx_df['UID'].astype(str)
+pms_hx_df['IBD_TYPE'] = 'UC'
 # pms_adh_df.columns
 
-adh_df = pd.concat([cdai_hx_df[['UID','DATETIME','ADHERENCE']], pms_hx_df[['UID','DATETIME','ADHERENCE']]]).drop_duplicates(['UID','DATETIME']).sort_values(['UID','DATETIME'])
+adh_df = pd.concat([cdai_hx_df[['UID','DATETIME','ADHERENCE','IBD_TYPE','PD_MARKER']], pms_hx_df[['UID','DATETIME','ADHERENCE','IBD_TYPE','PD_MARKER']]]).drop_duplicates(['UID','DATETIME']).sort_values(['UID','DATETIME'])
 bsize_df = pd.concat([cdai_hx_df[['UID','DATETIME','WT','HT','BMI']], pms_hx_df[['UID','DATETIME','WT','HT','BMI']]]).drop_duplicates(['UID','DATETIME']).sort_values(['UID','DATETIME'])
 # adh_df[adh_df['WT'].isna()]
 # adh_df[adh_df['HT'].isna()]
@@ -63,8 +65,17 @@ for uid, uid_df in adh_df.groupby('UID',as_index=False): #break
         full_result_df = pd.concat([full_result_df, uid_fulldt_df.copy()])
 
     count+=1
-adh_df = full_result_df.fillna(full_result_df.median(numeric_only=True))
 
+# raise ValueError
+adh_df = full_result_df.copy()
+pdm_med_uc = adh_df[adh_df['IBD_TYPE']=='UC']['PD_MARKER'].median()
+pdm_med_cd = adh_df[adh_df['IBD_TYPE']=='CD']['PD_MARKER'].median()
+
+# full_result_df[full_result_df['PD_MARKER'].isna()]
+med_pd_value = {'UC':pdm_med_uc,'CD':pdm_med_cd}
+full_result_df['PD_MARKER'] = full_result_df.apply(lambda row:row['PD_MARKER'] if not np.isnan(row['PD_MARKER']) else med_pd_value[row['IBD_TYPE']], axis=1)
+adh_df = full_result_df.fillna(full_result_df.median(numeric_only=True))
+adh_df = adh_df.drop('IBD_TYPE', axis=1)
 
 full_result_df = list()
 count = 0
@@ -120,8 +131,8 @@ totlab_df = totlab_df.drop_duplicates(['UID','DATETIME'])
 # totlab_df[~totlab_df['ALT'].isna()]['ALT']
 
 ## Modeling Data Loading
-for drug in ['infliximab',]:
-# for drug in ['infliximab','adalimumab']:
+# for drug in ['infliximab',]:
+for drug in ['infliximab','adalimumab']:
 #     for mode_str in ['integrated','induction']:
     for mode_str in ['integrated',]:
     # for mode_str in ['integrated',]:
@@ -188,6 +199,7 @@ for drug in ['infliximab',]:
         modeling_df['SEX'] = modeling_df['SEX'].map({'남':1,'여':2})
         modeling_df['ROUTE'] = modeling_df['ROUTE'].map({'IV':1,'SC':2,'.':'.'})
 
+
         modeling_df = modeling_df[modeling_cols].sort_values(['ID','TIME'], ignore_index=True)
 
         modeling_input_line = str(list(modeling_df.columns)).replace("', '"," ")
@@ -208,13 +220,14 @@ for drug in ['infliximab',]:
         # modeling_df['A_0FLG'] = (modeling_df['ID'].shift(1)!=modeling_df['ID'])*1
 
         # raise ValueError
-        modeling_df.to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df.csv',index=False, encoding='utf-8-sig')
+        modeling_df.drop('PD_MARKER', axis=1).to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df.csv',index=False, encoding='utf-8-sig')
         # modeling_df[~((modeling_df['TIME'] == 0) & (modeling_df['DV'] == '0.0'))].copy().to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df_without_zero_dv.csv',index=False, encoding='utf-8-sig')
         modeling_df['TIME']= modeling_df['TIME']/24
         modeling_df['DUR'] = modeling_df['DUR'].map(lambda x: float(x)/24 if x!='.' else x)
 
+        modeling_df.drop('PD_MARKER', axis=1).to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df_dayscale.csv',index=False, encoding='utf-8')
+        modeling_df.to_csv(f'{output_dir}/{drug}_{mode_str}_pdeda_df_dayscale.csv',index=False, encoding='utf-8')
 
-        modeling_df.to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df_dayscale.csv',index=False, encoding='utf-8')
 
 
         # modeling_df['AMT'] = (modeling_df['AMT'].replace('.',0).map(float)) * (np.abs((modeling_df['ADHERENCE'].replace(0,0.0001)) / 100)).replace(0,'.')

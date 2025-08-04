@@ -54,7 +54,8 @@ final_sim_df = pd.concat(final_sim_df, ignore_index=True)
 final_sim_df['TAD'] = final_sim_df['TIME']
 final_sim_df.to_csv(f"{output_dir}/amk_simulation_df.csv",index=False, encoding='utf-8-sig')
 
-# final_sim_df[final_sim_df['ID'].isin([1,2,4,5])].to_csv(f"{output_dir}/amk_simulation_partial_df.csv",index=False, encoding='utf-8-sig')
+# uniq_ids = list(final_sim_df['ID'].unique())[:30]
+# final_sim_df[final_sim_df['ID'].isin(uniq_ids)].to_csv(f"{output_dir}/amk_simulation_partial_df.csv",index=False, encoding='utf-8-sig')
 
 # final_sim_df['ID'].drop_duplicates()
 # final_sim_df['TAD'] = add_time_after_dosing_column(df=final_sim_df)
