@@ -617,6 +617,8 @@ def formatting_data_nca_to_nonmem(drugconc_dict, dspol_df, uid_cols, modeling_di
             ## Covariates
 
 
+## TAD 컬럼 추가 함수
+
 def add_time_after_dosing_column(df):
     ## 최근 투약 기준 시간으로 TAD 설정
     tad_df = df.copy()
@@ -652,3 +654,47 @@ def add_time_after_dosing_column(df):
     tad_df['TAD'] = tad_df['TAD'].replace(np.nan, 0)
     return tad_df['TAD']
 
+## Modeling에 사용된 population의 simulation data set 생성 함수
+
+def get_model_population_sim_df(df, interval=10/60, add_on_period=4*24, id_col='ID',time_col='TIME',dv_col='DV',mdv_col='MDV',cmt_col='CMT',amt_col='AMT',rate_col='RATE', tad_col='TAD'):
+
+    final_sim_df = list()
+    loop_cnt = 0
+    for id, id_sim_df in df.groupby(id_col): #break
+        # raise ValueError
+        print(f"({loop_cnt}) {id}")
+        id_conc_rows = id_sim_df[id_sim_df[mdv_col]==0].copy()
+        id_conc_rows[dv_col] = np.nan
+        id_dose_rows = id_sim_df[id_sim_df[mdv_col]==1].copy()
+
+        internal_start_time = id_sim_df[time_col].min()
+        internal_end_time = id_sim_df[time_col].max()
+        external_end_time = internal_end_time + add_on_period
+
+        time_arr = np.arange(internal_start_time, external_end_time + interval, interval)  # stop보다 큰 수까지 포함하려면 stop + step
+        time_arr = time_arr[time_arr <= external_end_time]  # 정확히 stop보다 작거나 같은 값만 남기기
+        uniq_time_arr = list(set(time_arr)-set(id_conc_rows[time_col]))
+        uniq_time_arr.sort()
+
+        added_sim_df = pd.DataFrame(columns=id_conc_rows.columns)
+        added_sim_df[time_col] = uniq_time_arr
+        added_sim_df[id_col] = id
+        # added_sim_df['DV'] = np.nan
+        # added_sim_df['DV'] = np.nan
+        added_sim_df[mdv_col] = 0
+        added_sim_df[cmt_col] = np.int64(id_conc_rows[cmt_col].median())
+        added_sim_df['AMT'] = '.'
+        added_sim_df['RATE'] = '.'
+
+        final_id_sim_df = pd.concat([id_conc_rows, id_dose_rows, added_sim_df]).sort_values([time_col,mdv_col])
+        final_id_sim_df = final_id_sim_df.fillna(method='ffill').fillna(method='bfill')
+        # id_conc_rows['RATE'].iloc[0]
+        # id_conc_rows['CMT']
+
+        # added_sim_df.columns
+        final_sim_df.append(final_id_sim_df)
+        loop_cnt+=1
+
+    final_sim_df = pd.concat(final_sim_df, ignore_index=True)
+    final_sim_df[tad_col] = final_sim_df[time_col]
+    return final_sim_df
