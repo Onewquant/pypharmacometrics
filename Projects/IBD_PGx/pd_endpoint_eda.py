@@ -15,26 +15,29 @@ df = pd.read_csv(f'{output_dir}/{drug}_{mode_str}_datacheck(covar).csv')
 # df[['ID','TIME','IBD_TYPE','PD_MARKER']]
 df['DAY'] = df['TIME']/24
 # df[['PD_MARKER']]
+# pd_marker = 'PD_PRO2'
 
 # df
 # str(None)
 # 그래프 그리기
 # df[['PD_MARKER']]
-pdmarker_dict = {'CD':'CDAI','UC':'MES'}
+# gdf['PRO2']
+# pdmarker_dict = {'CD':'CDAI','UC':'MES'}
+pdmarker_dict = {'CD':'PD_PRO2','UC':'PD_PRO2'}
 for ibd_type, pdmarker in pdmarker_dict.items():
     ibdtype_gdf = df[df['IBD_TYPE']==ibd_type].copy()
     for id_len in [10, None]:
         gdf = ibdtype_gdf[ibdtype_gdf['ID'].isin(list(ibdtype_gdf['ID'].unique())[:id_len])]
 
         plt.figure(figsize=(20, 10))
-        sns.lineplot(data=gdf, x='DAY', y='PD_MARKER', hue='ID', marker='o')
+        sns.lineplot(data=gdf, x='DAY', y=pdmarker, hue='ID', marker='o')
         plt.title(f'TIME vs {pdmarker} by ID')
         plt.xlabel('DAYS')
         # plt.ylabel('PD Marker')
         plt.ylabel(pdmarker)
         plt.legend().remove()
         plt.grid(True)
-        plt.savefig(f'{output_dir}/DAYS_VS_{pdmarker}({str(id_len).replace("None","All")}).png', dpi=600, bbox_inches='tight')
+        plt.savefig(f'{output_dir}/[{ibd_type}] DAYS_VS_{pdmarker.replace("PD_","")}({str(id_len).replace("None","All")}).png', dpi=600, bbox_inches='tight')
 
         plt.cla()
         plt.clf()

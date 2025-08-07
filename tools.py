@@ -665,7 +665,9 @@ def get_model_population_sim_df(df, interval=10/60, add_on_period=4*24, id_col='
         print(f"({loop_cnt}) {id}")
         id_conc_rows = id_sim_df[id_sim_df[mdv_col]==0].copy()
         id_conc_rows[dv_col] = np.nan
+        id_conc_rows['REALDATA'] = 1
         id_dose_rows = id_sim_df[id_sim_df[mdv_col]==1].copy()
+        id_dose_rows['REALDATA'] = 1
 
         internal_start_time = id_sim_df[time_col].min()
         internal_end_time = id_sim_df[time_col].max()
@@ -685,6 +687,7 @@ def get_model_population_sim_df(df, interval=10/60, add_on_period=4*24, id_col='
         added_sim_df[cmt_col] = np.int64(id_conc_rows[cmt_col].median())
         added_sim_df['AMT'] = '.'
         added_sim_df['RATE'] = '.'
+        added_sim_df['REALDATA'] = 0
 
         final_id_sim_df = pd.concat([id_conc_rows, id_dose_rows, added_sim_df]).sort_values([time_col,mdv_col])
         final_id_sim_df = final_id_sim_df.fillna(method='ffill').fillna(method='bfill')

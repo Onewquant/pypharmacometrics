@@ -26,19 +26,29 @@ demo_df['UID'] = demo_df['UID'].astype(str)
 
 ## WT, HT, ADHERENCE Covariates / PD markers Loading
 
+pd_marker_list = ['PD_PRO2', 'PD_STLFREQ', 'PD_ABDPAIN', 'PD_RECTBLD','PD_TOTALSCORE']
+
 cdai_hx_df = pd.read_csv(f"{output_dir}/pdmarker_cdai_df.csv")
-cdai_hx_df = cdai_hx_df.rename(columns={'ID':'UID','DATE':'DATETIME','CDAI_TOTALSCORE':'PD_MARKER','CDAI_ADHERENCEPCT':'ADHERENCE','CDAI_WEIGHT':'WT','CDAI_HEIGHT':'HT', 'CDAI_BMI':'BMI'})
+cdai_hx_df = cdai_hx_df.rename(columns={'ID':'UID','DATE':'DATETIME','CDAI_TOTALSCORE':'PD_TOTALSCORE','CDAI_ADHERENCEPCT':'ADHERENCE','CDAI_WEIGHT':'WT','CDAI_HEIGHT':'HT', 'CDAI_BMI':'BMI'})
 cdai_hx_df['UID'] = cdai_hx_df['UID'].astype(str)
+cdai_hx_df['PD_PRO2'] = 2*cdai_hx_df['CDAI_DIARHEACNT'] + 5*cdai_hx_df['CDAI_ABDPAINCNT']
+cdai_hx_df['PD_STLFREQ'] = cdai_hx_df['CDAI_DIARHEACNT']
+cdai_hx_df['PD_ABDPAIN'] = cdai_hx_df['CDAI_ABDPAINCNT']
+cdai_hx_df['PD_RECTBLD'] = np.nan
 cdai_hx_df['IBD_TYPE'] = 'CD'
 # cdai_adh_df.columns
 
 pms_hx_df = pd.read_csv(f"{output_dir}/pdmarker_pms_df.csv")
-pms_hx_df = pms_hx_df.rename(columns={'ID':'UID'}).rename(columns={'ID':'UID','DATE':'DATETIME','PMS_TOTALSCORE':'PD_MARKER','PMS_ADHERENCEPCT':'ADHERENCE','PMS_WEIGHT':'WT','PMS_HEIGHT':'HT', 'PMS_BMI':'BMI'})
+pms_hx_df = pms_hx_df.rename(columns={'ID':'UID'}).rename(columns={'ID':'UID','DATE':'DATETIME','PMS_TOTALSCORE':'PD_TOTALSCORE','PMS_ADHERENCEPCT':'ADHERENCE','PMS_WEIGHT':'WT','PMS_HEIGHT':'HT', 'PMS_BMI':'BMI'})
 pms_hx_df['UID'] = pms_hx_df['UID'].astype(str)
+pms_hx_df['PD_PRO2'] = pms_hx_df['PMS_STLCNT'] + pms_hx_df['PMS_HEMATOCHEZIA']
+pms_hx_df['PD_STLFREQ'] = pms_hx_df['PMS_STLCNT']
+pms_hx_df['PD_ABDPAIN'] = np.nan
+pms_hx_df['PD_RECTBLD'] = pms_hx_df['PMS_HEMATOCHEZIA']
 pms_hx_df['IBD_TYPE'] = 'UC'
 # pms_adh_df.columns
 
-adh_df = pd.concat([cdai_hx_df[['UID','DATETIME','ADHERENCE','IBD_TYPE','PD_MARKER']], pms_hx_df[['UID','DATETIME','ADHERENCE','IBD_TYPE','PD_MARKER']]]).drop_duplicates(['UID','DATETIME']).sort_values(['UID','DATETIME'])
+adh_df = pd.concat([cdai_hx_df[['UID','DATETIME','ADHERENCE','IBD_TYPE'] + pd_marker_list], pms_hx_df[['UID','DATETIME','ADHERENCE','IBD_TYPE']+pd_marker_list]]).drop_duplicates(['UID','DATETIME']).sort_values(['UID','DATETIME'])
 bsize_df = pd.concat([cdai_hx_df[['UID','DATETIME','WT','HT','BMI']], pms_hx_df[['UID','DATETIME','WT','HT','BMI']]]).drop_duplicates(['UID','DATETIME']).sort_values(['UID','DATETIME'])
 # adh_df[adh_df['WT'].isna()]
 # adh_df[adh_df['HT'].isna()]
@@ -56,7 +66,8 @@ for uid, uid_df in adh_df.groupby('UID',as_index=False): #break
     uid_fulldt_df['DATETIME'] = pd.date_range(start=min_lab_date,end=max_lab_date).astype(str)
     uid_fulldt_df['UID'] = uid
 
-    uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left').fillna(method='bfill')
+    # uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left').fillna(method='bfill')
+    uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left')
     # uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left')
 
     if count==0:
@@ -68,14 +79,20 @@ for uid, uid_df in adh_df.groupby('UID',as_index=False): #break
 
 # raise ValueError
 adh_df = full_result_df.copy()
-pdm_med_uc = adh_df[adh_df['IBD_TYPE']=='UC']['PD_MARKER'].median()
-pdm_med_cd = adh_df[adh_df['IBD_TYPE']=='CD']['PD_MARKER'].median()
+# pdm_med_uc = adh_df[adh_df['IBD_TYPE']=='UC']['PD_MARKER'].median()
+# pdm_med_cd = adh_df[adh_df['IBD_TYPE']=='CD']['PD_MARKER'].median()
+#
+# pdpro2_med_uc = adh_df[adh_df['IBD_TYPE']=='UC']['PD_PRO2'].median()
+# pdpro2_med_cd = adh_df[adh_df['IBD_TYPE']=='CD']['PD_PRO2'].median()
+#
+# med_pd_value = {'UC':pdm_med_uc,'CD':pdm_med_cd}
+# full_result_df['PD_MARKER'] = full_result_df.apply(lambda row:row['PD_MARKER'] if not np.isnan(row['PD_MARKER']) else med_pd_value[row['IBD_TYPE']], axis=1)
+# full_result_df['PD_PRO2'] = full_result_df.apply(lambda row:row['PD_PRO2'] if not np.isnan(row['PD_PRO2']) else 7777777, axis=1)
+# adh_df = full_result_df.fillna(full_result_df.median(numeric_only=True))
+# adh_df['PD_PRO2'] = adh_df['PD_PRO2'].replace(7777777,np.nan)
 
-# full_result_df[full_result_df['PD_MARKER'].isna()]
-med_pd_value = {'UC':pdm_med_uc,'CD':pdm_med_cd}
-full_result_df['PD_MARKER'] = full_result_df.apply(lambda row:row['PD_MARKER'] if not np.isnan(row['PD_MARKER']) else med_pd_value[row['IBD_TYPE']], axis=1)
-adh_df = full_result_df.fillna(full_result_df.median(numeric_only=True))
 adh_df = adh_df.drop('IBD_TYPE', axis=1)
+
 
 full_result_df = list()
 count = 0
@@ -138,9 +155,9 @@ for drug in ['infliximab','adalimumab']:
     for mode_str in ['integrated',]:
     # for mode_str in ['integrated',]:
     # for mode_str in ['integrated']:
-        modeling_df = pd.read_csv(f'{output_dir}/{drug}_{mode_str}_datacheck.csv')
-        modeling_df['UID']= modeling_df['UID'].astype(str)
-        modeling_df['DATETIME'] = modeling_df['DATETIME'].map(lambda x:x.split('T')[0])
+        raw_modeling_df = pd.read_csv(f'{output_dir}/{drug}_{mode_str}_datacheck.csv')
+        raw_modeling_df['UID']= raw_modeling_df['UID'].astype(str)
+        raw_modeling_df['DATETIME'] = raw_modeling_df['DATETIME'].map(lambda x:x.split('T')[0])
 
         # modeling_df['UID'].drop_duplicates()
         # raise ValueError
@@ -150,24 +167,34 @@ for drug in ['infliximab','adalimumab']:
         """
         # len(modeling_df)
         # modeling_df
-        modeling_df = modeling_df.merge(totlab_df, on=['UID','DATETIME'], how='left')
-        modeling_df = modeling_df.merge(demo_df, on=['UID'], how='left')
+        raw_modeling_df = raw_modeling_df.merge(totlab_df, on=['UID','DATETIME'], how='left')
+        raw_modeling_df = raw_modeling_df.merge(demo_df, on=['UID'], how='left')
         # modeling_df = modeling_df.merge(demo2_df, on=['UID'], how='left')
-        modeling_df = modeling_df.merge(adh_df, on=['UID','DATETIME'], how='left')
-        modeling_df = modeling_df.merge(bsize_df, on=['UID','DATETIME'], how='left')
+        raw_modeling_df = raw_modeling_df.merge(adh_df, on=['UID','DATETIME'], how='left')
+        raw_modeling_df = raw_modeling_df.merge(bsize_df, on=['UID','DATETIME'], how='left')
 
         # modeling_df['UID'].iloc[0]
         # demo_df['UID'].iloc[0]
 
+        # raise ValueError
+
         ## Covariates의 NA value 처리 (ffill 먼저 시도, 없으면 bfill, 그것도 없으면 전체의 median 값)
 
         md_df_list = list()
-        for md_inx,md_df in modeling_df.groupby(['UID']):
+        pd_marker_df = raw_modeling_df[pd_marker_list].copy()
+        for md_inx,md_df in raw_modeling_df.drop(pd_marker_list, axis=1).groupby(['UID']):
             md_df = md_df.sort_values(['DATETIME']).fillna(method='ffill').fillna(method='bfill')
             md_df_list.append(md_df)
-        modeling_df = pd.concat(md_df_list).reset_index(drop=True)
+        modeling_df = pd.concat(md_df_list)
 
+        # PD마커들은 NAN 유지 (PD_PRO2, PD_MARKER)
         modeling_df.fillna(modeling_df.median(numeric_only=True), inplace=True)
+
+        ## PD Marker들을 NAN 유지하면서 나머지들을 fillna 하는 작업중 -> 모델링, 시뮬레이션때 PD 마커들 여러 개는 원본 그대로 유지하도록 만들어보려함
+
+        # raise ValueError
+
+        modeling_df = pd.concat([modeling_df,pd_marker_df], axis=1).reset_index(drop=True)
 
 
 
@@ -221,12 +248,12 @@ for drug in ['infliximab','adalimumab']:
         # modeling_df['A_0FLG'] = (modeling_df['ID'].shift(1)!=modeling_df['ID'])*1
 
         # raise ValueError
-        modeling_df.drop('PD_MARKER', axis=1).to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df.csv',index=False, encoding='utf-8-sig')
+        modeling_df.drop(columns=pd_marker_list, axis=1).to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df.csv',index=False, encoding='utf-8-sig')
         # modeling_df[~((modeling_df['TIME'] == 0) & (modeling_df['DV'] == '0.0'))].copy().to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df_without_zero_dv.csv',index=False, encoding='utf-8-sig')
         modeling_df['TIME']= modeling_df['TIME']/24
         modeling_df['DUR'] = modeling_df['DUR'].map(lambda x: float(x)/24 if x!='.' else x)
 
-        modeling_df.drop('PD_MARKER', axis=1).to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df_dayscale.csv',index=False, encoding='utf-8')
+        modeling_df.drop(columns=pd_marker_list, axis=1).to_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df_dayscale.csv',index=False, encoding='utf-8')
         modeling_df.to_csv(f'{output_dir}/{drug}_{mode_str}_pdeda_df_dayscale.csv',index=False, encoding='utf-8')
 
 
