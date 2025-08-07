@@ -116,10 +116,11 @@ for uid, id_sim_df in final_sim_df.groupby('ID'): #break
 
     plt.tight_layout()
     # plt.show()
-
+    if not os.path.exists(f"{output_dir}/PKPD_EDA"):
+        os.mkdir(f"{output_dir}/PKPD_EDA")
     if not os.path.exists(f"{output_dir}/idv_trends"):
-        os.mkdir(f"{output_dir}/idv_trends")
-    plt.savefig(f"{output_dir}/idv_trends/IBDPGx_ID({int(uid)})IBD({ibd_type}).png")  # PNG 파일로 저장
+        os.mkdir(f"{output_dir}/PKPD_EDA/idv_trends")
+    plt.savefig(f"{output_dir}/PKPD_EDA/idv_trends/IBDPGx_ID({int(uid)})IBD({ibd_type}).png")  # PNG 파일로 저장
 
     plt.cla()
     plt.clf()

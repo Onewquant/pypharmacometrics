@@ -37,7 +37,11 @@ for ibd_type, pdmarker in pdmarker_dict.items():
         plt.ylabel(pdmarker)
         plt.legend().remove()
         plt.grid(True)
-        plt.savefig(f'{output_dir}/[{ibd_type}] DAYS_VS_{pdmarker.replace("PD_","")}({str(id_len).replace("None","All")}).png', dpi=600, bbox_inches='tight')
+
+        if not os.path.exists(f"{output_dir}/PKPD_EDA"):
+            os.mkdir(f"{output_dir}/PKPD_EDA")
+
+        plt.savefig(f'{output_dir}/PKPD_EDA/[{ibd_type}] DAYS_VS_{pdmarker.replace("PD_","")}({str(id_len).replace("None","All")}).png', dpi=600, bbox_inches='tight')
 
         plt.cla()
         plt.clf()
