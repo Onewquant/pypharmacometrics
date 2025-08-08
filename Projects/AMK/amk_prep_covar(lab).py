@@ -94,17 +94,19 @@ for uid, uid_df in lab_result_df.groupby('UID',as_index=False): #break
     uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left').fillna(method='ffill')
     # uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left')
 
-    # if count==0:
-    #     full_result_df = uid_fulldt_df.copy()
-    # else:
-    #     full_result_df = pd.concat([full_result_df, uid_fulldt_df.copy()])
-    if not os.path.exists(f"{output_dir}/uid_lab_df"):
-        os.mkdir(f"{output_dir}/uid_lab_df")
-    uid_fulldt_df.to_csv(f"{output_dir}/uid_lab_df/uid_fulldt_df({uid}).csv", encoding='utf-8-sig', index=False)
+    if count==0:
+        full_result_df = uid_fulldt_df.copy()
+    else:
+        full_result_df = pd.concat([full_result_df, uid_fulldt_df.copy()])
+
+
+    # if not os.path.exists(f"{output_dir}/uid_lab_df"):
+    #     os.mkdir(f"{output_dir}/uid_lab_df")
+    # uid_fulldt_df.to_csv(f"{output_dir}/uid_lab_df/uid_fulldt_df({uid}).csv", encoding='utf-8-sig', index=False)
 
     count+=1
 
-# full_result_df = full_result_df.reset_index(drop=True)
-# # full_result_df.drop_duplicates(['UID','DATETIME'])
-# full_result_df.to_csv(f"{output_dir}/final_lab_df.csv", encoding='utf-8-sig', index=False)
+full_result_df = full_result_df.reset_index(drop=True)
+# full_result_df.drop_duplicates(['UID','DATETIME'])
+full_result_df.to_csv(f"{output_dir}/final_lab_df.csv", encoding='utf-8-sig', index=False)
 
