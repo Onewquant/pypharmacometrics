@@ -134,7 +134,8 @@ sim_conc_df['IBD_TYPE'] = sim_conc_df['IBD_TYPE'].map(ibd_type_dict)
 if not os.path.exists(f"{output_dir}/PKPD_EDA"):
     os.mkdir(f"{output_dir}/PKPD_EDA")
 
-pk_col_list = ['DV','DAILY_DOSE','AUC24']
+pk_col_list = ['DV','DAILY_DOSE','AUC24','IPRED']
+# pk_col_list = []
 pd_col_list = ['CRP','CALPRTSTL','PD_PRO2']
 
 # scatter plot 그리기
@@ -147,6 +148,10 @@ for x in pk_col_list:
         hue = 'IBD_TYPE'
         # sim_conc_df[[x,y]].dropna()
         gdf = sim_conc_df.copy()
+        if y=='CRP':
+            gdf = gdf[gdf[y]<=25].copy()
+            # raise ValueError
+
         gdf = gdf.replace([np.inf, -np.inf], np.nan).dropna(subset=[x, y])
         X = gdf[[x]].copy()
         X_const = sm.add_constant(X).applymap(float)

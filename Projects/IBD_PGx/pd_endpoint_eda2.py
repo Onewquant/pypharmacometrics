@@ -22,7 +22,7 @@ for_sim_df.to_csv(f"{output_dir}/infliximab_integrated_simulation_df.csv",index=
 # str(for_sim_df.columns).replace("', '"," ").replace("',\n       '"," ")
 final_sim_df = pd.read_csv(f"{nonmem_dir}/run/sim57",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
 realworld_df = simulation_df[simulation_df['MDV']==0].copy()
-
+# final_sim_df['IPRED']
 # final_sim_df.columns
 ibd_type_dict = {1:'CD',2:'UC'}
 for uid, id_sim_df in final_sim_df.groupby('ID'): #break
@@ -31,8 +31,8 @@ for uid, id_sim_df in final_sim_df.groupby('ID'): #break
     #
     # gdf[(gdf['REALDATA']==1)&(gdf['AMT']==0)]
 
-    gdf = id_sim_df[id_sim_df['MDV']==0][['ID', 'TIME', 'DV', 'AMT', 'IBD_TYPE', 'CALPRTSTL','CRP', 'PD_PRO2', 'REALDATA']].copy()
-    adf = id_sim_df[id_sim_df['MDV']==1][['ID', 'TIME', 'DV', 'AMT', 'IBD_TYPE', 'ROUTE', 'REALDATA']].copy()
+    gdf = id_sim_df[id_sim_df['MDV']==0][['ID', 'TIME', 'DV', 'IPRED', 'AMT', 'IBD_TYPE', 'CALPRTSTL','CRP', 'PD_PRO2', 'REALDATA']].copy()
+    adf = id_sim_df[id_sim_df['MDV']==1][['ID', 'TIME', 'DV', 'IPRED', 'AMT', 'IBD_TYPE', 'ROUTE', 'REALDATA']].copy()
     adf['ROUTE'] = adf['ROUTE'].map({1.0:'IV',2.0:'SC'})
     adf['AMT'] = adf['AMT'].astype(int).astype(str)
     adf['DOSE_INFO'] = adf['ROUTE']+adf['AMT']
@@ -54,7 +54,11 @@ for uid, id_sim_df in final_sim_df.groupby('ID'): #break
     sns.scatterplot(data=rdf, x='TIME', y='DV', ax=ax1, color='red', s=50, marker='o')
 
     # 첫 번째 그래프: TIME vs DV
-    sns.lineplot(data=gdf, x='TIME', y='DV', ax=ax1, color='steelblue')
+    # y_col = 'IPRED'
+    y_col = 'DV'
+
+    sns.lineplot(data=gdf, x='TIME', y=y_col, ax=ax1, color='steelblue')
+    # sns.lineplot(data=gdf, x='TIME', y='DV', ax=ax1, color='steelblue')
     ax1.axhline(y=5, color='red', linestyle='--', linewidth=1.5)  # y=5 수평선
     ax1.set_title(f"[ID({int(uid)})_{ibd_type}] CONC over TIME")
     ax1.set_ylabel("CONC")
@@ -67,7 +71,8 @@ for uid, id_sim_df in final_sim_df.groupby('ID'): #break
 
         # gdf에서 가장 가까운 TIME의 DV 값 찾기
         closest_idx = (gdf['TIME'] - time).abs().idxmin()
-        y = gdf.loc[closest_idx, 'DV']
+        # y = gdf.loc[closest_idx, 'DV']
+        y = gdf.loc[closest_idx, y_col]
 
         # annotate (텍스트 + 화살표)
         ax1.annotate(
@@ -118,9 +123,9 @@ for uid, id_sim_df in final_sim_df.groupby('ID'): #break
     # plt.show()
     if not os.path.exists(f"{output_dir}/PKPD_EDA"):
         os.mkdir(f"{output_dir}/PKPD_EDA")
-    if not os.path.exists(f"{output_dir}/idv_trends"):
-        os.mkdir(f"{output_dir}/PKPD_EDA/idv_trends")
-    plt.savefig(f"{output_dir}/PKPD_EDA/idv_trends/IBDPGx_ID({int(uid)})IBD({ibd_type}).png")  # PNG 파일로 저장
+    if not os.path.exists(f"{output_dir}/PKPD_EDA/idv_trends_{y_col}"):
+        os.mkdir(f"{output_dir}/PKPD_EDA/idv_trends_{y_col}")
+    plt.savefig(f"{output_dir}/PKPD_EDA/idv_trends_{y_col}/IBDPGx_ID({int(uid)})IBD({ibd_type}).png")  # PNG 파일로 저장
 
     plt.cla()
     plt.clf()
