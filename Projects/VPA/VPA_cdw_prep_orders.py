@@ -33,13 +33,13 @@ alter_acting_dict = {
     '필요시 1시간전에': ('q[hours]h', '09:00/Y'),
     '격일로 자기전':('q48h','22:00/Y'),
     '격일로 저녁':('q48h','21:00/Y'),
-    # '격일로 아침':('q48h','09:00/Y'),
+    '격일로 아침':('q48h','09:00/Y'),
     '1년 1회':('q[hours]h','09:00/Y'),
     '1주 3회':('q56h','09:00/Y'),
     '의사지시대로 관류하세요':('q[hours]h','09:00/Y'),
  }
 
-df[df['UID']=='352504997098455']
+# df[df['UID']=='352504997098455']
 # df['REGIMEN'].unique()
 # df['DOSE'].unique()
 dose_list = list()
@@ -91,17 +91,43 @@ df['ADDL'] = df['DAYS'].copy()
 
 dose_cond1 = ~(df['ACTING'].isna())                         # 본원투약기록 -> 투약 기록대로 추가
 dose_cond2 = (df['ADDL']>1)&(df['ACTING'].isna())           # 외래자가투약 / 타병원 투약 처방 -> 날짜대로 ALTER_ACTING으로 추가
+# dose_cond3 = (df['ACTING'].isna())
 
-
-df1 = df[dose_cond1].copy()
+df1 = df[dose_cond1].sort_values(['UID','DATE']).reset_index(drop=True)
 df1['VIRTUALITY'] = False
-df2 = df[dose_cond2].copy()
+df2 = df[dose_cond2].sort_values(['UID','DATE']).reset_index(drop=True)
 df2['ACTING'] = df2['ALTER_ACTING'].copy()
 df2['VIRTUALITY'] = True
-df = pd.concat([df1, df2]).sort_values(['UID','DATE','ACTING'])
+
+# df[dose_cond3]
+
+# df = pd.concat([df1, df2]).sort_values(['UID','DATE','ACTING'])
 # df1[df1['DAYS']>1][['UID','DATE','INTERVAL','ADDL','ACTING']]
 
 # ADDL 먼저 추가 작업해야함
+
+df2["DATE"] = pd.to_datetime(df2["DATE"], errors="coerce")
+
+addl_applied_df2 = list()
+for inx, row in df2.iterrows():#break
+    interval_num = float(row['INTERVAL'].replace('q','').replace('h',''))
+    print(f"({inx}) {row['UID']} / {row['ADDL']} ADDL")
+    if interval_num > 24:
+        day_step = interval_num/24
+        # raise ValueError
+        # pass
+    else:
+        day_step = 1
+
+    # end_date = day_step * row["ADDL"]
+
+    for i in range(row["ADDL"]):  # ADDL 포함해서 +1
+        new_row = row.copy()
+        new_row["DATE"] = (row["DATE"] + pd.Timedelta(days=day_step*i)).strftime("%Y-%m-%d")
+        new_row["ADDL"] = 1
+        addl_applied_df2.append(new_row)
+
+df2 = pd.DataFrame(addl_applied_df2)
 
 #######################################
 
