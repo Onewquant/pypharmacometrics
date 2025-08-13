@@ -3,8 +3,6 @@ from pynca.tools import *
 from datetime import datetime, timedelta
 from scipy.stats import spearmanr
 
-
-
 prj_name = 'VPA'
 prj_dir = './Projects/VPA'
 resource_dir = f'{prj_dir}/resource'
@@ -13,14 +11,18 @@ output_dir = f"{prj_dir}/results"
 
 raw_df = pd.read_csv(f"{resource_dir}/vpa_cdw_order_data.csv")
 # df.columns
-raw_df = raw_df.rename(columns={'환자번호':'UID','수행시간':'ACTING','약품 오더일자':'DATE', '[실처방] 용법':'REGIMEN','[실처방] 처방일수':'DAYS', '[함량단위환산] 1일 처방량':'DAILY_DOSE','[함량단위환산] 1회 처방량':'DOSE', "[실처방] 경로":'ROUTE','약품명(성분명)':'DRUG','[실처방] 처방비고':'ETC_INFO'})
+raw_df = raw_df.rename(columns={'환자번호':'UID','수행시간':'ACTING','약품 오더일자':'DATE', '[실처방] 용법':'REGIMEN','[실처방] 처방일수':'DAYS', '[함량단위환산] 1일 처방량':'DAILY_DOSE','[함량단위환산] 1회 처방량':'DOSE', '[실처방] 투약위치':'PLACE',"[실처방] 경로":'ROUTE','약품명(성분명)':'DRUG','[실처방] 처방비고':'ETC_INFO'})
 raw_df['UID'] = raw_df['UID'].map(lambda x:x.split('-')[0])
 # df.columns
 # df['DRUG'].unique()
 drugname_dict = {'valproic acid':'valproate','lacosamide':'lacosamide'}
+
+
+
 for raw_drugname, drugname in drugname_dict.items():
 
     df = raw_df[raw_df['DRUG']==raw_drugname].copy()
+    # df = df.rename(columns={'[실처방] 투약위치':'PLACE'})
 # raw_df[raw_df['DRUG']=='lacosamide']
 # df['[함량단위환산] 1회 처방량'].unique()
 
@@ -93,6 +95,10 @@ for raw_drugname, drugname in drugname_dict.items():
     df['ADDL'] = df['DAYS'].copy()
     # df = df[df['ROUTE']!='Irrigation'].copy()
 
+    df = df.sort_values(['UID','DATE']).reset_index(drop=True)
+    # df[df['UID']==df['UID'].unique()[2]][['DATE','DOSE','ROUTE','INTERVAL','ADDL','ACTING','PLACE']]
+    raise ValueError
+
 
     dose_cond1 = ~(df['ACTING'].isna())                         # 본원투약기록 -> 투약 기록대로 추가
     dose_cond2 = (df['ADDL']>1)&(df['ACTING'].isna())           # 외래자가투약 / 타병원 투약 처방 -> 날짜대로 ALTER_ACTING으로 추가
@@ -103,6 +109,39 @@ for raw_drugname, drugname in drugname_dict.items():
     df2 = df[dose_cond2].sort_values(['UID','DATE']).reset_index(drop=True)
     df2['ACTING'] = df2['ALTER_ACTING'].copy()
     df2['VIRTUALITY'] = True
+
+    sdf = pd.concat([df1, df2]).sort_values(['UID', 'DATE', 'ACTING'])[['UID','DATE','DOSE','ROUTE','INTERVAL','ADDL','ACTING','PLACE']].copy()
+
+
+    for uid, uid_sdf in sdf.groupby('UID'): #break
+        # frag_sdf1 = frag_sdf[frag_sdf['ADDL']==1].copy()
+        # frag_sdf1_acting_rows = frag_sdf1[frag_sdf1['ACTING'].map(lambda x: ('/Y' in x) or ('/O' in x))].copy()
+        # if len(frag_sdf1_acting_rows)==0:
+        #     frag_sdf1_dates = set()
+        # else:
+        #     frag_sdf1_dates = set(frag_sdf1_acting_rows['DATE'])
+        #
+        # frag_sdf2 = frag_sdf[frag_sdf['ADDL']>1].copy()
+        uid_sdf['II_NUM'] = uid_sdf['INTERVAL'].map(lambda x: float(x.replace('q','').replace('h','')))
+        uid_sdf['II_APPLIED'] = uid_sdf['II_NUM'].map(lambda x: x/24 if x>24 else 1.0)
+
+        # frag_sdf1_dates = set(frag_sdf1[frag_sdf1['ACTING'].map(lambda x: ('/Y' in x) or ('/O' in x))]['DATE'])
+        # frag_sdf2_dates = set()
+        uid_sdf_dates = set()
+        for sdf_inx, uid_sdf_row in uid_sdf.iterrows(): #break
+            # if uid_sdf_row['ADDL'] == 1:
+            #     raise ValueError
+            if uid_sdf_row['II_APPLIED'] > 1:
+                raise ValueError
+            uid_sdf_dates = uid_sdf_dates.union(set(dates_every_step_days(start_date=uid_sdf_row['DATE'], day_step=uid_sdf_row['II_APPLIED'], addl=uid_sdf_row['ADDL'], fmt="%Y-%m-%d", include_start=True)))
+
+        uid_dates_rows = pd.DataFrame(uid_sdf_dates, columns=['DATE']).sort_values(['DATE'], ignore_index=True)
+
+
+
+        dates_every_step_days
+
+    # df2['ADDL'].mean() * len(df2)
 
     # df[dose_cond3]
 

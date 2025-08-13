@@ -96,6 +96,24 @@ def load_data_dict(drug_list, filename_format, input_file_dir_path):
             drug_prep_df_dict[drug] = pd.read_excel(result_file_path)
     return drug_prep_df_dict
 
+
+def dates_every_step_days(start_date, day_step, addl, fmt="%Y-%m-%d", include_start=True):
+    """
+    start_date: 'YYYY-MM-DD' 문자열
+    n         : 날짜간격으로 더하는 횟수 (기본 10회 → 10개 날짜)
+    fmt       : 반환 문자열 포맷. None이면 date 객체로 반환
+    include_start: True면 시작일도 리스트의 첫 항목으로 포함
+    """
+    base = datetime.strptime(start_date, "%Y-%m-%d").date()
+
+    # 구간 생성
+    if include_start:
+        dates = [base + timedelta(days=day_step * i) for i in range(0, addl)]
+    else:
+        dates = [base + timedelta(days=day_step * i) for i in range(1, addl + 1)]
+
+    return [d.strftime(fmt) for d in dates] if fmt else dates
+
 def convert_to_numeric_value(value):
     try:
         if int(value)==float(value):
@@ -119,8 +137,6 @@ def dosing_duration_for_abs_policy(input_dur, input_abs_pol):
         return '.'
     else:
         return '.'
-
-
 
     return None
 
