@@ -18,8 +18,10 @@ raw_df['UID'] = raw_df['UID'].map(lambda x:x.split('-')[0])
 drugname_dict = {'valproic acid':'valproate','lacosamide':'lacosamide'}
 
 
-
+drug_adm_res = dict()
 for raw_drugname, drugname in drugname_dict.items():
+
+    drug_res_df = list()
 
     df = raw_df[raw_df['DRUG']==raw_drugname].copy()
     # df = df.rename(columns={'[실처방] 투약위치':'PLACE'})
@@ -57,7 +59,7 @@ for raw_drugname, drugname in drugname_dict.items():
     for inx, row in df.iterrows():
         if prev_uid!=row['UID']:
             count+=1
-            print(f"({count}) {row['UID']}")
+            print(f"({count}) {drugname} / {row['UID']}")
             prev_uid = row['UID']
         ## '250mg-500mg-500mg' 형태로 dose가 쓰여있는 경우
         # if row['']
@@ -97,7 +99,7 @@ for raw_drugname, drugname in drugname_dict.items():
 
     df = df.sort_values(['UID','DATE']).reset_index(drop=True)
     # df[df['UID']==df['UID'].unique()[2]][['DATE','DOSE','ROUTE','INTERVAL','ADDL','ACTING','PLACE']]
-    raise ValueError
+    # raise ValueError
 
 
     dose_cond1 = ~(df['ACTING'].isna())                         # 본원투약기록 -> 투약 기록대로 추가
@@ -112,7 +114,7 @@ for raw_drugname, drugname in drugname_dict.items():
 
     sdf = pd.concat([df1, df2]).sort_values(['UID', 'DATE', 'ACTING'])[['UID','DATE','DOSE','ROUTE','INTERVAL','ADDL','ACTING','PLACE']].copy()
 
-
+    sdf_row_count = 0
     for uid, uid_sdf in sdf.groupby('UID'): #break
         # frag_sdf1 = frag_sdf[frag_sdf['ADDL']==1].copy()
         # frag_sdf1_acting_rows = frag_sdf1[frag_sdf1['ACTING'].map(lambda x: ('/Y' in x) or ('/O' in x))].copy()
@@ -131,15 +133,30 @@ for raw_drugname, drugname in drugname_dict.items():
         for sdf_inx, uid_sdf_row in uid_sdf.iterrows(): #break
             # if uid_sdf_row['ADDL'] == 1:
             #     raise ValueError
-            if uid_sdf_row['II_APPLIED'] > 1:
-                raise ValueError
+            # if uid_sdf_row['II_APPLIED'] > 1:
+            #     raise ValueError
+            # dates_every_step_days(start_date=uid_sdf_row['DATE'], day_step=uid_sdf_row['II_APPLIED'], addl=uid_sdf_row['ADDL'], fmt="%Y-%m-%d", include_start=True)
             uid_sdf_dates = uid_sdf_dates.union(set(dates_every_step_days(start_date=uid_sdf_row['DATE'], day_step=uid_sdf_row['II_APPLIED'], addl=uid_sdf_row['ADDL'], fmt="%Y-%m-%d", include_start=True)))
 
         uid_dates_rows = pd.DataFrame(uid_sdf_dates, columns=['DATE']).sort_values(['DATE'], ignore_index=True)
+        uid_dates_row = {'UID':uid,'DRUG':drugname,'DATE_LIST':tuple(uid_dates_rows['DATE'])}
+        drug_res_df.append(uid_dates_row)
 
+        print(f"({sdf_row_count}) / {drugname} / {uid} / {len(uid_sdf_dates)}")
+        sdf_row_count+=1
 
+    drug_res_df = pd.DataFrame(drug_res_df)
+    # drug_res_df.to_csv(f"{output_dir}/{drugname}_adm_dates.csv", encoding='utf-8-sig',index=False)
+    drug_res_df.to_excel(f"{output_dir}/{drugname}_adm_dates.xlsx", encoding='utf-8-sig', index=False)
+    # drug_adm_res['valproate'].to_excel(f"{output_dir}/valproate_adm_dates.xlsx", encoding='utf-8-sig', index=False)
+    #
+    drug_adm_res[drugname] = drug_res_df.copy()
 
-        dates_every_step_days
+        # uid_dates_rows['DATE_DIFF'] = pd.to_datetime(uid_dates_rows['DATE']).diff().dt.days.fillna(1)
+        # uid_dates_rows.loc[uid_dates_rows['DATE_DIFF'] >= 5].index.min()
+
+        # raise ValueError
+
 
     # df2['ADDL'].mean() * len(df2)
 
