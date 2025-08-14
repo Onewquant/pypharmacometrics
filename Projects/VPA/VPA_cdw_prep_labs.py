@@ -5,13 +5,13 @@ from scipy.stats import spearmanr
 
 
 
-prj_name = 'LINEZOLID'
-prj_dir = './Projects/LINEZOLID'
+prj_name = 'VPA'
+prj_dir = './Projects/VPA'
 resource_dir = f'{prj_dir}/resource'
 output_dir = f"{prj_dir}/results"
 # nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
 
-df = pd.read_csv(f"{resource_dir}/lnz_cdw_lab_data.csv")
+df = pd.read_csv(f"{resource_dir}/vpa_cdw_lab_data.csv")
 # df.columns
 df = df.rename(columns={'환자번호':'UID','검사 접수일자':'DATE','검사 접수일시':'DATETIME', '검사명':'LAB','검사 세부 항목명':'LAB_DETAIL', '항목별 검사결과':'VALUE', '채혈일시':'SAMPLING_DT'})
 df = df.dropna(subset=['VALUE'])
@@ -90,4 +90,5 @@ for uid, uid_df in lab_result_df.groupby('UID',as_index=False): #break
     count += 1
 
 full_result_df = full_result_df.reset_index(drop=True)
-full_result_df.to_csv(f"{output_dir}/lnz_final_lab_df.csv", encoding='utf-8-sig', index=False)
+full_result_df.to_csv(f"{output_dir}/vpa_final_lab_df.csv", encoding='utf-8-sig', index=False)
+

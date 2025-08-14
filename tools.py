@@ -219,6 +219,88 @@ def sampling_cmt_for_specific_advan_type(advan=0, forced_sampling_cmt=np.nan, ab
     else:
         raise ValueError("Sampling Compartment 결정시 / ADVAN을 정확히 입력하세요.")
 
+## DDI
+
+## 겹치는 / 안 겹치는 Person_ID 및 Date 생성함수
+
+def get_intsec_or_diff_pid_date(df1, df2, mode='INTSEC', dc_name='DC_NAME', id_col='UID', start_date_col='START_DATE',end_date_col='END_DATE',addl_col='ADDL'):
+    """
+    ## df1 및 df2 필요컬럼
+    ['PERSON_ID', 'DRUG_EXPOSURE_START_DATETIME', 'DRUG_EXPOSURE_END_DATETIME', 'DAYS_SUPPLY']
+
+    ## 배열을 이용한 Vector 연산
+    # 배열(pid x date)만들어 (최소, 최대 date 날짜범위로) drug1, drug2 모두 사용한 경우의 pid_date만 추려냄
+    # row : pid -> exist_get_intsec_pids
+    # col : date -> total_dates
+    # val : count -> 처음엔 zero
+
+    # mode :
+    # 'intsec': 두 df에서 겹치는 pid_date 반환
+    # 'diff' : d1-d2의 차이를 나타내는 pid_date 반환
+    """
+
+    exist_gen_intsec_pids = pd.concat([df1[[id_col]], df2[[id_col]]]).drop_duplicates(keep='first').sort_values([id_col],ignore_index=True)[id_col]
+
+    total_min_sdate = min(df1[start_date_col].min(), df2[start_date_col].min())[:10]
+    total_max_edate = max(df1[end_date_col].max(), df2[end_date_col].max())[:10]
+
+    total_pids_modi = exist_gen_intsec_pids.astype(str) + '_'
+    total_dates = list(pd.date_range(start=total_min_sdate, end=total_max_edate, closed='left').strftime('%Y-%m-%d')) + [total_max_edate]
+
+    # 배열의 index로의 translation
+
+    pid_to_rinx_dict = {pid: rinx for rinx, pid in enumerate(exist_gen_intsec_pids)}
+    date_to_cinx_dict = {pid: cinx for cinx, pid in enumerate(total_dates)}
+
+    # pid x date 배열지도
+
+    total_date_array = np.tile(total_dates, (len(exist_gen_intsec_pids), 1))
+    total_pid_array = np.tile(total_pids_modi, (len(total_dates), 1)).T
+
+    total_map_array = total_pid_array + total_date_array
+
+    # hit 여부 대시보드
+
+    pid_date_dashboard_dict = dict()
+
+    count = 1
+    for longform_df in df1, df2:
+        pid_date_dashboard_dict[count] = np.zeros((len(exist_gen_intsec_pids), len(total_dates)))
+        longform_df = longform_df[[id_col, start_date_col, addl_col]].copy()
+        # longform_df['DRUG_EXPOSURE_START_DATETIME'] = longform_df['DRUG_EXPOSURE_START_DATETIME'].map(lambda x:x[:10])
+
+        for tlf_inx, tlf_row in longform_df.iterrows():
+            s_cinx = date_to_cinx_dict[tlf_row[start_date_col][:10]]
+            rinx = pid_to_rinx_dict[tlf_row[id_col]]
+            adays = tlf_row[addl_col]
+
+            pid_date_dashboard_dict[count][rinx, s_cinx:s_cinx + adays] = 1
+        count += 1
+
+    if mode == 'INTSEC':
+        pid_date_dashboard = pid_date_dashboard_dict[1] + pid_date_dashboard_dict[2]
+        intsec_result = total_map_array[pid_date_dashboard >= 2]
+    elif mode == 'DIFF':
+        pid_date_dashboard = pid_date_dashboard_dict[1] - pid_date_dashboard_dict[2]
+        intsec_result = total_map_array[pid_date_dashboard >= 1]
+    else:
+        raise ValueError('Mode 재설정 필요')
+
+    # intersection pid date 정보 저장
+
+    intsec_df = pd.DataFrame(intsec_result, columns=[f'{id_col}_DATE'])
+    intsec_df['DRUG_COMB'] = dc_name
+    intsec_df[id_col] = intsec_df[f'{id_col}_DATE'].map(lambda x: int(x.split('_')[0]))
+    intsec_df[f'{mode}_DATE'] = intsec_df[f'{id_col}_DATE'].map(lambda x: x.split('_')[1])
+    intsec_df = intsec_df[['DRUG_COMB', id_col, f'{mode}_DATE']].sort_values([id_col, f'{mode}_DATE'])
+
+    return intsec_df
+
+
+# intsec_df = get_intsec_or_diff_pid_date(df1, df2, mode='intsec', dc_name='dc_str')
+# diff_df = get_intsec_or_diff_pid_date(df2, df1, mode='diff', dc_name='dc_str')
+
+
 ## DataReading
 
 def modeling_dosing_policy(mdpolicy_file_path, selected_models=[], model_colname='MODEL'):
