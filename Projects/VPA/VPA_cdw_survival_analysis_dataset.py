@@ -37,13 +37,16 @@ no_iadm_lab_uids = list()
 yes_iadm_lab_uids = list()
 # len(yes_sbase_lab_uids)
 surv_res_df = list()
+# max_time_at_risk = 365 * 99999999999
+# max_time_at_risk = 365
+max_time_at_risk = 180
 for inx, row in adm_df.iterrows(): #break
     uid = row['UID']
     uid_lab_df = lab_df[lab_df['UID']==uid].copy()
 
-    uid_sbase_lab_df = uid_lab_df[uid_lab_df['DATE'] <= row['MIN_SINGLE_DATE']].copy()
-    # uid_sbase_lab_df = uid_lab_df[uid_lab_df['DATE'] < row['MIN_SINGLE_DATE']].copy()
-    uid_sadm_lab_df = uid_lab_df[(uid_lab_df['DATE'] >= row['MIN_SINGLE_DATE'])&(uid_lab_df['DATE'] <= row['MAX_SINGLE_DATE'])].copy()
+    uid_sbase_lab_df = uid_lab_df[uid_lab_df['DATE'] <= row['MIN_SINGLE_DATE']].sort_values(['DATE'])
+    # uid_sbase_lab_df = uid_lab_df[uid_lab_df['DATE'] < row['MIN_SINGLE_DATE']].sort_values(['DATE'])
+    uid_sadm_lab_df = uid_lab_df[(uid_lab_df['DATE'] >= row['MIN_SINGLE_DATE'])&(uid_lab_df['DATE'] <= row['MAX_SINGLE_DATE'])].sort_values(['DATE'])
     if len(uid_sbase_lab_df)==0:
         print(f"({inx}) {uid} / No sbase lab value")
         no_sbase_lab_uids.append(uid)
@@ -60,7 +63,15 @@ for inx, row in adm_df.iterrows(): #break
 
     # raise ValueError
     bl_row = uid_sbase_lab_df[~uid_sbase_lab_df['Cr'].isna()].iloc[-1]
-    tar_rows = uid_sadm_lab_df[uid_sadm_lab_df['Cr'] > 1.5 * bl_row['Cr']].copy()
+    tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df['Cr'] >= (1.5 * bl_row['Cr']))&(uid_sadm_lab_df['Cr'] >= 1.2)].copy()
+    # tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df['Cr'] >= (1.5 * bl_row['Cr']))].copy()
+
+    # try:
+    #     bl_row = uid_sbase_lab_df[~uid_sbase_lab_df['eGFR-Schwartz'].isna()].iloc[-1]
+    # except:
+    #     continue
+    # tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df['eGFR-Schwartz'] < 60)].copy()
+
     single_res_dict = {'ADM_TYPE':'SINGLE',
                        'DRUG':row['SINGLE_DRUG'],
                        'UID':uid,
@@ -80,16 +91,20 @@ for inx, row in adm_df.iterrows(): #break
                        }
 
     single_res_dict['time'] = (datetime.strptime(single_res_dict['EV_DATE'],'%Y-%m-%d')-datetime.strptime(uid_sadm_lab_df['DATE'].iloc[0],'%Y-%m-%d')).total_seconds()/86400
-    single_res_dict['event'] = single_res_dict['EV']
+    if single_res_dict['time'] > max_time_at_risk:
+        single_res_dict['time'] = max_time_at_risk
+        single_res_dict['event'] = 0
+    else:
+        single_res_dict['event'] = single_res_dict['EV']
     single_res_dict['group'] = single_res_dict['TRT']
 
     surv_res_df.append(single_res_dict)
 
 
     iadm_min_lab_date = (datetime.strptime(row['MIN_INTSEC_DATE'],'%Y-%m-%d')-timedelta(days=30)).strftime('%Y-%m-%d')
-    uid_ibase_lab_df = uid_lab_df[(uid_lab_df['DATE'] <= row['MIN_INTSEC_DATE']) & (uid_lab_df['DATE'] > iadm_min_lab_date)].copy()
-    # uid_ibase_lab_df = uid_lab_df[(uid_lab_df['DATE'] < row['MIN_INTSEC_DATE'])&(uid_lab_df['DATE'] > iadm_min_lab_date)].copy()
-    uid_iadm_lab_df = uid_lab_df[(uid_lab_df['DATE'] >= row['MIN_INTSEC_DATE'])&(uid_lab_df['DATE'] <= row['MAX_INTSEC_DATE'])].copy()
+    uid_ibase_lab_df = uid_lab_df[(uid_lab_df['DATE'] <= row['MIN_INTSEC_DATE'])&(uid_lab_df['DATE'] > iadm_min_lab_date)].sort_values(['DATE'])
+    # uid_ibase_lab_df = uid_lab_df[(uid_lab_df['DATE'] < row['MIN_INTSEC_DATE'])&(uid_lab_df['DATE'] > iadm_min_lab_date)].sort_values(['DATE'])
+    uid_iadm_lab_df = uid_lab_df[(uid_lab_df['DATE'] >= row['MIN_INTSEC_DATE'])&(uid_lab_df['DATE'] <= row['MAX_INTSEC_DATE'])].sort_values(['DATE'])
     if len(uid_ibase_lab_df)==0:
         print(f"({inx}) {uid} / No ibase lab value")
         no_ibase_lab_uids.append(uid)
@@ -106,7 +121,15 @@ for inx, row in adm_df.iterrows(): #break
 
 
     bl_row = uid_ibase_lab_df[~uid_ibase_lab_df['Cr'].isna()].iloc[-1]
-    tar_rows = uid_ibase_lab_df[uid_ibase_lab_df['Cr'] >= 1.5 * bl_row['Cr']].copy()
+    tar_rows = uid_iadm_lab_df[(uid_iadm_lab_df['Cr'] >= (1.5 * bl_row['Cr']))&(uid_iadm_lab_df['Cr'] >= 1.2)].copy()
+    # tar_rows = uid_iadm_lab_df[(uid_iadm_lab_df['Cr'] >= (1.5 * bl_row['Cr']))].copy()
+
+    # try:
+    #     bl_row = uid_ibase_lab_df[~uid_ibase_lab_df['eGFR-Schwartz'].isna()].iloc[-1]
+    # except:
+    #     continue
+    # tar_rows = uid_iadm_lab_df[(uid_iadm_lab_df['eGFR-Schwartz'] < 60)].copy()
+
     intersect_res_dict = {'ADM_TYPE':'INTSEC',
                           'DRUG':'BOTH',
                           'UID':uid,
@@ -126,18 +149,25 @@ for inx, row in adm_df.iterrows(): #break
                        }
 
     intersect_res_dict['time'] = (datetime.strptime(intersect_res_dict['EV_DATE'], '%Y-%m-%d') - datetime.strptime(uid_iadm_lab_df['DATE'].iloc[0], '%Y-%m-%d')).total_seconds() / 86400
-    intersect_res_dict['event'] = intersect_res_dict['EV']
+    if intersect_res_dict['time'] > max_time_at_risk:
+        intersect_res_dict['time'] = max_time_at_risk
+        intersect_res_dict['event'] = 0
+    else:
+        intersect_res_dict['event'] = intersect_res_dict['EV']
     intersect_res_dict['group'] = intersect_res_dict['TRT']
 
     surv_res_df.append(intersect_res_dict)
 
-surv_res_df = pd.DataFrame(surv_res_df)
+surv_res_df = pd.DataFrame(surv_res_df).sort_values(['time','event'])
+# surv_res_df
 
 
 ## Fisher's Exact Test
 
 single_survres_df = surv_res_df[surv_res_df['ADM_TYPE']=='SINGLE'].copy()
 intsec_survres_df = surv_res_df[surv_res_df['ADM_TYPE']=='INTSEC'].copy()
+
+# single_survres_df['UID']
 
 
 single_ev_count = single_survres_df['EV'].sum()
@@ -151,6 +181,8 @@ from scipy.stats import fisher_exact
 # 그룹B       1      5
 table = np.array([[intsec_ev_count, len(intsec_survres_df)-intsec_ev_count],
                   [single_ev_count, len(single_survres_df)-single_ev_count]])
+max_incidence = max(intsec_ev_count/len(intsec_survres_df), single_ev_count/len(single_survres_df))
+max_odds = max(intsec_ev_count/(len(intsec_survres_df)-intsec_ev_count), single_ev_count/(len(single_survres_df)-single_ev_count))
 
 # fisher_exact(table, alternative='two-sided') 가능
 oddsratio, p_value = fisher_exact(table, alternative='two-sided')
@@ -173,23 +205,91 @@ from lifelines.statistics import logrank_test
 from lifelines import CoxPHFitter
 from lifelines import CoxTimeVaryingFitter
 
+
 kmf = KaplanMeierFitter()
 
-plt.figure(figsize=(10,8))
+fig, ax = plt.subplots(figsize=(10, 8))
+
 for g, gdf in surv_res_df.groupby("group"):
-    # kmf = KaplanMeierFitter()
-    # kmf.fit(gdf["time"], event_observed=gdf["event"], label=str(g))
-    # sf = kmf.survival_function_  # S(t)
-    # ax.step(sf.index, 1 - sf.values.ravel(), where="post", label=f"{g}")  # 1 - S(t)
+    kmf.fit(durations=gdf["time"], event_observed=gdf["event"], label=f"{g}")
 
-    kmf.fit(durations=gdf["time"], event_observed=gdf["event"], label=f"Group {g}")
-    kmf.plot(ci_show=True)
+    # 생존 확률 S(t)
+    sf = kmf.survival_function_[kmf.survival_function_.columns[0]]
+    # 누적발생률 CI(t) = 1 - S(t)
+    ci_curve = 1 - sf
 
-plt.title("Kaplan–Meier Survival Curves by Group")
-plt.xlabel("Time")
-plt.ylabel("Survival probability")
-plt.grid(True, linestyle="--")
+    # 신뢰구간도 변환
+    ci_bounds = 1 - kmf.confidence_interval_
+    lower = ci_bounds.iloc[:, 1]  # 하한
+    upper = ci_bounds.iloc[:, 0]  # 상한
+
+    # 곡선
+    ax.step(ci_curve.index, ci_curve.values, where="post", label=f"{g}")
+    # 신뢰구간 음영
+    ax.fill_between(ci_curve.index, lower, upper, step="post", alpha=0.2)
+
+# 서식
+ax.set_title("Cumulative Incidence by Group (with 95% CI)")
+ax.set_xlabel("Time")
+ax.set_ylabel("Cumulative Incidence")
+ax.set_ylim(0, max_odds*3)
+ax.grid(True, linestyle="--")
+ax.legend(title="Group")
+
 plt.show()
+
+
+# kmf = KaplanMeierFitter()
+# plt.close('all')
+# fig, ax = plt.subplots(figsize=(10, 8))
+#
+# for g, gdf in surv_res_df.groupby("group"):
+#     kmf.fit(durations=gdf["time"], event_observed=gdf["event"], label=f"{g}")
+#
+#     # S(t)
+#     sf = kmf.survival_function_[kmf.survival_function_.columns[0]]
+#     # CI(t) = 1 - S(t)
+#     ci = 1 - sf
+#
+#     # 계단그래프(우측계단)로 플로팅
+#     ax.step(ci.index, ci.values, where="post", label=f"{g}")
+#
+# # 레이아웃/서식
+# ax.set_title("Cumulative Incidence by Group (1 - KM Survival)")
+# ax.set_xlabel("Time")
+# ax.set_ylabel("Cumulative Incidence")
+# ax.set_ylim(0, max_odds*3)
+# ax.grid(True, linestyle="--")
+# ax.legend(title="Group")
+# plt.show()
+
+
+
+# kmf = KaplanMeierFitter()
+#
+# plt.figure(figsize=(10,8))
+# for g, gdf in surv_res_df.groupby("group"):
+#     # kmf = KaplanMeierFitter()
+#     # kmf.fit(gdf["time"], event_observed=gdf["event"], label=str(g))
+#     # sf = kmf.survival_function_  # S(t)
+#     # ax.step(sf.index, 1 - sf.values.ravel(), where="post", label=f"{g}")  # 1 - S(t)
+#
+#     kmf.fit(durations=gdf["time"], event_observed=gdf["event"], label=f"Group {g}")
+#     kmf.plot()
+#     # cum_inc = 1 - kmf.survival_function_
+#     # ax = cum_inc.plot()
+#
+# # ax.set_title("Kaplan–Meier Survival Curves (Cumulative Incidence) by Group")
+# # ax.set_xlabel("Time")
+# # ax.set_ylabel("Cumulative Incidence")
+# # plt.grid(True, linestyle="--")
+#
+#
+# plt.title("Kaplan–Meier Survival Curves (Cumulative Incidence) by Group")
+# plt.xlabel("Time")
+# plt.ylabel("Cumulative Incidence")
+# plt.grid(True, linestyle="--")
+# plt.show()
 
 # 로그랭크 검정 (A vs B)
 A = surv_res_df[surv_res_df.group==1]; B = surv_res_df[surv_res_df.group==0]
