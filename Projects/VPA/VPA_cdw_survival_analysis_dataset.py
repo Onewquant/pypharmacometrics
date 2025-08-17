@@ -37,14 +37,20 @@ no_iadm_lab_uids = list()
 yes_iadm_lab_uids = list()
 # len(yes_sbase_lab_uids)
 surv_res_df = list()
+
+endpoint_lab = 'Cr'
+# endpoint_lab = 'eGFR'
+# endpoint_lab = 'eGFR-Schwartz'
+# endpoint_lab = 'eGFR-CKD-EPI'
 # max_time_at_risk = 365 * 99999999999
-# max_time_at_risk = 365
-max_time_at_risk = 180
+max_time_at_risk = 365
+# max_time_at_risk = 180
 for inx, row in adm_df.iterrows(): #break
     uid = row['UID']
     uid_lab_df = lab_df[lab_df['UID']==uid].copy()
 
-    uid_sbase_lab_df = uid_lab_df[uid_lab_df['DATE'] <= row['MIN_SINGLE_DATE']].sort_values(['DATE'])
+    sbase_min_lab_date = (datetime.strptime(row['MIN_SINGLE_DATE'], '%Y-%m-%d') - timedelta(days=30)).strftime('%Y-%m-%d')
+    uid_sbase_lab_df = uid_lab_df[(uid_lab_df['DATE'] <= row['MIN_SINGLE_DATE'])&(uid_lab_df['DATE'] >= sbase_min_lab_date)].sort_values(['DATE'])
     # uid_sbase_lab_df = uid_lab_df[uid_lab_df['DATE'] < row['MIN_SINGLE_DATE']].sort_values(['DATE'])
     uid_sadm_lab_df = uid_lab_df[(uid_lab_df['DATE'] >= row['MIN_SINGLE_DATE'])&(uid_lab_df['DATE'] <= row['MAX_SINGLE_DATE'])].sort_values(['DATE'])
     if len(uid_sbase_lab_df)==0:
@@ -62,9 +68,40 @@ for inx, row in adm_df.iterrows(): #break
         yes_sadm_lab_uids.append(uid)
 
     # raise ValueError
-    bl_row = uid_sbase_lab_df[~uid_sbase_lab_df['Cr'].isna()].iloc[-1]
-    tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df['Cr'] >= (1.5 * bl_row['Cr']))&(uid_sadm_lab_df['Cr'] >= 1.2)].copy()
-    # tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df['Cr'] >= (1.5 * bl_row['Cr']))].copy()
+    if endpoint_lab=='Cr':
+        sbl_rows = uid_sbase_lab_df[(~uid_sbase_lab_df['Cr'].isna())&(uid_sbase_lab_df['Cr'] < 1.2)]
+        # sbl_row = sbl_rows.iloc[-1]
+        try:
+            sbl_row = sbl_rows.iloc[-1]
+            # Baseline에서 Cr이 이미 높아지는 경우 제외
+            if (uid_sbase_lab_df[uid_sbase_lab_df['DATE'] > sbl_row['DATE']]['Cr'] > 1.2).sum() > 0:
+                continue
+        except:
+            continue
+        tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df['Cr'] >= (1.5 * sbl_row['Cr']))&(uid_sadm_lab_df['Cr'] >= 1.2)].copy()
+        # tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df['Cr'] >= (1.5 * bl_row['Cr']))].copy()
+    elif endpoint_lab=='eGFR-Schwartz':
+        sbl_rows = uid_sbase_lab_df[(~uid_sbase_lab_df['eGFR-Schwartz'].isna())&(uid_sbase_lab_df['eGFR-Schwartz'] >= 60)]
+        # sbl_row = sbl_rows.iloc[-1]
+        try:
+            sbl_row = sbl_rows.iloc[-1]
+            # Baseline에서 Cr이 이미 높아지는 경우 제외
+            if (uid_sbase_lab_df[uid_sbase_lab_df['DATE'] > sbl_row['DATE']]['eGFR-Schwartz'] < 60).sum() > 0:
+                continue
+        except:
+            continue
+        tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df['eGFR-Schwartz'] < 60)].copy()
+    elif endpoint_lab=='eGFR':
+        sbl_rows = uid_sbase_lab_df[(~uid_sbase_lab_df['eGFR'].isna())&(uid_sbase_lab_df['eGFR'] >= 60)]
+        # sbl_row = sbl_rows.iloc[-1]
+        try:
+            sbl_row = sbl_rows.iloc[-1]
+            # Baseline에서 Cr이 이미 높아지는 경우 제외
+            if (uid_sbase_lab_df[uid_sbase_lab_df['DATE'] > sbl_row['DATE']]['eGFR'] < 60).sum() > 0:
+                continue
+        except:
+            continue
+        tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df['eGFR'] < 60)].copy()
 
     # try:
     #     bl_row = uid_sbase_lab_df[~uid_sbase_lab_df['eGFR-Schwartz'].isna()].iloc[-1]
@@ -75,11 +112,11 @@ for inx, row in adm_df.iterrows(): #break
     single_res_dict = {'ADM_TYPE':'SINGLE',
                        'DRUG':row['SINGLE_DRUG'],
                        'UID':uid,
-                       'BL_DATE':bl_row['DATE'],
-                       'BL_Cr':bl_row['Cr'],
-                       'BL_eGFR':bl_row['eGFR'],
-                       'BL_eGFR-Schwartz':bl_row['eGFR-Schwartz'],
-                       'BL_eGFR-CKD-EPI':bl_row['eGFR-CKD-EPI'],
+                       'BL_DATE':sbl_row['DATE'],
+                       'BL_Cr':sbl_row['Cr'],
+                       'BL_eGFR':sbl_row['eGFR'],
+                       'BL_eGFR-Schwartz':sbl_row['eGFR-Schwartz'],
+                       'BL_eGFR-CKD-EPI':sbl_row['eGFR-CKD-EPI'],
                        'FIRST_ADM_DATE':uid_sadm_lab_df['DATE'].iloc[0],
                        'TRT':0,
                        'EV': 0 if len(tar_rows)==0 else 1,
@@ -101,8 +138,8 @@ for inx, row in adm_df.iterrows(): #break
     surv_res_df.append(single_res_dict)
 
 
-    iadm_min_lab_date = (datetime.strptime(row['MIN_INTSEC_DATE'],'%Y-%m-%d')-timedelta(days=30)).strftime('%Y-%m-%d')
-    uid_ibase_lab_df = uid_lab_df[(uid_lab_df['DATE'] <= row['MIN_INTSEC_DATE'])&(uid_lab_df['DATE'] > iadm_min_lab_date)].sort_values(['DATE'])
+    ibase_min_lab_date = (datetime.strptime(row['MIN_INTSEC_DATE'],'%Y-%m-%d')-timedelta(days=30)).strftime('%Y-%m-%d')
+    uid_ibase_lab_df = uid_lab_df[(uid_lab_df['DATE'] <= row['MIN_INTSEC_DATE'])&(uid_lab_df['DATE'] > ibase_min_lab_date)].sort_values(['DATE'])
     # uid_ibase_lab_df = uid_lab_df[(uid_lab_df['DATE'] < row['MIN_INTSEC_DATE'])&(uid_lab_df['DATE'] > iadm_min_lab_date)].sort_values(['DATE'])
     uid_iadm_lab_df = uid_lab_df[(uid_lab_df['DATE'] >= row['MIN_INTSEC_DATE'])&(uid_lab_df['DATE'] <= row['MAX_INTSEC_DATE'])].sort_values(['DATE'])
     if len(uid_ibase_lab_df)==0:
@@ -119,16 +156,37 @@ for inx, row in adm_df.iterrows(): #break
     else:
         yes_iadm_lab_uids.append(uid)
 
-
-    bl_row = uid_ibase_lab_df[~uid_ibase_lab_df['Cr'].isna()].iloc[-1]
-    tar_rows = uid_iadm_lab_df[(uid_iadm_lab_df['Cr'] >= (1.5 * bl_row['Cr']))&(uid_iadm_lab_df['Cr'] >= 1.2)].copy()
-    # tar_rows = uid_iadm_lab_df[(uid_iadm_lab_df['Cr'] >= (1.5 * bl_row['Cr']))].copy()
-
-    # try:
-    #     bl_row = uid_ibase_lab_df[~uid_ibase_lab_df['eGFR-Schwartz'].isna()].iloc[-1]
-    # except:
-    #     continue
-    # tar_rows = uid_iadm_lab_df[(uid_iadm_lab_df['eGFR-Schwartz'] < 60)].copy()
+    if endpoint_lab=='Cr':
+        bl_rows = uid_ibase_lab_df[(~uid_ibase_lab_df['Cr'].isna())&(uid_ibase_lab_df['Cr'] < 1.2)]
+        try:
+            bl_row = bl_rows.iloc[-1]
+            # Baseline에서 Cr이 이미 높아지는 경우 제외
+            if (uid_ibase_lab_df[uid_ibase_lab_df['DATE'] > bl_row['DATE']]['Cr'] > 1.2).sum() > 0:
+                continue
+        except:
+            continue
+        tar_rows = uid_iadm_lab_df[(uid_iadm_lab_df['Cr'] >= (1.5 * bl_row['Cr']))&(uid_iadm_lab_df['Cr'] >= 1.2)].copy()
+        # tar_rows = uid_iadm_lab_df[(uid_iadm_lab_df['Cr'] >= (1.5 * bl_row['Cr']))].copy()
+    elif endpoint_lab=='eGFR-Schwartz':
+        bl_rows = uid_ibase_lab_df[(~uid_ibase_lab_df['eGFR-Schwartz'].isna())&(uid_ibase_lab_df['eGFR-Schwartz'] >= 60)]
+        try:
+            bl_row = bl_rows.iloc[-1]
+            # Baseline에서 Cr이 이미 높아지는 경우 제외
+            if (uid_ibase_lab_df[uid_ibase_lab_df['DATE'] > bl_row['DATE']]['eGFR-Schwartz'] < 60).sum() > 0:
+                continue
+        except:
+            continue
+        tar_rows = uid_iadm_lab_df[(uid_iadm_lab_df['eGFR-Schwartz'] < 60)].copy()
+    elif endpoint_lab=='eGFR':
+        bl_rows = uid_ibase_lab_df[(~uid_ibase_lab_df['eGFR'].isna())&(uid_ibase_lab_df['eGFR'] >= 60)]
+        try:
+            bl_row = bl_rows.iloc[-1]
+            # Baseline에서 Cr이 이미 높아지는 경우 제외
+            if (uid_ibase_lab_df[uid_ibase_lab_df['DATE'] > bl_row['DATE']]['eGFR'] < 60).sum() > 0:
+                continue
+        except:
+            continue
+        tar_rows = uid_iadm_lab_df[(uid_iadm_lab_df['eGFR'] < 60)].copy()
 
     intersect_res_dict = {'ADM_TYPE':'INTSEC',
                           'DRUG':'BOTH',
@@ -205,6 +263,12 @@ from lifelines.statistics import logrank_test
 from lifelines import CoxPHFitter
 from lifelines import CoxTimeVaryingFitter
 
+# 로그랭크 검정 (A vs B)
+A = surv_res_df[surv_res_df.group==1]; B = surv_res_df[surv_res_df.group==0]
+results = logrank_test(A["time"], B["time"], event_observed_A=A["event"], event_observed_B=B["event"])
+print(results.summary)
+
+
 
 kmf = KaplanMeierFitter()
 
@@ -229,9 +293,9 @@ for g, gdf in surv_res_df.groupby("group"):
     ax.fill_between(ci_curve.index, lower, upper, step="post", alpha=0.2)
 
 # 서식
-ax.set_title("Cumulative Incidence by Group (with 95% CI)")
+ax.set_title(f"Cumulative Incidence ({endpoint_lab}) by Group (with 95% CI)\nLog-rank test (p={round(results.summary['p'].iloc[0],3)})\nContingency Table: [{table[0][0]},{table[0][1]}]/[{table[1][0]},{table[1][1]}]")
 ax.set_xlabel("Time")
-ax.set_ylabel("Cumulative Incidence")
+ax.set_ylabel(f"Cumulative Incidence ({endpoint_lab})")
 ax.set_ylim(0, max_odds*3)
 ax.grid(True, linestyle="--")
 ax.legend(title="Group")
@@ -291,10 +355,6 @@ plt.show()
 # plt.grid(True, linestyle="--")
 # plt.show()
 
-# 로그랭크 검정 (A vs B)
-A = surv_res_df[surv_res_df.group==1]; B = surv_res_df[surv_res_df.group==0]
-results = logrank_test(A["time"], B["time"], event_observed_A=A["event"], event_observed_B=B["event"])
-print(results.summary)
 
 # Cox 비례위험모형 (정적 공변량) / 예시: 나이(연속), 성별(범주), 군(범주)
 
