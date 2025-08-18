@@ -38,13 +38,13 @@ yes_iadm_lab_uids = list()
 # len(yes_sbase_lab_uids)
 surv_res_df = list()
 
-endpoint_lab = 'Cr'
+# endpoint_lab = 'Cr'
 # endpoint_lab = 'eGFR'
-# endpoint_lab = 'eGFR-Schwartz'
+endpoint_lab = 'eGFR-Schwartz'
 # endpoint_lab = 'eGFR-CKD-EPI'
 # max_time_at_risk = 365 * 99999999999
-max_time_at_risk = 365
-# max_time_at_risk = 180
+# max_time_at_risk = 365
+max_time_at_risk = 180
 for inx, row in adm_df.iterrows(): #break
     uid = row['UID']
     uid_lab_df = lab_df[lab_df['UID']==uid].copy()
