@@ -196,8 +196,6 @@ for drug in ['infliximab','adalimumab']:
 
         modeling_df = pd.concat([modeling_df,pd_marker_df], axis=1).reset_index(drop=True)
 
-
-
         ## Covariates의 NA value 처리 (ffill 먼저 시도, 없으면 bfill, 그것도 없으면 전체의 median 값)
 
         # md_df_list = list()
