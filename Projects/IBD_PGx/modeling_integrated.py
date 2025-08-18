@@ -116,7 +116,9 @@ ind_df = list()
 no_indconc_df = list()
 no_indid_df = list()
 no_maintid_df = list()
-for inx, row in maint_cons_df.iterrows():
+for inx, row in maint_cons_df.iterrows(): #break
+    # if row['ID']==34665842:
+        # raise ValueError
     # if inx
     # break
     start_date = row['IND_START_DATE']
