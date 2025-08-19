@@ -87,6 +87,8 @@ maint_cons_df = comp_df[comp_df['MIN_DOSE_DATE']==comp_df['IND_START_DATE']].res
 maint_diff_df = comp_df[comp_df['MIN_DOSE_DATE']!=comp_df['IND_START_DATE']].reset_index(drop=True)
 
 
+# maint_diff_df[maint_diff_df['ID']==29702679]  # Adalimumab 먼저 사용한 케이스
+# maint_cons_df[maint_cons_df['ID']==24590129]  # Adalimumab 먼저 사용한 케이스
 
 # merged_df[merged_df['DRUG']=='infliximab']
 
@@ -117,8 +119,9 @@ no_indconc_df = list()
 no_indid_df = list()
 no_maintid_df = list()
 for inx, row in maint_cons_df.iterrows(): #break
-    # if row['ID']==34665842:
-        # raise ValueError
+    # if row['ID']==24590129:
+    #     raise ValueError
+
     # if inx
     # break
     start_date = row['IND_START_DATE']
@@ -175,13 +178,15 @@ for inx, row in maint_cons_df.iterrows(): #break
             ind_df_frag_list.append(pd.concat([nodup_df_frag, dupdv_df_frag, dupmdv_df_frag]))
 
         ind_df_frag = pd.concat(ind_df_frag_list).drop_duplicates(['ID','DATETIME']).sort_values(['ID','DATETIME'], ignore_index=True)
-    zero_conc_row = ind_df_frag.iloc[:1,:].copy()
-    zero_conc_row['DV'] = 0.0
-    zero_conc_row['MDV'] = 0
-    zero_conc_row['AMT'] = '.'
-    zero_conc_row['DUR'] = '.'
-    zero_conc_row['ROUTE'] = '.'
-    ind_df_frag = pd.concat([zero_conc_row, ind_df_frag]).sort_values(['ID','DATETIME'], ignore_index=True)
+
+    for drug_inx, drug in enumerate(ind_df_frag['DRUG'].drop_duplicates()):
+        zero_conc_row = ind_df_frag[ind_df_frag['DRUG']==drug].iloc[:1,:].copy()
+        zero_conc_row['DV'] = 0.0
+        zero_conc_row['MDV'] = 0
+        zero_conc_row['AMT'] = '.'
+        zero_conc_row['DUR'] = '.'
+        zero_conc_row['ROUTE'] = '.'
+        ind_df_frag = pd.concat([zero_conc_row, ind_df_frag]).sort_values(['ID','DATETIME'], ignore_index=True)
 
     # if row['ID']==11788526:
     #     bef_df = ind_df_frag.iloc[:4,:].copy()
@@ -210,6 +215,10 @@ ind_uniq_df = ind_df.drop_duplicates(['UID'])
 maint_df = list()
 no_maintconc_df = list()
 for inx, row in maint_diff_df.iterrows():
+
+    # if row['ID']==29702679:
+    #     raise ValueError
+
     # if inx
     # break
     # start_date = row['IND_START_DATE']
@@ -275,6 +284,22 @@ for inx, row in maint_diff_df.iterrows():
                 maint_df_frag_list.append(pd.concat([nodup_df_frag, dupdv_df_frag]))
 
         maint_df_frag = pd.concat(maint_df_frag_list).drop_duplicates(['ID','DATETIME']).sort_values(['ID','DATETIME'], ignore_index=True)
+
+    # if row['ID']==29702679:
+    #     raise ValueError
+
+    for drug_inx, drug in enumerate(id_df['DRUG'].drop_duplicates()): #break
+        if drug_inx==0:
+            continue
+        else:
+            zero_conc_row = maint_df_frag[maint_df_frag['DRUG'] == drug].iloc[:1, :].copy()
+            zero_conc_row['DV'] = 0.0
+            zero_conc_row['MDV'] = 0
+            zero_conc_row['AMT'] = '.'
+            zero_conc_row['DUR'] = '.'
+            zero_conc_row['ROUTE'] = '.'
+            maint_df_frag = pd.concat([zero_conc_row, maint_df_frag]).sort_values(['ID', 'DATETIME'], ignore_index=True)
+
         # zero_conc_row = ind_df_frag.iloc[:1,:].copy()
         # zero_conc_row['DV'] = 0.0
         # zero_conc_row['MDV'] = '.'
@@ -330,59 +355,76 @@ else:
 # pd.concat([inf_ind_df, inf_maint_df])['UID'].drop_duplicates().reset_index(drop=True)
 # pd.concat([ada_ind_df, ada_maint_df])['UID'].drop_duplicates().reset_index(drop=True)
 
-inf_ind_df = ind_df[ind_df['DRUG']=='infliximab'].copy()
-ada_ind_df = ind_df[ind_df['DRUG']=='adalimumab'].copy()
+drug_df_dict = dict()
+modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','DATETIME','IBD_TYPE','UID','NAME','ROUTE','DRUG']
 
-inf_maint_df = maint_df[maint_df['DRUG']=='infliximab'].sort_values(['UID','DATETIME'], ignore_index=True)
-ada_maint_df = maint_df[maint_df['DRUG']=='adalimumab'].sort_values(['UID','DATETIME'], ignore_index=True)
+for drug in set(ind_df['DRUG']).union(set(maint_df['DRUG'])):
+    # drug_df_dict[drug]
+    drug_ind_df = ind_df[ind_df['DRUG']==drug].copy()
+    drug_maint_df = maint_df[maint_df['DRUG'] == drug].sort_values(['UID', 'DATETIME'], ignore_index=True)
+    drug_df = pd.concat([drug_ind_df, drug_maint_df]).sort_values(['UID','DATETIME'], ignore_index=True)
+    drug_df['ID'] = drug_df['UID'].map({uid: uid_inx for uid_inx, uid in enumerate(list(drug_df['UID'].unique()))})
+    drug_df = drug_df[modeling_cols].sort_values(['ID','TIME','MDV'])
 
-inf_df = pd.concat([inf_ind_df, inf_maint_df]).sort_values(['UID','DATETIME'], ignore_index=True)
-ada_df = pd.concat([ada_ind_df, ada_maint_df]).sort_values(['UID','DATETIME'], ignore_index=True)
+    ## 약물별로 TIME==0 시작 아닌 경우 0으로 초기화 (e.g. adalimumab -> infliximab -> ustekinumab 으로 사용시 infliximab과 ustekinumab은 TIME!=0 인 상태임)
 
-inf_df['ID'] = inf_df['UID'].map({uid:uid_inx for uid_inx, uid in enumerate(list(inf_df['UID'].unique()))})
-ada_df['ID'] = ada_df['UID'].map({uid:uid_inx for uid_inx, uid in enumerate(list(ada_df['UID'].unique()))})
+    drug_nztime_df = drug_df.groupby('UID', as_index=False)['TIME'].min()
+    drug_nztime_df = drug_nztime_df[drug_nztime_df['TIME'] != 0].copy()
+    for nzt_inx, nzt_row in drug_nztime_df.iterrows():
+        uid = nzt_row['UID']
+        start_time = nzt_row['TIME']
+        drug_rest_of_uids_df = drug_df[~(drug_df['UID'] == uid)].copy()
+        drug_uid_df = drug_df[(drug_df['UID'] == uid)].copy()
+        drug_uid_df['TIME'] = drug_uid_df['TIME'] - start_time
+        drug_df = pd.concat([drug_rest_of_uids_df, drug_uid_df])
 
-ind_modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','DATETIME','IBD_TYPE','UID','NAME','ROUTE','DRUG']
-inf_df = inf_df[ind_modeling_cols].sort_values(['ID','TIME','MDV'])
-ada_df = ada_df[ind_modeling_cols].sort_values(['ID','TIME','MDV'])
+    ## SC 자가투약 된 것 투약력 정리
+
+    drug_dose_df = pd.read_csv(f'{output_dir}/dose_df.csv')
+    drug_dose_df = drug_dose_df[drug_dose_df['DRUG'] == drug].rename(columns={'ID': 'UID'})
+    drug_dose_df['ETC_INFO_TREATED'] = drug_dose_df['ETC_INFO_TREATED'].replace(np.nan, '')
+    drug_dose_df['ADDED_ADDL'] = drug_dose_df['ETC_INFO_TREATED'].map(lambda x: 'ADDL반영' in x)
+    drug_df = drug_df.merge(drug_dose_df[['UID', 'DATETIME', 'ADDED_ADDL']], on=['UID', 'DATETIME'], how='left')
+    drug_df['ADDED_ADDL'] = drug_df['ADDED_ADDL'].replace(np.nan, False)
+
+    drug_del_df = drug_df[(drug_df['MDV'] == 1)].sort_values(['ID', 'TIME'])
+    drug_del_df = drug_del_df[(drug_del_df['TIME'].diff() > 0) & (drug_del_df['TIME'].diff() <= 9 * 24) & (drug_del_df['ADDED_ADDL'])].copy()
+    drug_df = drug_df[~drug_df.index.isin(drug_del_df.index)].copy()
 
 
-## SC 자가투약 된 것 투약력 정리
-inf_dose_df = pd.read_csv(f'{output_dir}/dose_df.csv')
-inf_dose_df = inf_dose_df[inf_dose_df['DRUG']=='infliximab'].rename(columns={'ID':'UID'})
-inf_dose_df['ETC_INFO_TREATED'] = inf_dose_df['ETC_INFO_TREATED'].replace(np.nan,'')
-inf_dose_df['ADDED_ADDL'] = inf_dose_df['ETC_INFO_TREATED'].map(lambda x: 'ADDL반영' in x)
-inf_df = inf_df.merge(inf_dose_df[['UID','DATETIME','ADDED_ADDL']], on=['UID','DATETIME'], how='left')
-inf_df['ADDED_ADDL'] = inf_df['ADDED_ADDL'].replace(np.nan, False)
+    # drug_dv_exists_pids = drug_df[(drug_df['TIME']!=0)&(drug_df['DV']!=0)&(drug_df['MDV']!=1)].copy()
+    # drug_dv_exists_pids = drug_dv_exists_pids.groupby('UID',as_index=False).agg({'UID':'max','DV':'count'})['UID']
+    # drug_no_indconc = set(drug_df[(drug_df['TIME']==0)&(drug_df['DV']==0)&(drug_df['MDV']!=1)].copy()['UID'])-set(drug_dv_exists_pids)
 
+    ## CONC측정이 근처 투여 시간 이후인 경우 투약시간 재조정
 
-inf_del_df = inf_df[(inf_df['MDV']==1)].sort_values(['ID','TIME'])
-inf_del_df = inf_del_df[(inf_del_df['TIME'].diff() > 0)&(inf_del_df['TIME'].diff() <= 9*24) & (inf_del_df['ADDED_ADDL'])].copy()
-inf_df = inf_df[~inf_df.index.isin(inf_del_df.index)].copy()
+    drug_conc_first_rows = drug_df[(drug_df['ID'] == (drug_df['ID'].shift(1))) & (drug_df['TIME'] != 0) & (drug_df['MDV'] == 0) & (drug_df['TIME'].diff(1).map(np.abs) < 120) & (drug_df['TIME'].diff(1).map(np.abs) > 0)].copy()
 
+    for inx, row in drug_conc_first_rows.iterrows():
+        near_dinx = inx - 1
 
+        # if (inf_df.at[inx, 'ID']==inf_df.at[near_dinx,'ID']):
+        # 근처 Dosing된 포인트가 SC 추가투여로 구성한 데이터일때
+        if drug_df.at[near_dinx, 'ADDED_ADDL']:
+            drug_df.at[near_dinx, 'TIME'] = row['TIME'] + 0.5
+            drug_df.at[near_dinx, 'DATETIME'] = (datetime.strptime(row['DATETIME'], '%Y-%m-%dT%H:%M') + timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
+        else:
+            # 근처 Dosing 날짜와 같은 날짜이긴 할때
+            drug_df.at[inx, 'TIME'] = drug_df.at[near_dinx, 'TIME'] - 0.5
+            drug_df.at[inx, 'DATETIME'] = (datetime.strptime(drug_df.at[near_dinx, 'DATETIME'], '%Y-%m-%dT%H:%M') - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
 
-ada_dose_df = pd.read_csv(f'{output_dir}/dose_df.csv')
-ada_dose_df = ada_dose_df[ada_dose_df['DRUG']=='adalimumab'].rename(columns={'ID':'UID'})
-ada_dose_df['ETC_INFO_TREATED'] = ada_dose_df['ETC_INFO_TREATED'].replace(np.nan,'')
-ada_dose_df['ADDED_ADDL'] = ada_dose_df['ETC_INFO_TREATED'].map(lambda x: 'ADDL반영' in x)
-ada_df = ada_df.merge(ada_dose_df[['UID','DATETIME','ADDED_ADDL']], on=['UID','DATETIME'], how='left')
-ada_df['ADDED_ADDL'] = ada_df['ADDED_ADDL'].replace(np.nan, False)
+    drug_df = drug_df.sort_values(['ID', 'TIME', 'MDV'], ignore_index=True)
+    drug_df['TIME(DAY)'] = drug_df['TIME'] / 24
+    drug_df['TIME(WEEK)'] = drug_df['TIME'] / (7 * 24)
 
-ada_del_df = ada_df[(ada_df['MDV']==1)].sort_values(['ID','TIME'])
-ada_del_df = ada_del_df[(ada_del_df['TIME'].diff() > 0)&(ada_del_df['TIME'].diff() <= 9*24) & (ada_del_df['ADDED_ADDL'])].copy()
-ada_df = ada_df[~ada_df.index.isin(ada_del_df.index)].copy()
+    ## 저장
+    if not os.path.exists(f'{output_dir}/modeling_df_datacheck'):
+        os.mkdir(f'{output_dir}/modeling_df_datacheck')
+    drug_df.to_csv(f'{output_dir}/modeling_df_datacheck/{drug}_integrated_datacheck.csv', index=False, encoding='utf-8-sig')
 
-## TIME==0 일때 CONC==0 만 DV로 가지고 있는 경우 제외
-# set(inf_df[(inf_df['TIME']==0)&(inf_df['DV']==0)].drop_duplicates('UID')['UID']) - set(inf_df[(inf_df['TIME']==0)&(inf_df['DV']==0)].drop_duplicates('UID',keep=False)['UID'])
+    print(f"[{drug}] modeling df / {len(drug_df)} rows")
 
-# 34665842 -> TIME=0 일때 DV=0 두 번 들어감. 확인필요 !!!!!####################
-
-inf_dv_exists_pids = inf_df[(inf_df['TIME']!=0)&(inf_df['DV']!=0)&(inf_df['MDV']!=1)].copy()
-inf_dv_exists_pids = inf_dv_exists_pids.groupby('UID',as_index=False).agg({'UID':'max','DV':'count'})['UID']
-inf_no_indconc = set(inf_df[(inf_df['TIME']==0)&(inf_df['DV']==0)&(inf_df['MDV']!=1)].copy()['UID'])-set(inf_dv_exists_pids)
-
-print(f"# 총 환자 수: 140")
+print(f"\n# 총 환자 수: 140")
 print(f"# Induction 시작시점 일치: {len(maint_cons_df)} (Infliximab: {len(maint_cons_df[maint_cons_df['DRUG']=='infliximab'])} / Adalimumab: {len(maint_cons_df[maint_cons_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(maint_cons_df[maint_cons_df['DRUG']=='ustekinumab'])}) ")
 print(f"# Induction 시작시점 불일치: {len(maint_diff_df)} (Infliximab: {len(maint_diff_df[maint_diff_df['DRUG']=='infliximab'])} / Adalimumab: {len(maint_diff_df[maint_diff_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(maint_diff_df[maint_diff_df['DRUG']=='ustekinumab'])}) ")
 # print(f"# No conc in Induction 시작시점 일치: {len(no_indconc_df)}")
@@ -395,56 +437,134 @@ print(f"# No conc in Maintenance: {len(no_maintconc_df)} (Infliximab: {len(no_ma
 
 
 
-
-
-# no_dv.columns
-## CONC측정이 근처 투여 시간 이후인 경우 투약시간 재조정
-
-inf_conc_first_rows = inf_df[(inf_df['ID']==(inf_df['ID'].shift(1)))&(inf_df['TIME']!=0)&(inf_df['MDV']==0)&(inf_df['TIME'].diff(1).map(np.abs) < 120)&(inf_df['TIME'].diff(1).map(np.abs) > 0)].copy()
-ada_conc_first_rows = ada_df[(ada_df['ID']==(ada_df['ID'].shift(1)))&(ada_df['TIME']!=0)&(ada_df['MDV']==0)&(ada_df['TIME'].diff(1).map(np.abs) < 120)&(ada_df['TIME'].diff(1).map(np.abs) > 0)].copy()
-
-for inx, row in inf_conc_first_rows.iterrows():
-    near_dinx = inx-1
-
-    # if (inf_df.at[inx, 'ID']==inf_df.at[near_dinx,'ID']):
-        # 근처 Dosing된 포인트가 SC 추가투여로 구성한 데이터일때
-    if inf_df.at[near_dinx, 'ADDED_ADDL']:
-        inf_df.at[near_dinx, 'TIME'] = row['TIME'] + 0.5
-        inf_df.at[near_dinx,'DATETIME'] = (datetime.strptime(row['DATETIME'], '%Y-%m-%dT%H:%M') + timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
-    else:
-        # 근처 Dosing 날짜와 같은 날짜이긴 할때
-        inf_df.at[inx, 'TIME'] = inf_df.at[near_dinx, 'TIME'] - 0.5
-        inf_df.at[inx, 'DATETIME'] = (datetime.strptime(inf_df.at[near_dinx, 'DATETIME'], '%Y-%m-%dT%H:%M') - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
-
-# inf_df['UID'].drop_duplicates()
-
-for inx, row in ada_conc_first_rows.iterrows():
-    near_dinx = inx-1
-
-    # if (inf_df.at[inx, 'ID']==inf_df.at[near_dinx,'ID']):
-        # 근처 Dosing된 포인트가 SC 추가투여로 구성한 데이터일때
-    if ada_df.at[near_dinx, 'ADDED_ADDL']:
-        ada_df.at[near_dinx, 'TIME'] = row['TIME'] + 0.5
-        ada_df.at[near_dinx,'DATETIME'] = (datetime.strptime(row['DATETIME'], '%Y-%m-%dT%H:%M') + timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
-    else:
-        # 근처 Dosing 날짜와 같은 날짜이긴 할때
-        ada_df.at[inx, 'TIME'] = ada_df.at[near_dinx, 'TIME'] - 0.5
-        ada_df.at[inx, 'DATETIME'] = (datetime.strptime(ada_df.at[near_dinx, 'DATETIME'], '%Y-%m-%dT%H:%M') - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
-
-# inf_df['UID'].drop_duplicates()
-
-inf_df = inf_df.sort_values(['ID','TIME','MDV'],ignore_index=True)
-ada_df = ada_df.sort_values(['ID','TIME','MDV'],ignore_index=True)
-
-inf_df['TIME(DAY)'] = inf_df['TIME']/24
-ada_df['TIME(DAY)'] = ada_df['TIME']/24
-
-inf_df['TIME(WEEK)'] = inf_df['TIME']/(7*24)
-ada_df['TIME(WEEK)'] = ada_df['TIME']/(7*24)
-
-## 저장
-inf_df.to_csv(f'{output_dir}/infliximab_integrated_datacheck.csv',index=False, encoding='utf-8-sig')
-ada_df.to_csv(f'{output_dir}/adalimumab_integrated_datacheck.csv',index=False, encoding='utf-8-sig')
+# ################ 레거시 코드 ##############
+#
+# inf_ind_df = ind_df[ind_df['DRUG']=='infliximab'].copy()
+# ada_ind_df = ind_df[ind_df['DRUG']=='adalimumab'].copy()
+#
+# inf_maint_df = maint_df[maint_df['DRUG']=='infliximab'].sort_values(['UID','DATETIME'], ignore_index=True)
+# ada_maint_df = maint_df[maint_df['DRUG']=='adalimumab'].sort_values(['UID','DATETIME'], ignore_index=True)
+#
+# inf_df = pd.concat([inf_ind_df, inf_maint_df]).sort_values(['UID','DATETIME'], ignore_index=True)
+# ada_df = pd.concat([ada_ind_df, ada_maint_df]).sort_values(['UID','DATETIME'], ignore_index=True)
+#
+# inf_df['ID'] = inf_df['UID'].map({uid:uid_inx for uid_inx, uid in enumerate(list(inf_df['UID'].unique()))})
+# ada_df['ID'] = ada_df['UID'].map({uid:uid_inx for uid_inx, uid in enumerate(list(ada_df['UID'].unique()))})
+#
+#
+# inf_df = inf_df[modeling_cols].sort_values(['ID','TIME','MDV'])
+# ada_df = ada_df[modeling_cols].sort_values(['ID','TIME','MDV'])
+#
+# ## 약물별로 TIME==0 시작 아닌 경우 0으로 초기화 (e.g. adalimumab -> infliximab -> ustekinumab 으로 사용시 infliximab과 ustekinumab은 TIME!=0 인 상태임)
+#
+# inf_nztime_df = inf_df.groupby('UID',as_index=False)['TIME'].min()
+# inf_nztime_df = inf_nztime_df[inf_nztime_df['TIME']!=0].copy()
+# for nzt_inx, nzt_row in inf_nztime_df.iterrows():
+#     uid = nzt_row['UID']
+#     start_time = nzt_row['TIME']
+#     inf_rest_of_uids_df = inf_df[~(inf_df['UID']==uid)].copy()
+#     inf_uid_df = inf_df[(inf_df['UID']==uid)].copy()
+#     inf_uid_df['TIME']=inf_uid_df['TIME'] - start_time
+#     inf_df = pd.concat([inf_rest_of_uids_df , inf_uid_df])
+#
+# ## SC 자가투약 된 것 투약력 정리
+# inf_dose_df = pd.read_csv(f'{output_dir}/dose_df.csv')
+# inf_dose_df = inf_dose_df[inf_dose_df['DRUG']=='infliximab'].rename(columns={'ID':'UID'})
+# inf_dose_df['ETC_INFO_TREATED'] = inf_dose_df['ETC_INFO_TREATED'].replace(np.nan,'')
+# inf_dose_df['ADDED_ADDL'] = inf_dose_df['ETC_INFO_TREATED'].map(lambda x: 'ADDL반영' in x)
+# inf_df = inf_df.merge(inf_dose_df[['UID','DATETIME','ADDED_ADDL']], on=['UID','DATETIME'], how='left')
+# inf_df['ADDED_ADDL'] = inf_df['ADDED_ADDL'].replace(np.nan, False)
+#
+#
+# inf_del_df = inf_df[(inf_df['MDV']==1)].sort_values(['ID','TIME'])
+# inf_del_df = inf_del_df[(inf_del_df['TIME'].diff() > 0)&(inf_del_df['TIME'].diff() <= 9*24) & (inf_del_df['ADDED_ADDL'])].copy()
+# inf_df = inf_df[~inf_df.index.isin(inf_del_df.index)].copy()
+#
+#
+#
+# ada_dose_df = pd.read_csv(f'{output_dir}/dose_df.csv')
+# ada_dose_df = ada_dose_df[ada_dose_df['DRUG']=='adalimumab'].rename(columns={'ID':'UID'})
+# ada_dose_df['ETC_INFO_TREATED'] = ada_dose_df['ETC_INFO_TREATED'].replace(np.nan,'')
+# ada_dose_df['ADDED_ADDL'] = ada_dose_df['ETC_INFO_TREATED'].map(lambda x: 'ADDL반영' in x)
+# ada_df = ada_df.merge(ada_dose_df[['UID','DATETIME','ADDED_ADDL']], on=['UID','DATETIME'], how='left')
+# ada_df['ADDED_ADDL'] = ada_df['ADDED_ADDL'].replace(np.nan, False)
+#
+# ada_del_df = ada_df[(ada_df['MDV']==1)].sort_values(['ID','TIME'])
+# ada_del_df = ada_del_df[(ada_del_df['TIME'].diff() > 0)&(ada_del_df['TIME'].diff() <= 9*24) & (ada_del_df['ADDED_ADDL'])].copy()
+# ada_df = ada_df[~ada_df.index.isin(ada_del_df.index)].copy()
+#
+# ## TIME==0 일때 CONC==0 만 DV로 가지고 있는 경우 제외
+# # set(inf_df[(inf_df['TIME']==0)&(inf_df['DV']==0)].drop_duplicates('UID')['UID']) - set(inf_df[(inf_df['TIME']==0)&(inf_df['DV']==0)].drop_duplicates('UID',keep=False)['UID'])
+#
+# # 34665842 -> TIME=0 일때 DV=0 두 번 들어감. 확인필요 !!!!!####################
+#
+# inf_dv_exists_pids = inf_df[(inf_df['TIME']!=0)&(inf_df['DV']!=0)&(inf_df['MDV']!=1)].copy()
+# inf_dv_exists_pids = inf_dv_exists_pids.groupby('UID',as_index=False).agg({'UID':'max','DV':'count'})['UID']
+# inf_no_indconc = set(inf_df[(inf_df['TIME']==0)&(inf_df['DV']==0)&(inf_df['MDV']!=1)].copy()['UID'])-set(inf_dv_exists_pids)
+#
+# print(f"# 총 환자 수: 140")
+# print(f"# Induction 시작시점 일치: {len(maint_cons_df)} (Infliximab: {len(maint_cons_df[maint_cons_df['DRUG']=='infliximab'])} / Adalimumab: {len(maint_cons_df[maint_cons_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(maint_cons_df[maint_cons_df['DRUG']=='ustekinumab'])}) ")
+# print(f"# Induction 시작시점 불일치: {len(maint_diff_df)} (Infliximab: {len(maint_diff_df[maint_diff_df['DRUG']=='infliximab'])} / Adalimumab: {len(maint_diff_df[maint_diff_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(maint_diff_df[maint_diff_df['DRUG']=='ustekinumab'])}) ")
+# # print(f"# No conc in Induction 시작시점 일치: {len(no_indconc_df)}")
+#
+# # print(f"# Induction 시작시점 불일치: {len(maint_diff_df)} (Infliximab: {len(maint_diff_df[maint_diff_df['DRUG']=='infliximab'])} / Adalimumab: {len(maint_diff_df[maint_diff_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(maint_diff_df[maint_diff_df['DRUG']=='ustekinumab'])}) ")
+# # print(f"# No conc in Induction: {len(inf_no_indconc)} (Infliximab: {len(inf_df[(inf_df.isin(inf_no_indconc))&(inf_df['DRUG']=='infliximab')]['UID'].drop_duplicates()} / Adalimumab: {len(inf_no_indconc[inf_no_indconc['DRUG']=='adalimumab'])} / Ustekinumab: {len(inf_no_indconc[inf_no_indconc['DRUG']=='ustekinumab'])}) ")
+# print(f"# No conc in Maintenance: {len(no_maintconc_df)} (Infliximab: {len(no_maintconc_df[no_maintconc_df['DRUG']=='infliximab'])} / Adalimumab: {len(no_maintconc_df[no_maintconc_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(no_maintconc_df[no_maintconc_df['DRUG']=='ustekinumab'])}) ")
+# # raise ValueError
+# # inf_df = inf_df[inf_df['UID'].isin(inf_dv_exists_pids)].reset_index(drop=True)
+#
+#
+#
+#
+#
+# # no_dv.columns
+# ## CONC측정이 근처 투여 시간 이후인 경우 투약시간 재조정
+#
+# inf_conc_first_rows = inf_df[(inf_df['ID']==(inf_df['ID'].shift(1)))&(inf_df['TIME']!=0)&(inf_df['MDV']==0)&(inf_df['TIME'].diff(1).map(np.abs) < 120)&(inf_df['TIME'].diff(1).map(np.abs) > 0)].copy()
+# ada_conc_first_rows = ada_df[(ada_df['ID']==(ada_df['ID'].shift(1)))&(ada_df['TIME']!=0)&(ada_df['MDV']==0)&(ada_df['TIME'].diff(1).map(np.abs) < 120)&(ada_df['TIME'].diff(1).map(np.abs) > 0)].copy()
+#
+# for inx, row in inf_conc_first_rows.iterrows():
+#     near_dinx = inx-1
+#
+#     # if (inf_df.at[inx, 'ID']==inf_df.at[near_dinx,'ID']):
+#         # 근처 Dosing된 포인트가 SC 추가투여로 구성한 데이터일때
+#     if inf_df.at[near_dinx, 'ADDED_ADDL']:
+#         inf_df.at[near_dinx, 'TIME'] = row['TIME'] + 0.5
+#         inf_df.at[near_dinx,'DATETIME'] = (datetime.strptime(row['DATETIME'], '%Y-%m-%dT%H:%M') + timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
+#     else:
+#         # 근처 Dosing 날짜와 같은 날짜이긴 할때
+#         inf_df.at[inx, 'TIME'] = inf_df.at[near_dinx, 'TIME'] - 0.5
+#         inf_df.at[inx, 'DATETIME'] = (datetime.strptime(inf_df.at[near_dinx, 'DATETIME'], '%Y-%m-%dT%H:%M') - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
+#
+# # inf_df['UID'].drop_duplicates()
+#
+# for inx, row in ada_conc_first_rows.iterrows():
+#     near_dinx = inx-1
+#
+#     # if (inf_df.at[inx, 'ID']==inf_df.at[near_dinx,'ID']):
+#         # 근처 Dosing된 포인트가 SC 추가투여로 구성한 데이터일때
+#     if ada_df.at[near_dinx, 'ADDED_ADDL']:
+#         ada_df.at[near_dinx, 'TIME'] = row['TIME'] + 0.5
+#         ada_df.at[near_dinx,'DATETIME'] = (datetime.strptime(row['DATETIME'], '%Y-%m-%dT%H:%M') + timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
+#     else:
+#         # 근처 Dosing 날짜와 같은 날짜이긴 할때
+#         ada_df.at[inx, 'TIME'] = ada_df.at[near_dinx, 'TIME'] - 0.5
+#         ada_df.at[inx, 'DATETIME'] = (datetime.strptime(ada_df.at[near_dinx, 'DATETIME'], '%Y-%m-%dT%H:%M') - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
+#
+# # inf_df['UID'].drop_duplicates()
+#
+# inf_df = inf_df.sort_values(['ID','TIME','MDV'],ignore_index=True)
+# ada_df = ada_df.sort_values(['ID','TIME','MDV'],ignore_index=True)
+#
+# inf_df['TIME(DAY)'] = inf_df['TIME']/24
+# ada_df['TIME(DAY)'] = ada_df['TIME']/24
+#
+# inf_df['TIME(WEEK)'] = inf_df['TIME']/(7*24)
+# ada_df['TIME(WEEK)'] = ada_df['TIME']/(7*24)
+#
+# ## 저장
+# inf_df.to_csv(f'{output_dir}/infliximab_integrated_datacheck.csv',index=False, encoding='utf-8-sig')
+# ada_df.to_csv(f'{output_dir}/adalimumab_integrated_datacheck.csv',index=False, encoding='utf-8-sig')
 
 # ind_modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','IBD_TYPE']
 # inf_df['IBD_TYPE'] = inf_df['IBD_TYPE'].map({'CD':1,'UC':2})
