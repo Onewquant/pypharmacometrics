@@ -1,3 +1,5 @@
+## 시간에 따른 개별 농도 및 PD 경향성 그려보기
+
 from tools import *
 from pynca.tools import *
 from datetime import datetime, timedelta
@@ -11,18 +13,27 @@ nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
 ## DEMO Covariates Loading
 
 # simulation_df = pd.read_csv(f"{output_dir}/infliximab_integrated_modeling_df_dayscale.csv")
-simulation_df = pd.read_csv(f"{output_dir}/infliximab_integrated_pdeda_df_dayscale.csv")
+simulation_df = pd.read_csv(f"{output_dir}/modeling_df_covar/infliximab_integrated_pdeda_df_dayscale.csv")
 # simulation_df['TIME_DIFF'] = simulation_df['TIME'].diff()
 # simulation_df[simulation_df['TIME_DIFF']>0]['TIME_DIFF'].sort_values()
 # interval = 3/24
 interval = 1
 for_sim_df = get_model_population_sim_df(df=simulation_df, interval=interval, add_on_period=0)
-for_sim_df.to_csv(f"{output_dir}/infliximab_integrated_simulation_df.csv",index=False, encoding='utf-8-sig')
+# for_sim_df = for_sim_df[for_sim_df['PD_CALPRTSTL'].isna()].replace(np.nan,'.')
+for_sim_df = for_sim_df.replace(np.nan,'.')
 
+# for_sim_df = for_sim_df[['ID', 'TIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'ROUTE', 'IBD_TYPE', 'ALB', 'ADA', 'AGE', 'SEX', 'WT', 'HT', 'BMI', 'REALDATA']].copy()
+for_sim_df = for_sim_df[['ID', 'TIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'ROUTE', 'IBD_TYPE', 'ALB', 'ADA', 'AGE', 'SEX', 'WT', 'HT', 'BMI', 'PD_INDEXISTS', 'PD_PRO2', 'PD_PRO2_DELT', 'PD_PRO2_A4MO', 'PD_PRO2_A1YR', 'PD_CR', 'PD_CR_DELT', 'PD_CR_A4MO', 'PD_CR_A1YR', 'PD_CRP', 'PD_CRP_DELT', 'PD_CRP_A4MO', 'PD_CRP_A1YR', 'PD_CALPRTSTL', 'PD_CALPRTSTL_DELT', 'PD_CALPRTSTL_A4MO', 'PD_CALPRTSTL_A1YR','REALDATA', 'RATE', 'TAD']].copy()
+# for_sim_df = for_sim_df[['ID', 'TIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'ROUTE', 'IBD_TYPE', 'ALB', 'ADA', 'AGE', 'SEX', 'WT', 'HT', 'BMI', 'PD_CRP', 'PD_CALPRTSTL','PD_PRO2', 'REALDATA', 'RATE', 'TAD']].copy()
+for_sim_df.to_csv(f"{output_dir}/modeling_df_covar/infliximab_integrated_simulation_df.csv",index=False, encoding='utf-8-sig')
+
+# for_sim_df.columns
 # str(for_sim_df.columns).replace("', '"," ").replace("',\n       '"," ")
-final_sim_df = pd.read_csv(f"{nonmem_dir}/run/sim57",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
+# final_sim_df = pd.read_csv(f"{nonmem_dir}/run/sim57",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
+final_sim_df = pd.read_csv(f"{nonmem_dir}/run/sim60",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
 realworld_df = simulation_df[simulation_df['MDV']==0].copy()
 # final_sim_df['IPRED']
+# final_sim_df['DV']
 # final_sim_df.columns
 ibd_type_dict = {1:'CD',2:'UC'}
 for uid, id_sim_df in final_sim_df.groupby('ID'): #break
@@ -31,7 +42,7 @@ for uid, id_sim_df in final_sim_df.groupby('ID'): #break
     #
     # gdf[(gdf['REALDATA']==1)&(gdf['AMT']==0)]
 
-    gdf = id_sim_df[id_sim_df['MDV']==0][['ID', 'TIME', 'DV', 'IPRED', 'AMT', 'IBD_TYPE', 'CALPRTSTL','CRP', 'PD_PRO2', 'REALDATA']].copy()
+    gdf = id_sim_df[id_sim_df['MDV']==0][['ID', 'TIME', 'DV', 'IPRED', 'AMT', 'IBD_TYPE', 'PD_CALPRTSTL','PD_CRP', 'PD_PRO2', 'REALDATA']].copy()
     adf = id_sim_df[id_sim_df['MDV']==1][['ID', 'TIME', 'DV', 'IPRED', 'AMT', 'IBD_TYPE', 'ROUTE', 'REALDATA']].copy()
     adf['ROUTE'] = adf['ROUTE'].map({1.0:'IV',2.0:'SC'})
     adf['AMT'] = adf['AMT'].astype(int).astype(str)
@@ -54,8 +65,8 @@ for uid, id_sim_df in final_sim_df.groupby('ID'): #break
     sns.scatterplot(data=rdf, x='TIME', y='DV', ax=ax1, color='red', s=50, marker='o')
 
     # 첫 번째 그래프: TIME vs DV
-    # y_col = 'IPRED'
-    y_col = 'DV'
+    y_col = 'IPRED'
+    # y_col = 'DV'
 
     sns.lineplot(data=gdf, x='TIME', y=y_col, ax=ax1, color='steelblue')
     # sns.lineplot(data=gdf, x='TIME', y='DV', ax=ax1, color='steelblue')
@@ -97,7 +108,7 @@ for uid, id_sim_df in final_sim_df.groupby('ID'): #break
 
     # 두 번째 그래프: CRP (오른쪽 y축)
     ax2_right = ax2.twinx()
-    sns.lineplot(data=gdf, x='TIME', y='CRP', ax=ax2_right, color='green', label='CRP')
+    sns.lineplot(data=gdf, x='TIME', y='PD_CRP', ax=ax2_right, color='green', label='CRP')
     ax2_right.set_ylabel("CRP")
 
     # 범례를 하나로 합치기 (ax2와 ax2_right)

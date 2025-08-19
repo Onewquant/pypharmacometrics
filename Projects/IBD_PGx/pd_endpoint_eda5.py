@@ -77,7 +77,7 @@ final_sim_df = pd.concat(sim_df_list, ignore_index=True)
 
 
 # sim_conc_df['DOSING_INTERVAL'].min()
-
+# final_sim_df[final_sim_df['ID']==1]['REALDATA']
 sim_conc_df = final_sim_df[(final_sim_df['TIME']!=0)&(final_sim_df['MDV']==0)&(final_sim_df['REALDATA']==1)].copy()
 sim_conc_df['DAILY_DOSE'] = sim_conc_df['AMT']/sim_conc_df['DOSING_INTERVAL']
 sim_conc_df['AUC24'] = sim_conc_df['DAILY_DOSE']/sim_conc_df['CL']
@@ -143,56 +143,64 @@ sim_conc_df['IBD_TYPE'] = sim_conc_df['IBD_TYPE'].map(ibd_type_dict)
 
 if not os.path.exists(f"{output_dir}/PKPD_EDA"):
     os.mkdir(f"{output_dir}/PKPD_EDA")
-if not os.path.exists(f"{output_dir}/PKPD_EDA/PKvsPD_Corr"):
-    os.mkdir(f"{output_dir}/PKPD_EDA/PKvsPD_Corr")
+if not os.path.exists(f"{output_dir}/PKPD_EDA/PKvsPD_Corr_Subgroups2"):
+    os.mkdir(f"{output_dir}/PKPD_EDA/PKvsPD_Corr_Subgroups2")
 
+period_dict = {'A4MO':(68,98,128),'A1YR':(335,365,395)}
 pk_col_list = ['DV','DAILY_DOSE','AUC24','IPRED']
-pd_col_list = ['PD_CRP','PD_CALPRTSTL','PD_PRO2','PD_PRO2_DELT','PD_CR','PD_CR_DELT']
+pd_col_list = ['PD_CRP','PD_CALPRTSTL','PD_PRO2','PD_CR']
 
 # scatter plot 그리기
 plt.figure(figsize=(15, 12))
 
+for per_str, per_range in period_dict.items(): #break
+    mgdf = sim_conc_df[(sim_conc_df['TIME'] >= per_range[0])&(sim_conc_df['TIME'] <= per_range[2])].copy()
+    for x in pk_col_list:
+        for y in pd_col_list:
+            pd_marker = f"{y}_{per_str}"
+            # for ibd_type, ibd_mgdf in mgdf.groupby('IBD_TYPE'):
+            for ind_exists, gdf in mgdf.groupby('PD_INDEXISTS'): #break
+                hue = 'IBD_TYPE'
+                # if y=='CRP':
+                #     gdf = gdf[gdf[y]<=25].copy()
+                #     # raise ValueError
+                # gdf.columns
+                ind_phase = 'INDUCTION' if ind_exists==1 else 'MAINTENANCE'
+                gdf = gdf.replace([np.inf, -np.inf], np.nan).dropna(subset=[x, pd_marker])
+                # raise ValueError
+                gdf = gdf[(gdf['TIME'] >= per_range[0])&(gdf['TIME'] <= per_range[2])].copy()
+                if len(gdf)==0:
+                    continue
+                X = gdf[[x]].copy()
+                X_const = sm.add_constant(X).applymap(float)
+                y_vals = gdf[pd_marker].map(float)
 
-for x in pk_col_list:
-    # x='ALT'
-    for y in pd_col_list:
-        hue = 'IBD_TYPE'
-        # sim_conc_df[[x,y]].dropna()
-        gdf = sim_conc_df.copy()
-        # if y=='CRP':
-        #     gdf = gdf[gdf[y]<=25].copy()
-        #     # raise ValueError
-        # gdf.columns
-        gdf = gdf.replace([np.inf, -np.inf], np.nan).dropna(subset=[x, y])
-        X = gdf[[x]].copy()
-        X_const = sm.add_constant(X).applymap(float)
-        y_vals = gdf[y].map(float)
+                model = sm.OLS(y_vals, X_const).fit()
 
-        model = sm.OLS(y_vals, X_const).fit()
+                intercept, slope = model.params
+                r_squared = model.rsquared
+                p_value = model.pvalues[x]
 
-        intercept, slope = model.params
-        r_squared = model.rsquared
-        p_value = model.pvalues[x]
+                corr, corr_pval = spearmanr(sim_conc_df[x], sim_conc_df[y])
 
-        corr, corr_pval = spearmanr(sim_conc_df[x], sim_conc_df[y])
+                sns.scatterplot(data=gdf, x=x, y=y, marker='o', hue=hue)
+                # sns.scatterplot(data=gdf, x=x, y=y, marker='o',legend=False)
+                fig_title = f'[PKPD_EDA ({ind_phase}_{per_str})] {x} vs {y}\ncorr_coef: {corr:.4f}, p-value: {corr_pval:.4f}'
+                # fig_title = f'[PKPD_EDA] {x} vs {y}\nR-squared:{r_squared:.4f}, p-value: {p_value:.4f}\nbeta: {slope:.4f}, intercept: {intercept:.4f}'
+                plt.title(fig_title, fontsize=14)
+                plt.xlabel(x, fontsize=14)
+                plt.ylabel(y, fontsize=14)
+                plt.xticks(fontsize=14)
+                plt.yticks(fontsize=14)
+                plt.legend(fontsize=14)
+                # plt.legend().remove()
+                plt.grid(True)
+                plt.tight_layout()
+                # plt.show()
 
-        sns.scatterplot(data=gdf, x=x, y=y, marker='o', hue=hue)
-        fig_title = f'[PKPD_EDA] {x} vs {y}\ncorr_coef: {corr:.4f}, p-value: {corr_pval:.4f}'
-        # fig_title = f'[PKPD_EDA] {x} vs {y}\nR-squared:{r_squared:.4f}, p-value: {p_value:.4f}\nbeta: {slope:.4f}, intercept: {intercept:.4f}'
-        plt.title(fig_title, fontsize=14)
-        plt.xlabel(x, fontsize=14)
-        plt.ylabel(y, fontsize=14)
-        plt.xticks(fontsize=14)
-        plt.yticks(fontsize=14)
-        plt.legend(fontsize=14)
-        # plt.legend().remove()
-        plt.grid(True)
-        plt.tight_layout()
-        # plt.show()
+                # plt.savefig(f"{output_dir}/PKPD_EDA/{fig_title.split('R-squared')[0].strip()}.png")  # PNG 파일로 저장
+                plt.savefig(f"{output_dir}/PKPD_EDA/PKvsPD_Corr_Subgroups2/{fig_title.split('corr_coef')[0].strip()}.png")  # PNG 파일로 저장
 
-        # plt.savefig(f"{output_dir}/PKPD_EDA/{fig_title.split('R-squared')[0].strip()}.png")  # PNG 파일로 저장
-        plt.savefig(f"{output_dir}/PKPD_EDA/PKvsPD_Corr/{fig_title.split('corr_coef')[0].strip()}.png")  # PNG 파일로 저장
-
-        plt.cla()
-        plt.clf()
-        plt.close()
+                plt.cla()
+                plt.clf()
+                plt.close()

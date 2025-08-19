@@ -147,7 +147,7 @@ totlab_df = totlab_df.drop_duplicates(['UID','DATETIME'])
 
 pd_bsize_df = pd.read_csv(f"{output_dir}/pd_bsize_df.csv")
 pd_bsize_df['UID'] = pd_bsize_df['UID'].astype(str)
-pd_bsize_df = pd_bsize_df.drop(['IBD_TYPE'],axis=1)
+# pd_bsize_df = pd_bsize_df.drop(['IBD_TYPE'],axis=1)
 
 ## Lab 중 CRP, CALPRTSTL 도 PD marker로 사용
 
@@ -175,7 +175,7 @@ for drug in ['infliximab','adalimumab']:
         new_pd_df = list()
         no_basepd_uids = list()
         no_1yrpd_uids = list()
-
+        no_4mopd_uids = list()
         # pd_bsize df에서 'PD_' prefix가 들어가 있으면 PD marker로 인식함
         nobase_pd_marker_list = pd.DataFrame(pd_bsize_df.columns)[0]
         nobase_pd_marker_list = list(nobase_pd_marker_list[nobase_pd_marker_list.map(lambda x: 'PD_' in x)])
@@ -203,11 +203,22 @@ for drug in ['infliximab','adalimumab']:
             else:
                 uid_pd1yr_row = uid_pd1yr_df.iloc[0]
 
+            # 4개월 후(127일) 기간에 해당하는 Data 보기
+            mo4frombaseline_datetime = (datetime.strptime(uid_pdbinfo_row['DATETIME'],'%Y-%m-%d')+timedelta(days=127)).strftime('%Y-%m-%d')
+            uid_pd4mo_df = uid_pd_df[uid_pd_df['DATETIME'] >= mo4frombaseline_datetime].copy()
+            if len(uid_pd4mo_df)==0:
+                print(f'({uid_inx}) / {uid} / 1년 후 기간에 해당하는 Data 없음')
+                uid_pd4mo_row = dict()
+                no_4mopd_uids.append(uid)
+            else:
+                uid_pd4mo_row = uid_pd4mo_df.iloc[0]
+
             uid_pd_df[f'PD_INDEXISTS'] = ind_phase_existance
 
             for pd_marker in nobase_pd_marker_list:
                 uid_pd_df[f'{pd_marker}_BL'] = uid_pdbase_row[pd_marker] if len(uid_pdbase_row)!=0 else np.nan
                 uid_pd_df[f'{pd_marker}_DELT'] = uid_pd_df[f'{pd_marker}']-uid_pd_df[f'{pd_marker}_BL']
+                uid_pd_df[f'{pd_marker}_A4MO'] = uid_pd4mo_row[pd_marker] if len(uid_pd4mo_row)!=0 else np.nan
                 uid_pd_df[f'{pd_marker}_A1YR'] = uid_pd1yr_row[pd_marker] if len(uid_pd1yr_row)!=0 else np.nan
                 uid_pd_df[f'{pd_marker}_DELT1YR'] = uid_pd_df[f'{pd_marker}_A1YR']-uid_pd_df[f'{pd_marker}_BL']
 

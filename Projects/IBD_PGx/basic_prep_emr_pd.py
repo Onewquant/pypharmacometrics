@@ -19,7 +19,7 @@ output_dir = f"{prj_dir}/results"
 
 ## WT, HT, ADHERENCE Covariates / PD markers Loading
 
-pd_marker_list = ['PD_PRO2', 'PD_STLFREQ', 'PD_ABDPAIN', 'PD_RECTBLD','PD_TOTALSCORE']
+pd_marker_list = ['PD_PRO2', 'PD_STLFREQ', 'PD_ABDPAIN', 'PD_RECTBLD','PD_TOTALSCORE', 'PD_CR']
 
 cdai_hx_df = pd.read_csv(f"{output_dir}/pdmarker_cdai_df.csv")
 cdai_hx_df = cdai_hx_df.rename(columns={'ID':'UID','DATE':'DATETIME','CDAI_TOTALSCORE':'PD_TOTALSCORE','CDAI_ADHERENCEPCT':'ADHERENCE','CDAI_WEIGHT':'WT','CDAI_HEIGHT':'HT', 'CDAI_BMI':'BMI'})
@@ -28,6 +28,7 @@ cdai_hx_df['PD_PRO2'] = 2*cdai_hx_df['CDAI_DIARHEACNT'] + 5*cdai_hx_df['CDAI_ABD
 cdai_hx_df['PD_STLFREQ'] = cdai_hx_df['CDAI_DIARHEACNT']
 cdai_hx_df['PD_ABDPAIN'] = cdai_hx_df['CDAI_ABDPAINCNT']
 cdai_hx_df['PD_RECTBLD'] = np.nan
+cdai_hx_df['PD_CR'] = (((cdai_hx_df['PD_STLFREQ'] <= 3)&(cdai_hx_df['PD_ABDPAIN'] <= 1))|(cdai_hx_df['PD_ABDPAIN']<=9))*1
 cdai_hx_df['IBD_TYPE'] = 'CD'
 # cdai_adh_df.columns
 
@@ -38,6 +39,7 @@ pms_hx_df['PD_PRO2'] = pms_hx_df['PMS_STLCNT'] + pms_hx_df['PMS_HEMATOCHEZIA']
 pms_hx_df['PD_STLFREQ'] = pms_hx_df['PMS_STLCNT']
 pms_hx_df['PD_ABDPAIN'] = np.nan
 pms_hx_df['PD_RECTBLD'] = pms_hx_df['PMS_HEMATOCHEZIA']
+pms_hx_df['PD_CR'] = (((pms_hx_df['PD_STLFREQ']==0)&(pms_hx_df['PD_ABDPAIN']==0))|(pms_hx_df['PD_PRO2']==0))*1
 pms_hx_df['IBD_TYPE'] = 'UC'
 # pms_adh_df.columns
 # pd_df[pd_df['UID']=='29702679'][['DATETIME','PD_PRO2']]
