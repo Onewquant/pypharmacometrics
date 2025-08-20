@@ -23,7 +23,7 @@ for_sim_df = get_model_population_sim_df(df=simulation_df, interval=interval, ad
 for_sim_df = for_sim_df.replace(np.nan,'.')
 
 # for_sim_df = for_sim_df[['ID', 'TIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'ROUTE', 'IBD_TYPE', 'ALB', 'ADA', 'AGE', 'SEX', 'WT', 'HT', 'BMI', 'REALDATA']].copy()
-for_sim_df = for_sim_df[['ID', 'TIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'ROUTE', 'IBD_TYPE', 'ALB', 'ADA', 'AGE', 'SEX', 'WT', 'HT', 'BMI', 'PD_INDEXISTS', 'PD_PRO2', 'PD_PRO2_DELT', 'PD_PRO2_A4MO', 'PD_PRO2_A1YR', 'PD_CR', 'PD_CR_DELT', 'PD_CR_A4MO', 'PD_CR_A1YR', 'PD_CRP', 'PD_CRP_DELT', 'PD_CRP_A4MO', 'PD_CRP_A1YR', 'PD_CALPRTSTL', 'PD_CALPRTSTL_DELT', 'PD_CALPRTSTL_A4MO', 'PD_CALPRTSTL_A1YR','REALDATA', 'RATE', 'TAD']].copy()
+for_sim_df = for_sim_df[['ID', 'TIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'ROUTE', 'IBD_TYPE', 'ALB', 'ADA', 'AGE', 'SEX', 'WT', 'HT', 'BMI', 'PD_INDEXISTS', 'PD_PRO2', 'PD_PRO2_DELT', 'PD_PRO2_A4MO', 'PD_PRO2_A1YR', 'PD_CR', 'PD_CR_DELT', 'PD_CR_A4MO', 'PD_CR_A1YR', 'PD_CRP', 'PD_CRP_DELT', 'PD_CRP_A4MO', 'PD_CRP_A1YR', 'PD_FCAL', 'PD_FCAL_DELT', 'PD_FCAL_A4MO', 'PD_FCAL_A1YR','REALDATA', 'RATE', 'TAD']].copy()
 # for_sim_df = for_sim_df[['ID', 'TIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'ROUTE', 'IBD_TYPE', 'ALB', 'ADA', 'AGE', 'SEX', 'WT', 'HT', 'BMI', 'PD_CRP', 'PD_CALPRTSTL','PD_PRO2', 'REALDATA', 'RATE', 'TAD']].copy()
 for_sim_df.to_csv(f"{output_dir}/modeling_df_covar/infliximab_integrated_simulation_df.csv",index=False, encoding='utf-8-sig')
 
@@ -42,7 +42,7 @@ for uid, id_sim_df in final_sim_df.groupby('ID'): #break
     #
     # gdf[(gdf['REALDATA']==1)&(gdf['AMT']==0)]
 
-    gdf = id_sim_df[id_sim_df['MDV']==0][['ID', 'TIME', 'DV', 'IPRED', 'AMT', 'IBD_TYPE', 'PD_CALPRTSTL','PD_CRP', 'PD_PRO2', 'REALDATA']].copy()
+    gdf = id_sim_df[id_sim_df['MDV']==0][['ID', 'TIME', 'DV', 'IPRED', 'AMT', 'IBD_TYPE', 'PD_FCAL','PD_CRP', 'PD_PRO2', 'REALDATA']].copy()
     adf = id_sim_df[id_sim_df['MDV']==1][['ID', 'TIME', 'DV', 'IPRED', 'AMT', 'IBD_TYPE', 'ROUTE', 'REALDATA']].copy()
     adf['ROUTE'] = adf['ROUTE'].map({1.0:'IV',2.0:'SC'})
     adf['AMT'] = adf['AMT'].astype(int).astype(str)

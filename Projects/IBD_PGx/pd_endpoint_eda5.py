@@ -146,7 +146,8 @@ if not os.path.exists(f"{output_dir}/PKPD_EDA"):
 if not os.path.exists(f"{output_dir}/PKPD_EDA/PKvsPD_Corr_Subgroups2"):
     os.mkdir(f"{output_dir}/PKPD_EDA/PKvsPD_Corr_Subgroups2")
 
-period_dict = {'A4MO':(68,98,128),'A1YR':(335,365,395)}
+# period_dict = {'A4MO':(68,98,128),'A1YR':(335,365,395)}
+period_dict = {'A4MO':(0,98,128),'A1YR':(185,365,550)}
 pk_col_list = ['DV','DAILY_DOSE','AUC24','IPRED']
 pd_col_list = ['PD_CRP','PD_CALPRTSTL','PD_PRO2','PD_CR']
 
@@ -199,7 +200,10 @@ for per_str, per_range in period_dict.items(): #break
                 # plt.show()
 
                 # plt.savefig(f"{output_dir}/PKPD_EDA/{fig_title.split('R-squared')[0].strip()}.png")  # PNG 파일로 저장
-                plt.savefig(f"{output_dir}/PKPD_EDA/PKvsPD_Corr_Subgroups2/{fig_title.split('corr_coef')[0].strip()}.png")  # PNG 파일로 저장
+
+                if not os.path.exists(f"{output_dir}/PKPD_EDA/PKvsPD_Corr_Subgroups2/{per_str}"):
+                    os.mkdir(f"{output_dir}/PKPD_EDA/PKvsPD_Corr_Subgroups2/{per_str}")
+                plt.savefig(f"{output_dir}/PKPD_EDA/PKvsPD_Corr_Subgroups2/{per_str}/{fig_title.split('corr_coef')[0].strip()}.png")  # PNG 파일로 저장
 
                 plt.cla()
                 plt.clf()

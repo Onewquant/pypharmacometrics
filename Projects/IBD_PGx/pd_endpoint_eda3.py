@@ -147,7 +147,7 @@ if not os.path.exists(f"{output_dir}/PKPD_EDA/PKvsPD_Corr"):
     os.mkdir(f"{output_dir}/PKPD_EDA/PKvsPD_Corr")
 
 pk_col_list = ['DV','DAILY_DOSE','AUC24','IPRED']
-pd_col_list = ['PD_CRP','PD_CALPRTSTL','PD_PRO2','PD_PRO2_DELT','PD_CR','PD_CR_DELT']
+pd_col_list = ['PD_CRP','PD_CRP_DELT','PD_FCAL','PD_FCAL_DELT','PD_PRO2','PD_PRO2_DELT','PD_CR','PD_CR_DELT']
 
 # scatter plot 그리기
 plt.figure(figsize=(15, 12))
@@ -174,7 +174,7 @@ for x in pk_col_list:
         r_squared = model.rsquared
         p_value = model.pvalues[x]
 
-        corr, corr_pval = spearmanr(sim_conc_df[x], sim_conc_df[y])
+        corr, corr_pval = spearmanr(gdf[x], gdf[y])
 
         sns.scatterplot(data=gdf, x=x, y=y, marker='o', hue=hue)
         fig_title = f'[PKPD_EDA] {x} vs {y}\ncorr_coef: {corr:.4f}, p-value: {corr_pval:.4f}'
@@ -191,7 +191,10 @@ for x in pk_col_list:
         # plt.show()
 
         # plt.savefig(f"{output_dir}/PKPD_EDA/{fig_title.split('R-squared')[0].strip()}.png")  # PNG 파일로 저장
-        plt.savefig(f"{output_dir}/PKPD_EDA/PKvsPD_Corr/{fig_title.split('corr_coef')[0].strip()}.png")  # PNG 파일로 저장
+
+        if not os.path.exists(f"{output_dir}/PKPD_EDA/PKvsPD_Corr/{x}"):
+            os.mkdir(f"{output_dir}/PKPD_EDA/PKvsPD_Corr/{x}")
+        plt.savefig(f"{output_dir}/PKPD_EDA/PKvsPD_Corr/{x}/{fig_title.split('corr_coef')[0].strip()}.png")  # PNG 파일로 저장
 
         plt.cla()
         plt.clf()

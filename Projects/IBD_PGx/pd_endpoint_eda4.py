@@ -1,4 +1,4 @@
-## PK parameter와 PD marker 관계 그려보기
+## PK parameter와 PD marker 관계 그려보기 - CD/UC 및 IND/MAINT 서브그룹 나눠서
 
 
 from tools import *
@@ -147,7 +147,7 @@ if not os.path.exists(f"{output_dir}/PKPD_EDA/PKvsPD_Corr_Subgroups"):
     os.mkdir(f"{output_dir}/PKPD_EDA/PKvsPD_Corr_Subgroups")
 
 pk_col_list = ['DV','DAILY_DOSE','AUC24','IPRED']
-pd_col_list = ['PD_CRP','PD_CALPRTSTL','PD_PRO2','PD_PRO2_DELT','PD_CR','PD_CR_DELT']
+pd_col_list = ['PD_CRP','PD_CRP_DELT','PD_FCAL','PD_FCAL_DELT','PD_PRO2','PD_PRO2_DELT','PD_CR','PD_CR_DELT']
 
 # scatter plot 그리기
 plt.figure(figsize=(15, 12))
@@ -157,12 +157,16 @@ for x in pk_col_list:
     for y in pd_col_list:
         mgdf = sim_conc_df.copy()
         for ibd_type, ibd_mgdf in mgdf.groupby('IBD_TYPE'):
-            for ind_exists, gdf in ibd_mgdf.groupby('PD_INDEXISTS'): #break
-                # if y=='CRP':
-                #     gdf = gdf[gdf[y]<=25].copy()
-                #     # raise ValueError
-                # gdf.columns
-                ind_phase = 'INDUCTION' if ind_exists==1 else 'MAINTENANCE'
+
+            ibd_meddf = ibd_mgdf[ibd_mgdf['PD_INDEXISTS']==1].copy()
+            ibd_ind_df = ibd_meddf[ibd_meddf['TIME'] < 128].copy()
+            ibd_maint_df = pd.concat([ibd_meddf[ibd_meddf['TIME'] >= 128].copy(), ibd_mgdf[ibd_mgdf['PD_INDEXISTS']==0]])
+            phase_df_dict = {'IND':ibd_ind_df, 'MAINT':ibd_maint_df}
+            # ibd_mgdf[ibd_mgdf['PD_INDEXISTS']==1]
+            # ibd_mgdf[ibd_mgdf['PD_INDEXISTS']==0]
+
+            for ind_phase, gdf in phase_df_dict.items(): #break
+
                 gdf = gdf.replace([np.inf, -np.inf], np.nan).dropna(subset=[x, y])
                 X = gdf[[x]].copy()
                 X_const = sm.add_constant(X).applymap(float)
@@ -174,7 +178,7 @@ for x in pk_col_list:
                 r_squared = model.rsquared
                 p_value = model.pvalues[x]
 
-                corr, corr_pval = spearmanr(sim_conc_df[x], sim_conc_df[y])
+                corr, corr_pval = spearmanr(gdf[x], gdf[y])
 
                 # sns.scatterplot(data=gdf, x=x, y=y, marker='o', hue=hue)
                 sns.scatterplot(data=gdf, x=x, y=y, marker='o',legend=False)
@@ -191,8 +195,15 @@ for x in pk_col_list:
                 plt.tight_layout()
                 # plt.show()
 
+                if not os.path.exists(f"{output_dir}/PKPD_EDA/PKvsPD_Corr_Subgroups/{ind_phase}"):
+                    os.mkdir(f"{output_dir}/PKPD_EDA/PKvsPD_Corr_Subgroups/{ind_phase}")
+                if not os.path.exists(f"{output_dir}/PKPD_EDA/PKvsPD_Corr_Subgroups/{ind_phase}/{ibd_type}"):
+                    os.mkdir(f"{output_dir}/PKPD_EDA/PKvsPD_Corr_Subgroups/{ind_phase}/{ibd_type}")
+                if not os.path.exists(f"{output_dir}/PKPD_EDA/PKvsPD_Corr_Subgroups/{ind_phase}/{ibd_type}/{x}"):
+                    os.mkdir(f"{output_dir}/PKPD_EDA/PKvsPD_Corr_Subgroups/{ind_phase}/{ibd_type}/{x}")
+
                 # plt.savefig(f"{output_dir}/PKPD_EDA/{fig_title.split('R-squared')[0].strip()}.png")  # PNG 파일로 저장
-                plt.savefig(f"{output_dir}/PKPD_EDA/PKvsPD_Corr_Subgroups/{fig_title.split('corr_coef')[0].strip()}.png")  # PNG 파일로 저장
+                plt.savefig(f"{output_dir}/PKPD_EDA/PKvsPD_Corr_Subgroups/{ind_phase}/{ibd_type}/{x}/{fig_title.split('corr_coef')[0].strip()}.png")  # PNG 파일로 저장
 
                 plt.cla()
                 plt.clf()

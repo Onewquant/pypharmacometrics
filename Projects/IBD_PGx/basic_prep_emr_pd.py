@@ -28,7 +28,7 @@ cdai_hx_df['PD_PRO2'] = 2*cdai_hx_df['CDAI_DIARHEACNT'] + 5*cdai_hx_df['CDAI_ABD
 cdai_hx_df['PD_STLFREQ'] = cdai_hx_df['CDAI_DIARHEACNT']
 cdai_hx_df['PD_ABDPAIN'] = cdai_hx_df['CDAI_ABDPAINCNT']
 cdai_hx_df['PD_RECTBLD'] = np.nan
-cdai_hx_df['PD_CR'] = (((cdai_hx_df['PD_STLFREQ'] <= 3)&(cdai_hx_df['PD_ABDPAIN'] <= 1))|(cdai_hx_df['PD_ABDPAIN']<=9))*1
+cdai_hx_df['PD_CR'] = (((cdai_hx_df['PD_STLFREQ'] <= 3)&(cdai_hx_df['PD_ABDPAIN'] <= 1))|(cdai_hx_df['PD_PRO2']<=9))*1
 cdai_hx_df['IBD_TYPE'] = 'CD'
 # cdai_adh_df.columns
 
