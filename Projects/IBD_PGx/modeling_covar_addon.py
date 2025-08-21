@@ -17,7 +17,8 @@ demo_df['UID'] = demo_df['UID'].astype(str)
 ## LAB Covariates Loading
 
 totlab_df = pd.read_csv(f"{output_dir}/lab_df.csv")
-totlab_df = totlab_df[['UID', 'DATETIME', 'Albumin', 'AST', 'AST(GOT)', 'ALT', 'ALT(GPT)', 'CRP', 'Calprotectin (Serum)', 'Calprotectin (Stool)', 'eGFR-CKD-EPI', 'Cr (S)', 'Creatinine','Anti-Infliximab Ab [정밀면역검사] (정량)']].copy()
+# [x for x in totlab_df.columns if 'infliximab' in x.lower()]
+totlab_df = totlab_df[['UID', 'DATETIME', 'Albumin', 'AST', 'AST(GOT)', 'ALT', 'ALT(GPT)', 'CRP', 'hsCRP', 'Calprotectin (Serum)', 'Calprotectin (Stool)', 'Fecal Calprotectin', 'eGFR-CKD-EPI', 'Cr (S)', 'Creatinine','Anti-Infliximab Ab [정밀면역검사] (정량)']].copy()
 totlab_df['Anti-Infliximab Ab [정밀면역검사] (정량)'] = totlab_df['Anti-Infliximab Ab [정밀면역검사] (정량)'].map(lambda x: float(re.findall(r'\d*\.\d+|\d+',str(x))[0]) if str(x)!='nan' else np.nan)
 for c in list(totlab_df.columns)[2:]:  # break
     totlab_df[c] = totlab_df[c].map(lambda x: x if type(x) == float else float(re.findall(r'[\d]+.*[\d]*', str(x))[0]))
@@ -25,8 +26,10 @@ totlab_df['UID'] = totlab_df['UID'].astype(str)
 totlab_df['AST'] = totlab_df[['AST', 'AST(GOT)']].max(axis=1)
 totlab_df['ALT'] = totlab_df[['ALT', 'ALT(GPT)']].max(axis=1)
 totlab_df['CREATININE'] = totlab_df[['Cr (S)', 'Creatinine']].max(axis=1)
+totlab_df['FCAL'] = totlab_df[['Calprotectin (Stool)', 'Fecal Calprotectin']].max(axis=1)
+totlab_df['CRP'] = totlab_df[['CRP', 'hsCRP']].max(axis=1)
 # set(totlab_df['Anti-Infliximab Ab [정밀면역검사] (정량)'].unique())
-totlab_df = totlab_df.rename(columns={'Albumin': 'ALB', 'Calprotectin (Stool)': 'FCAL', 'Calprotectin (Serum)': 'CALPRTSER', 'Anti-Infliximab Ab [정밀면역검사] (정량)':'ADA'})
+totlab_df = totlab_df.rename(columns={'Albumin': 'ALB', 'Calprotectin (Serum)': 'CALPRTSER', 'Anti-Infliximab Ab [정밀면역검사] (정량)':'ADA'})
 totlab_df = totlab_df[['UID', 'DATETIME', 'ALB', 'AST', 'ALT', 'CRP', 'FCAL', 'CREATININE','ADA']].copy()
 totlab_df['ADA'] = (totlab_df['ADA'] > 9)*1
 # totlab_df = totlab_df[['UID', 'DATETIME', 'ALB', 'AST', 'ALT', 'CRP', 'FCAL', 'CREATININE']].copy()
