@@ -42,8 +42,27 @@ integrated_diff_df = pd.concat([ind_diff_df, maint_diff_df]).drop_duplicates(['I
 
 # drug_sdate_df = pd.concat([drug_sdate_ind_df, drug_sdate_maint_df])
 
+# clin_maint_df.columns
 
+# len(clin_ind_df)
+# len(clin_maint_df)
 
+# Induction에 해당하는 사람 수 세기
+ind_list = list()
+first_dv_df = modeling_df[(modeling_df['MDV']==0)&(modeling_df['DV']!='0.0')].drop_duplicates(['UID'], ignore_index=True)
+for inx, row in first_dv_df.iterrows(): #break
+    ind_disc_df = modeling_df[(modeling_df['ID']==row['ID'])&(modeling_df['TIME'] < row['TIME'])&(modeling_df['MDV']!=0)].copy()
+    if len(ind_disc_df) <= 3:
+        ind_list.append(row['ID'])
+len(ind_list)
+
+## Modeling Data
+# INDUCTION:
+
+## Clinical Data
+# INDUCTION: 3번째 투약 (atfter 14 weeks) 후 TL 측정된 경우 -> Induction Phase 속함 -> 35명
+# Maintenance: 첫 투약 이후 1년 기준 ± 6개월에 TL 측정된 경우 -> Maintenance Phase 속함 -> 53명
+# Total: 57명
 
 # drug_sdate_df.drop_duplicates(['ID'], ignore_index=True)
 
