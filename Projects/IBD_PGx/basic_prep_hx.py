@@ -47,15 +47,15 @@ for finx, fpath in enumerate(hx_files): #break
             print(f'Partial Mayo Score for Ulcerative Colitis')
             pms_dict = {'ID':pid, 'NAME':pname}
             pms_dict['DATE'] = re.findall(r'[\d][\d][\d][\d]-[\d][\d]-[\d][\d]',fct_str)[0]
-            try: pms_dict['PMS_TOTALSCORE'] = float(re.findall(r'Total\s*:\s*\d+',fct_str)[0].split(':')[-1].strip())
+            try: pms_dict['PMS_TOTALSCORE'] = float(re.findall(r'Total\s*:\s*\d+[\.]?\d*',fct_str)[0].split(':')[-1].strip())
             except: pms_dict['PMS_TOTALSCORE'] = np.nan
-            try: pms_dict['PMS_STLCNT'] = float(re.findall(r'대변 횟수\s*\d+',fct_str)[0].split('대변 횟수')[-1].strip())
+            try: pms_dict['PMS_STLCNT'] = float(re.findall(r'대변 횟수\s*\d+[\.]?\d*',fct_str)[0].split('대변 횟수')[-1].strip())
             except: pms_dict['PMS_STLCNT'] = np.nan
-            try: pms_dict['PMS_NORMSTLCNT'] = float(re.findall(r'\(정상 횟수:\s*\d+\s*회',fct_str)[0].split(':')[-1].split('회')[0].strip())
+            try: pms_dict['PMS_NORMSTLCNT'] = float(re.findall(r'\(정상 횟수:\s*\d+[\.]?\d*\s*회',fct_str)[0].split(':')[-1].split('회')[0].strip())
             except: pms_dict['PMS_NORMSTLCNT'] = np.nan
-            try: pms_dict['PMS_HEMATOCHEZIA'] = float(re.findall(r'혈변\s*\d+\s*',fct_str)[0].split('혈변')[-1].strip())
+            try: pms_dict['PMS_HEMATOCHEZIA'] = float(re.findall(r'혈변\s*\d+[\.]?\d*\s*',fct_str)[0].split('혈변')[-1].strip())
             except: pms_dict['PMS_HEMATOCHEZIA'] = np.nan
-            try: pms_dict['PMS_TOTALEVAL'] = float(re.findall(r'전체적인 평가\s*\d+\s*',fct_str)[0].split('전체적인 평가')[-1].strip())
+            try: pms_dict['PMS_TOTALEVAL'] = float(re.findall(r'전체적인 평가\s*\d+[\.]?\d*\s*',fct_str)[0].split('전체적인 평가')[-1].strip())
             except: pms_dict['PMS_TOTALEVA'] = np.nan
             try: pms_dict['PMS_URGENCY'] = isornot_dict[re.findall(r'급박감\s*[유|무]\s*',fct_str)[0].split('급박감')[-1].strip()]
             except: pms_dict['PMS_URGENCY'] = np.nan

@@ -86,6 +86,24 @@ comp_df = comp_df.reset_index(drop=True)
 maint_cons_df = comp_df[comp_df['MIN_DOSE_DATE']==comp_df['IND_START_DATE']].reset_index(drop=True)
 maint_diff_df = comp_df[comp_df['MIN_DOSE_DATE']!=comp_df['IND_START_DATE']].reset_index(drop=True)
 
+# 17439372 -> 23.04.06 infliximab conc: 2.4 이며 타원에서 투약하다 전원됨
+# 37625588 -> 22.12.07 부터 infliximab 투약 / 타원에서 투약하다 전원됨
+# 35093356 -> 20.11.02 부터 infliximab 투약 / 타원에서 투약하다 전원됨
+# 36898756 -> 23.01.03 부터 infliximab 투약 / 타원에서 투약하다 전원됨
+
+# uids_in_cons = [25269024, 24590129, 27530683]
+uids_from_diff_to_cons = [32067581, 29336700, 35028484, 36325931]
+# set(uids_from_diff_to_cons)-set(maint_diff_df['ID'])
+# set(uids_in_cons)-set(maint_cons_df['ID'])
+
+for moving_uid in uids_from_diff_to_cons:
+    moving_df = maint_diff_df[maint_diff_df['ID']==moving_uid].copy()
+    if len(moving_df)==0:
+        continue
+    maint_diff_df = maint_diff_df[maint_diff_df['ID']!=moving_uid].copy()
+    maint_cons_df = pd.concat([maint_cons_df, moving_df])
+
+maint_cons_df['IND_START_DATE'] = maint_cons_df['MIN_DOSE_DATE']
 
 # maint_diff_df[maint_diff_df['ID']==29702679]  # Adalimumab 먼저 사용한 케이스
 # maint_cons_df[maint_cons_df['ID']==24590129]  # Adalimumab 먼저 사용한 케이스
@@ -216,7 +234,7 @@ maint_df = list()
 no_maintconc_df = list()
 for inx, row in maint_diff_df.iterrows():
 
-    # if row['ID']==29702679:
+    # if row['ID']==32067581:
     #     raise ValueError
 
     # if inx
@@ -346,6 +364,10 @@ else:
 # print(f"# Maintenance 시작시 농도 측정값 존재: {len(maint_uniq_df)} (Infliximab: {len(maint_uniq_df[maint_uniq_df['DRUG']=='infliximab'])} / Adalimumab: {len(maint_uniq_df[maint_uniq_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(maint_uniq_df[maint_uniq_df['DRUG']=='ustekinumab'])}) ")
 # print(f"# Maintenance 시작시 농도 측정값 부재: {len(no_maintconc_df)} (Infliximab: {len(no_maintconc_df[no_maintconc_df['DRUG']=='infliximab'])} / Adalimumab: {len(no_maintconc_df[no_maintconc_df['DRUG']=='adalimumab'])} / Ustekinumab: {len(no_maintconc_df[no_maintconc_df['DRUG']=='ustekinumab'])}) ")
 
+# raise ValueError
+# ind_df[ind_df['UID']==32067581]
+# maint_df[maint_df['UID']==32067581]
+# 32067581
 
 
 # inf_ind_df = inf_ind_df

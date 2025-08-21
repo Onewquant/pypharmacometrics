@@ -38,8 +38,8 @@ for finx, fpath in enumerate(order_files): #break
     #     if pid=="37366865":
     #         raise ValueError
 
-    if pid in ('37366865',):       # lab, order 파일 다시 수집 필요
-        continue
+    # if pid in ('37366865',):       # 임상 시험용 약물로 투여함 -> 처리 완료
+    #     raise ValueError
 
     # if pid not in ('17638960',):
     #     continue
@@ -87,13 +87,15 @@ for finx, fpath in enumerate(order_files): #break
     # fdf.columns
     # fdf.to_csv(f"{outcome_dir}/error_dose_df.csv", encoding='utf-8-sig', index=False)
 
-    dose_df = fdf[fdf['처방지시'].map(lambda x: (('adalimumab' in x.lower()) or ('infliximab' in x.lower()) or ('ustekinumab' in x.lower())) and ('quantification' not in x.lower()))].copy()
+    dose_df = fdf[fdf['처방지시'].map(lambda x: (('adalimumab' in x.lower()) or ('infliximab' in x.lower()) or ('SUITE_램시마' in x.upper()) or ('ustekinumab' in x.lower())) and ('quantification' not in x.lower()))].copy()
     # dose_df.iloc[0]['처방지시']
     # dose_df.iloc[1]['처방지시']
     # dose_df.iloc[2]
 
+
     dose_df = dose_df[(~dose_df['Acting'].isna())].copy()
 
+    dose_df['처방지시'] = dose_df['처방지시'].map(lambda x:x.replace('임상 SUITE_램시마 주 100mg','Remsima 100mg inj (infliximab) ▣'))
     dose_df['처방지시비고'] = dose_df['처방지시'].map(lambda x:x.split(' : ')[-1] if len(x.split(' : '))>1 else '')
 
     dose_df['ID'] = pid
@@ -127,9 +129,9 @@ for finx, fpath in enumerate(order_files): #break
         x = dose_row['처방지시']
         if (" [SC] " not in x):
             # raise ValueError
-            try: dose_val = int(re.findall(r'\d+mg',x)[1].replace('mg','').strip())
+            try: dose_val = float(re.findall(r'\d+[\.]?\d*mg',x)[1].replace('mg','').strip())
             except:
-                dose_val = int(re.findall(r'\d+mg', x)[0].replace('mg', '').strip()) * int(re.findall(r'\d+ via', x)[0].replace('via', '').strip())
+                dose_val = float(re.findall(r'\d+[\.]?\d*mg', x)[0].replace('mg', '').strip()) * float(re.findall(r'\d+[\.]?\d* via', x)[0].replace('via', '').strip())
             # dose_val = re.findall(r'\d+',x.split('mg')[0].split('Remsima')[-1].split('Humira')[-1].split('Stelara')[-1].split(' ')[-1].strip())[0]
             # raise ValueError
             dose_series.append(dose_val)
@@ -139,18 +141,18 @@ for finx, fpath in enumerate(order_files): #break
         #     else:continue
         # continue
         # pid
-            try: dose_val = int(re.findall(r'\d+mg',x)[1].replace('mg','').strip())
+            try: dose_val = float(re.findall(r'\d+[\.]?\d*mg',x)[1].replace('mg','').strip())
             except:
                 if '(Ustekinumab' in x:
                     # raise ValueError
-                    dose_val = int(re.findall(r'\d+mg',x)[0].replace('mg','').strip()) * int(re.findall(r'\d+ srg',x)[0].replace('srg','').strip())
+                    dose_val = float(re.findall(r'\d+[\.]?\d*mg',x)[0].replace('mg','').strip()) * float(re.findall(r'\d+[\.]?\d* srg',x)[0].replace('srg','').strip())
                 elif '(Adalimumab' in x:
                     # raise ValueError
                     # if 'ml pen' in x:
                     #     x = x.replace('ml pen','ml 1 pen')
-                    try: pen_count = int(re.findall(r'\d+ pen',x)[0].replace('pen','').strip())
-                    except: pen_count = int(re.findall(r'\d+ srg',x)[0].replace('srg','').strip())
-                    dose_val = int(re.findall(r'\d+mg',x)[0].replace('mg','').strip()) * pen_count
+                    try: pen_count = float(re.findall(r'\d+[\.]?\d* pen',x)[0].replace('pen','').strip())
+                    except: pen_count = float(re.findall(r'\d+[\.]?\d* srg',x)[0].replace('srg','').strip())
+                    dose_val = float(re.findall(r'\d+[\.]?\d*mg',x)[0].replace('mg','').strip()) * pen_count
                     # raise ValueError
                 else:
                     raise ValueError

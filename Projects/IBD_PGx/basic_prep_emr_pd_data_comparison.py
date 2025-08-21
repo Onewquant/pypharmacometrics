@@ -27,7 +27,8 @@ clin_ind_df['NAME'] = clin_ind_df['NAME'].map(lambda x:x.split(':')[-1].replace(
 drug_sdate_ind_df = clin_ind_df[['ID','NAME','DRUG_START_DATE']].copy()
 
 ind_comp_df = drug_sdate_ind_df.merge(start_dosing_df, on=['ID'], how='left')
-ind_diff_df = ind_comp_df[ind_comp_df['DRUG_START_DATE']!=ind_comp_df['DATETIME']].copy()
+# ind_diff_df = ind_comp_df[ind_comp_df['DRUG_START_DATE'] < ind_comp_df['DATETIME']].copy()
+ind_diff_df = ind_comp_df[ind_comp_df['DRUG_START_DATE'] != ind_comp_df['DATETIME']].copy()
 
 rename_maintcols_dict = {'EMR ID':'ID','name':'NAME','sex':'SEX','IBD type':'IBD_TYPE','age_at_dx':'AGE_AT_DX','anti_tnfa_type':'DRUG','anti_tnfa_date':'DRUG_START_DATE', '1Y_IFX TL_date':'CONC_DATE', '1Y IFX TL':'CONC', 'IFX_1y_CD_diarrhea':'CDAI_DIARHEACNT', 'IFX_1y_CD_abd':'CDAI_ABDPAINCNT', 'IFX_1y_CD_PRO2':'CD_PRO2', 'IFX_1y_SF':'PMS_STLCNT', 'IFX_1y_RB':'PMS_HEMATOCHEZIA', 'IFX_1y_PRO2':'UC_PRO2', 'IFX_1y_MES':'PMS_TOTALSCORE', 'IFX_1y_modifiedMayo':'MMS_TOTALSCORE', 'IFX_1y_CRP':'PD_CRP', 'IFX_1y_FCP':'PD_FCAL', '1Y ADA_date':'ADA_DATE', '1Y ADA':'ADA'}
 clin_maint_df = clin_maint_df.rename(columns=rename_maintcols_dict)
@@ -36,7 +37,8 @@ clin_maint_df['NAME'] = clin_maint_df['NAME'].map(lambda x:x.split(':')[-1].repl
 drug_sdate_maint_df = clin_maint_df[['ID','NAME','DRUG_START_DATE']].copy()
 
 maint_comp_df = drug_sdate_maint_df.merge(start_dosing_df, on=['ID'], how='left')
-maint_diff_df = maint_comp_df[maint_comp_df['DRUG_START_DATE']!=maint_comp_df['DATETIME']].copy()
+# maint_diff_df = maint_comp_df[maint_comp_df['DRUG_START_DATE'] < maint_comp_df['DATETIME']].copy()
+maint_diff_df = maint_comp_df[maint_comp_df['DRUG_START_DATE'] != maint_comp_df['DATETIME']].copy()
 
 integrated_diff_df = pd.concat([ind_diff_df, maint_diff_df]).drop_duplicates(['ID'], ignore_index=True)
 
@@ -49,10 +51,12 @@ integrated_diff_df = pd.concat([ind_diff_df, maint_diff_df]).drop_duplicates(['I
 
 # Induction에 해당하는 사람 수 세기
 ind_list = list()
-first_dv_df = modeling_df[(modeling_df['MDV']==0)&(modeling_df['DV']!='0.0')].drop_duplicates(['UID'], ignore_index=True)
+first_dv_df = modeling_df[(modeling_df['MDV']==0)].copy()
+first_dv_df['DV'] = first_dv_df['DV'].map(float)
+first_dv_df = first_dv_df[(first_dv_df['DV']!=0)].drop_duplicates(['UID'], ignore_index=True)
 for inx, row in first_dv_df.iterrows(): #break
     ind_disc_df = modeling_df[(modeling_df['ID']==row['ID'])&(modeling_df['TIME'] < row['TIME'])&(modeling_df['MDV']!=0)].copy()
-    if len(ind_disc_df) <= 3:
+    if len(ind_disc_df) == 3:
         ind_list.append(row['ID'])
 len(ind_list)
 

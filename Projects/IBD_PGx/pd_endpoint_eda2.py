@@ -27,6 +27,7 @@ for_sim_df = for_sim_df[['ID', 'TIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'ROUTE'
 # for_sim_df = for_sim_df[['ID', 'TIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'ROUTE', 'IBD_TYPE', 'ALB', 'ADA', 'AGE', 'SEX', 'WT', 'HT', 'BMI', 'PD_CRP', 'PD_CALPRTSTL','PD_PRO2', 'REALDATA', 'RATE', 'TAD']].copy()
 for_sim_df.to_csv(f"{output_dir}/modeling_df_covar/infliximab_integrated_simulation_df.csv",index=False, encoding='utf-8-sig')
 
+
 # for_sim_df.columns
 # str(for_sim_df.columns).replace("', '"," ").replace("',\n       '"," ")
 # final_sim_df = pd.read_csv(f"{nonmem_dir}/run/sim57",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
