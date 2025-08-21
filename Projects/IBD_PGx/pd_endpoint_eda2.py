@@ -23,7 +23,7 @@ for_sim_df = get_model_population_sim_df(df=simulation_df, interval=interval, ad
 for_sim_df = for_sim_df.replace(np.nan,'.')
 
 # for_sim_df = for_sim_df[['ID', 'TIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'ROUTE', 'IBD_TYPE', 'ALB', 'ADA', 'AGE', 'SEX', 'WT', 'HT', 'BMI', 'REALDATA']].copy()
-for_sim_df = for_sim_df[['ID', 'TIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'ROUTE', 'IBD_TYPE', 'ALB', 'ADA', 'AGE', 'SEX', 'WT', 'HT', 'BMI', 'PD_INDEXISTS', 'PD_PRO2', 'PD_PRO2_DELT', 'PD_PRO2_A4MO', 'PD_PRO2_A1YR', 'PD_CR', 'PD_CR_DELT', 'PD_CR_A4MO', 'PD_CR_A1YR', 'PD_CRP', 'PD_CRP_DELT', 'PD_CRP_A4MO', 'PD_CRP_A1YR', 'PD_FCAL', 'PD_FCAL_DELT', 'PD_FCAL_A4MO', 'PD_FCAL_A1YR','REALDATA', 'RATE', 'TAD']].copy()
+for_sim_df = for_sim_df[['ID', 'TIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'ROUTE', 'IBD_TYPE', 'ALB', 'ADA', 'AGE', 'SEX', 'WT', 'HT', 'BMI', 'PD_INDEXISTS', 'PD_PRO2', 'PD_PRO2_BL', 'PD_PRO2_DELT', 'PD_CR', 'PD_CR_BL', 'PD_CR_DELT', 'PD_CRP', 'PD_CRP_BL', 'PD_CRP_DELT', 'PD_FCAL', 'PD_FCAL_BL', 'PD_FCAL_DELT', 'REALDATA', 'RATE', 'TAD']].copy()
 # for_sim_df = for_sim_df[['ID', 'TIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'ROUTE', 'IBD_TYPE', 'ALB', 'ADA', 'AGE', 'SEX', 'WT', 'HT', 'BMI', 'PD_CRP', 'PD_CALPRTSTL','PD_PRO2', 'REALDATA', 'RATE', 'TAD']].copy()
 for_sim_df.to_csv(f"{output_dir}/modeling_df_covar/infliximab_integrated_simulation_df.csv",index=False, encoding='utf-8-sig')
 
@@ -33,6 +33,7 @@ for_sim_df.to_csv(f"{output_dir}/modeling_df_covar/infliximab_integrated_simulat
 # final_sim_df = pd.read_csv(f"{nonmem_dir}/run/sim57",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
 final_sim_df = pd.read_csv(f"{nonmem_dir}/run/sim60",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
 realworld_df = simulation_df[simulation_df['MDV']==0].copy()
+# final_sim_df['PD_CR']
 # final_sim_df['IPRED']
 # final_sim_df['DV']
 # final_sim_df.columns
@@ -43,7 +44,7 @@ for uid, id_sim_df in final_sim_df.groupby('ID'): #break
     #
     # gdf[(gdf['REALDATA']==1)&(gdf['AMT']==0)]
 
-    gdf = id_sim_df[id_sim_df['MDV']==0][['ID', 'TIME', 'DV', 'IPRED', 'AMT', 'IBD_TYPE', 'PD_FCAL','PD_CRP', 'PD_PRO2', 'REALDATA']].copy()
+    gdf = id_sim_df[id_sim_df['MDV']==0][['ID', 'TIME', 'DV', 'IPRED', 'AMT', 'IBD_TYPE', 'PD_FCAL','PD_CRP', 'PD_PRO2', 'PD_CR','REALDATA']].copy()
     adf = id_sim_df[id_sim_df['MDV']==1][['ID', 'TIME', 'DV', 'IPRED', 'AMT', 'IBD_TYPE', 'ROUTE', 'REALDATA']].copy()
     adf['ROUTE'] = adf['ROUTE'].map({1.0:'IV',2.0:'SC'})
     adf['AMT'] = adf['AMT'].astype(int).astype(str)
@@ -60,7 +61,8 @@ for uid, id_sim_df in final_sim_df.groupby('ID'): #break
     gdf = gdf.sort_values(by='TIME')
 
     # subplot 준비 (2행 1열, sharex를 통해 TIME 축 공유)
-    fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, figsize=(12, 10), sharex=True)
+    # fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, figsize=(12, 10), sharex=True)
+    fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, ncols=1, figsize=(15, 10), sharex=True)
 
     # Real data point 추가
     sns.scatterplot(data=rdf, x='TIME', y='DV', ax=ax1, color='red', s=50, marker='o')
@@ -97,8 +99,12 @@ for uid, id_sim_df in final_sim_df.groupby('ID'): #break
         )
 
 
+    pd_gdf = gdf[gdf['REALDATA']==1].copy()
+    # pd_gdf = gdf.copy()
+
     # 두 번째 그래프: PD_PRO2 (왼쪽 y축)
-    sns.scatterplot(data=gdf[gdf['REALDATA']==1], x='TIME', y='PD_PRO2', ax=ax2, color='darkorange', label='PD_PRO2')
+    sns.scatterplot(data=pd_gdf, x='TIME', y='PD_PRO2', ax=ax2, color='darkorange', label='PD_PRO2', s=100)
+
     ax2.set_title(f"{ibd_type}_PRO2 and CRP over TIME")
     ax2.set_ylabel(f"{ibd_type}_PRO2")
     ax2.grid(True,linestyle='--')
@@ -110,6 +116,7 @@ for uid, id_sim_df in final_sim_df.groupby('ID'): #break
     # 두 번째 그래프: CRP (오른쪽 y축)
     ax2_right = ax2.twinx()
     sns.lineplot(data=gdf, x='TIME', y='PD_CRP', ax=ax2_right, color='green', label='CRP')
+    ax2_right.axhline(y=0.5, color='green', linestyle='--', linewidth=1.5)  # y=1 수평선 (CRP)
     ax2_right.set_ylabel("CRP")
 
     # 범례를 하나로 합치기 (ax2와 ax2_right)
@@ -117,19 +124,32 @@ for uid, id_sim_df in final_sim_df.groupby('ID'): #break
     lines_2, labels_2 = ax2_right.get_legend_handles_labels()
     ax2_right.legend(lines_1 + lines_2, labels_1 + labels_2, loc='upper right')
 
-    # # 두 번째 그래프: TIME vs PD_PRO2
-    # sns.lineplot(data=gdf, x='TIME', y='PD_PRO2', ax=ax2, color='darkorange')
-    # ax2.set_title("PRO2 over TIME")
-    # ax2.set_ylabel("PRO2")
-    # ax2.set_xlabel("TIME")
-    # ax2.grid(True)
-    #
-    # # 세 번째 그래프: TIME vs CRP
-    # sns.lineplot(data=gdf, x='TIME', y='CRP', ax=ax3, color='darkred')
-    # ax3.set_title("CRP over TIME")
-    # ax3.set_ylabel("CRP")
-    # ax3.set_xlabel("TIME")
-    # ax3.grid(True)
+    # 세 번째 그래프: PD_CR (왼쪽 y축)
+    sns.scatterplot(data=pd_gdf, x='TIME', y='PD_CR', ax=ax3, color='brown', label='CR', s=100)
+    ax3.set_ylim(-0.3, 2.0)  # 원하는 최소값, 최대값으로 지정
+    ax3.axhline(y=0, color='brown', linestyle='--', linewidth=1.5)  # y=1 수평선 (CRP)
+    ax3.set_title(f"{ibd_type}_CR and FCAL over TIME")
+    ax3.set_ylabel(f"{ibd_type}_CR")
+    ax3.grid(True, linestyle='--')
+
+
+    # ax2 범례 제거
+    if ax3.get_legend():
+        ax3.get_legend().remove()
+
+    # 세 번째 그래프: FCAL (오른쪽 y축)
+    ax3_right = ax3.twinx()
+    sns.lineplot(data=gdf, x='TIME', y='PD_FCAL', ax=ax3_right, color='grey', label='FCAL')
+    # ax3_right.set_ylim(-0.3)  # 원하는 최소값, 최대값으로 지정
+    ax3_right.axhline(y=200, color='grey', linestyle='--', linewidth=1.5)  # y=1 수평선 (CRP)
+    ax3_right.axhline(y=-0.3, color='grey', linestyle='--', linewidth=0.0)  # y=1 수평선 (CRP)
+    ax3_right.set_ylabel("FCAL")
+
+    # 범례를 하나로 합치기 (ax3와 ax3_right)
+    lines_3, labels_3 = ax3.get_legend_handles_labels()
+    lines_4, labels_4 = ax3_right.get_legend_handles_labels()
+    ax3_right.legend(lines_3 + lines_4, labels_3 + labels_4, loc='upper right')
+
 
     plt.tight_layout()
     # plt.show()

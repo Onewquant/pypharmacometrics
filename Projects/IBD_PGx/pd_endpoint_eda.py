@@ -31,7 +31,7 @@ if not os.path.exists(f"{output_dir}/PKPD_EDA/PD_IDV_TRENDS"):
     os.mkdir(f"{output_dir}/PKPD_EDA/PD_IDV_TRENDS")
 
 ibd_type_list = ['CD','UC']
-pdmarker_list = ['PD_PRO2','PD_CR','PD_CRP','PD_CALPRTSTL']
+pdmarker_list = ['PD_PRO2','PD_CR','PD_CRP','PD_FCAL']
 for pdmarker in pdmarker_list:
     for ibd_type in ibd_type_list:
         ibdtype_gdf = df[df['IBD_TYPE']==ibd_type].copy()

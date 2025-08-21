@@ -20,8 +20,15 @@ nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
 simulation_df = pd.read_csv(f"{output_dir}/modeling_df_covar/infliximab_integrated_pdeda_df_dayscale.csv")
 final_sim_df = pd.read_csv(f"{nonmem_dir}/run/sim60",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
 
+sim_conc_df = add_iAUC(final_sim_df[(final_sim_df['MDV']==0)].copy(), time_col="TIME", conc_col="DV", id_col="ID")  # ID가 없으면 자동으로 전체 처리
+sim_dose_df = final_sim_df[(final_sim_df['MDV']==1)].copy()
+sim_dose_df['iAUC']	= np.nan
+sim_dose_df['cumAUC'] = np.nan
+final_sim_df = pd.concat([sim_conc_df,sim_dose_df]).sort_values(['ID','TIME','MDV'])
+
 # sim_conc_df = final_sim_df[final_sim_df['MDV']==1].copy()
 # realworld_df = simulation_df[simulation_df['MDV']==0].copy()
+# final_sim_df[(final_sim_df['ID']==0)&(final_sim_df['MDV']==0)].to_csv(f"{output_dir}/modeling_df_covar/conc_test.csv", index=False,encoding='utf-8-sig' )
 
 ibd_type_dict = {1:'CD',2:'UC'}
 
@@ -84,83 +91,38 @@ sim_conc_df['AUC24'] = sim_conc_df['DAILY_DOSE']/sim_conc_df['CL']
 
 ibd_type_dict = {1:'CD',2:'UC'}
 sim_conc_df['IBD_TYPE'] = sim_conc_df['IBD_TYPE'].map(ibd_type_dict)
-# sim_conc_df[sim_conc_df['DOSING_INTERVAL']!=0]['DOSING_INTERVAL'].min()
-# final_sim_df[(final_sim_df['MDV']==1)&(final_sim_df['REALDATA']==1)].copy()
-# for i in range(1,8):
-#     # print(i)
-#     sim_conc_df[f'DV{i}DS'] =
 
-# final_sim_df[['ID','TIME','DV','MDV','PD_PRO2','REALDATA']]
-# sim_conc_df = sim_conc_df[['ID','IBD_TYPE','TIME','DV','PD_PRO2']].copy()
-
-# cov_cand = ['AGE', 'SEX', 'HT', 'WT', 'BMI', 'ALB', 'eGFR', 'AST', 'ALT', 'SODIUM', 'TBIL', 'AUClast']
-# corr_matrix = pd_df[cov_cand].corr().abs()
-#
-# # 히트맵 그리기
-# plt.figure(figsize=(18, 15))
-# ax = sns.heatmap(
-#     corr_matrix,
-#     annot=True,
-#     fmt=".2f",
-#     cmap='coolwarm',
-#     vmin=-1,
-#     vmax=1,
-#     annot_kws={"size": 12}
-# )
-# fig_title = "[WSCT] Correlation matrix heatmap of the covariates"
-# plt.title(fig_title, fontsize=15)
-# plt.xticks(fontsize=15)
-# plt.yticks(fontsize=15)
-#
-# # colorbar 글씨 크기 조정
-# ax.collections[0].colorbar.ax.tick_params(labelsize=15)
-#
-# plt.savefig(f"{results_dir_path}/{fig_title}.png")
-# plt.cla()
-# plt.clf()
-# plt.close()
-
-
-
-# 변수 간 spearman 상관계수 및 p-value 계산
-# corr, pval = spearmanr(sim_conc_df['DV'], sim_conc_df['PD_PRO2'])
-# print(f"Spearman correlation: {corr:.3f}, p-value: {pval:.4f}")
-#
-# corr, pval = spearmanr(sim_conc_df['DV'], sim_conc_df['CRP'])
-# print(f"Spearman correlation: {corr:.3f}, p-value: {pval:.4f}")
-#
-# corr, pval = spearmanr(sim_conc_df['DV'], sim_conc_df['CALPRTSTL'])
-# print(f"Spearman correlation: {corr:.3f}, p-value: {pval:.4f}")
-#
-# corr, pval = spearmanr(sim_conc_df['DV'], sim_conc_df['SEX'])
-# print(f"Spearman correlation: {corr:.3f}, p-value: {pval:.4f}")
-#
-# corr, pval = spearmanr(sim_conc_df['DV'], sim_conc_df['AGE'])
-# print(f"Spearman correlation: {corr:.3f}, p-value: {pval:.4f}")
-#
-# corr, pval = spearmanr(sim_conc_df['DV'], sim_conc_df['HT'])
-# print(f"Spearman correlation: {corr:.3f}, p-value: {pval:.4f}")
 
 if not os.path.exists(f"{output_dir}/PKPD_EDA"):
     os.mkdir(f"{output_dir}/PKPD_EDA")
 if not os.path.exists(f"{output_dir}/PKPD_EDA/PKvsPD_Corr"):
     os.mkdir(f"{output_dir}/PKPD_EDA/PKvsPD_Corr")
 
-pk_col_list = ['DV','DAILY_DOSE','AUC24','IPRED']
-pd_col_list = ['PD_CRP','PD_CRP_DELT','PD_FCAL','PD_FCAL_DELT','PD_PRO2','PD_PRO2_DELT','PD_CR','PD_CR_DELT']
+pk_col_list = ['DV','DAILY_DOSE','AUC24','IPRED','cumAUC']
+pd_col_list = ['PD_CRP','PD_CRP_DELT','PD_FCAL','PD_FCAL_DELT','PD_PRO2','PD_PRO2_DELT','PD_CR']
 
 # scatter plot 그리기
-plt.figure(figsize=(15, 12))
+# plt.figure(figsize=(15, 12))
 
 
 for x in pk_col_list:
     # x='ALT'
+    # x='cumAUC'
     for y in pd_col_list:
+        # y='PD_CRP_DELT'
         hue = 'IBD_TYPE'
         # sim_conc_df[[x,y]].dropna()
         gdf = sim_conc_df.copy()
-        # if y=='CRP':
-        #     gdf = gdf[gdf[y]<=25].copy()
+        # gdf = sim_conc_df.copy()
+        y_base = '_'.join(y.split('_')[:2])
+        if y_base=='PD_CRP':
+            gdf = gdf[gdf[f"{y_base}_BL"] > 0.5].copy()
+        elif y_base=='PD_FCAL':
+            gdf = gdf[gdf[f"{y_base}_BL"] > 50].copy()
+        elif y_base=='PD_PRO2':
+            gdf = gdf[gdf[f"{y_base}_BL"] >= 1].copy()
+        elif y_base=='PD_CR':
+            gdf = gdf[gdf[f"{y_base}_BL"] == 0].copy()
         #     # raise ValueError
         # gdf.columns
         gdf = gdf.replace([np.inf, -np.inf], np.nan).dropna(subset=[x, y])
@@ -176,9 +138,20 @@ for x in pk_col_list:
 
         corr, corr_pval = spearmanr(gdf[x], gdf[y])
 
-        sns.scatterplot(data=gdf, x=x, y=y, marker='o', hue=hue)
-        fig_title = f'[PKPD_EDA] {x} vs {y}\ncorr_coef: {corr:.4f}, p-value: {corr_pval:.4f}'
-        # fig_title = f'[PKPD_EDA] {x} vs {y}\nR-squared:{r_squared:.4f}, p-value: {p_value:.4f}\nbeta: {slope:.4f}, intercept: {intercept:.4f}'
+        if y_base == 'PD_CR':
+            sns.scatterplot(data=gdf, x=x, y=y, marker='o', hue=hue)
+        else:
+            sns.lmplot(
+                data=gdf, x=x, y=y,
+                height=5, aspect=1.2,
+                scatter_kws={"s": 40},  # 점 크기
+                line_kws={"linewidth": 2},  # 회귀선 두께
+                hue = hue
+            )
+
+
+        # fig_title = f'[PKPD_EDA] {x} vs {y}\ncorr_coef: {corr:.4f}, p-value: {corr_pval:.4f}'
+        fig_title = f'[PKPD_EDA] {x} vs {y}\nR-squared:{r_squared:.4f}, p-value: {p_value:.4f}\nbeta: {slope:.4f}, intercept: {intercept:.4f}'
         plt.title(fig_title, fontsize=14)
         plt.xlabel(x, fontsize=14)
         plt.ylabel(y, fontsize=14)
@@ -194,7 +167,8 @@ for x in pk_col_list:
 
         if not os.path.exists(f"{output_dir}/PKPD_EDA/PKvsPD_Corr/{x}"):
             os.mkdir(f"{output_dir}/PKPD_EDA/PKvsPD_Corr/{x}")
-        plt.savefig(f"{output_dir}/PKPD_EDA/PKvsPD_Corr/{x}/{fig_title.split('corr_coef')[0].strip()}.png")  # PNG 파일로 저장
+        # plt.savefig(f"{output_dir}/PKPD_EDA/PKvsPD_Corr/{x}/{fig_title.split('corr_coef')[0].strip()}.png")  # PNG 파일로 저장
+        plt.savefig(f"{output_dir}/PKPD_EDA/PKvsPD_Corr/{x}/{fig_title.split('R-squared')[0].strip()}.png")  # PNG 파일로 저장
 
         plt.cla()
         plt.clf()

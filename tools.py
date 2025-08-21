@@ -799,3 +799,55 @@ def get_model_population_sim_df(df, interval=10/60, add_on_period=4*24, id_col='
     final_sim_df = pd.concat(final_sim_df, ignore_index=True)
     final_sim_df[tad_col] = final_sim_df[time_col]
     return final_sim_df
+
+
+## 구간 AUC 구하기
+
+def auc_linear_up_log_down(t0, c0, t1, c1):
+    """Linear-up / Log-down trapezoid between two points (t0,c0) -> (t1,c1)."""
+    dt = float(t1 - t0)
+    if dt <= 0:
+        return 0.0
+
+    # log trapezoid (감소 구간, 두 농도 모두 >0)
+    if (c0 > 0) and (c1 > 0) and (c1 < c0):
+        ratio = c0 / c1
+        if np.isclose(ratio, 1.0):
+            return 0.5 * (c0 + c1) * dt
+        return dt * (c0 - c1) / np.log(ratio)
+
+    # linear trapezoid
+    return 0.5 * (c0 + c1) * dt
+
+
+def add_iAUC(df, time_col="TIME", conc_col="DV", id_col="ID"):
+    """
+    Linear-up/Log-down 방식으로 각 interval AUC(iAUC)와 누적 AUC(cumAUC)를 추가.
+    첫 행(i=0)은 이전 구간이 없으므로 iAUC는 NaN.
+    """
+    # 정렬
+    if id_col in df.columns:
+        df_sorted = df.sort_values([id_col, time_col]).reset_index(drop=True)
+    else:
+        df_sorted = df.sort_values([time_col]).reset_index(drop=True)
+
+    def _compute_group(g):
+        t = g[time_col].to_numpy(dtype=float)
+        c = g[conc_col].to_numpy(dtype=float)
+        iAUC = np.full_like(c, np.nan, dtype=float)
+
+        for i in range(1, len(g)):
+            iAUC[i] = auc_linear_up_log_down(t[i-1], c[i-1], t[i], c[i])
+
+        out = g.copy()
+        out["iAUC"] = iAUC
+        out["cumAUC"] = np.nancumsum(iAUC)  # 누적 AUC
+        return out
+
+    if id_col in df_sorted.columns:
+        out = df_sorted.groupby(id_col, group_keys=False).apply(_compute_group)
+    else:
+        out = _compute_group(df_sorted)
+
+    return out
+

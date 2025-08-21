@@ -18,7 +18,8 @@ demo_df['UID'] = demo_df['UID'].astype(str)
 
 totlab_df = pd.read_csv(f"{output_dir}/lab_df.csv")
 # [x for x in totlab_df.columns if 'infliximab' in x.lower()]
-totlab_df = totlab_df[['UID', 'DATETIME', 'Albumin', 'AST', 'AST(GOT)', 'ALT', 'ALT(GPT)', 'CRP', 'hsCRP', 'Calprotectin (Serum)', 'Calprotectin (Stool)', 'Fecal Calprotectin', 'eGFR-CKD-EPI', 'Cr (S)', 'Creatinine','Anti-Infliximab Ab [정밀면역검사] (정량)']].copy()
+totlab_df = totlab_df[['UID', 'DATETIME', 'Albumin', 'AST', 'AST(GOT)', 'ALT', 'ALT(GPT)', 'CRP', 'hsCRP', 'Calprotectin (Serum)', 'Calprotectin (Stool)', 'eGFR-CKD-EPI', 'Cr (S)', 'Creatinine','Anti-Infliximab Ab [정밀면역검사] (정량)']].copy()
+# totlab_df = totlab_df[['UID', 'DATETIME', 'Albumin', 'AST', 'AST(GOT)', 'ALT', 'ALT(GPT)', 'CRP', 'hsCRP', 'Calprotectin (Serum)', 'Calprotectin (Stool)', 'Fecal Calprotectin', 'eGFR-CKD-EPI', 'Cr (S)', 'Creatinine','Anti-Infliximab Ab [정밀면역검사] (정량)']].copy()
 totlab_df['Anti-Infliximab Ab [정밀면역검사] (정량)'] = totlab_df['Anti-Infliximab Ab [정밀면역검사] (정량)'].map(lambda x: float(re.findall(r'\d*\.\d+|\d+',str(x))[0]) if str(x)!='nan' else np.nan)
 for c in list(totlab_df.columns)[2:]:  # break
     totlab_df[c] = totlab_df[c].map(lambda x: x if type(x) == float else float(re.findall(r'[\d]+.*[\d]*', str(x))[0]))
@@ -26,7 +27,8 @@ totlab_df['UID'] = totlab_df['UID'].astype(str)
 totlab_df['AST'] = totlab_df[['AST', 'AST(GOT)']].max(axis=1)
 totlab_df['ALT'] = totlab_df[['ALT', 'ALT(GPT)']].max(axis=1)
 totlab_df['CREATININE'] = totlab_df[['Cr (S)', 'Creatinine']].max(axis=1)
-totlab_df['FCAL'] = totlab_df[['Calprotectin (Stool)', 'Fecal Calprotectin']].max(axis=1)
+# totlab_df['FCAL'] = totlab_df[['Calprotectin (Stool)', 'Fecal Calprotectin']].max(axis=1)
+totlab_df['FCAL'] = totlab_df[['Calprotectin (Stool)']].max(axis=1)
 totlab_df['CRP'] = totlab_df[['CRP', 'hsCRP']].max(axis=1)
 # set(totlab_df['Anti-Infliximab Ab [정밀면역검사] (정량)'].unique())
 totlab_df = totlab_df.rename(columns={'Albumin': 'ALB', 'Calprotectin (Serum)': 'CALPRTSER', 'Anti-Infliximab Ab [정밀면역검사] (정량)':'ADA'})
@@ -177,6 +179,9 @@ for drug in ['infliximab','adalimumab']:
         modeling_df['AGE'] = modeling_df.apply(lambda x: int((datetime.strptime(x['DATETIME'],'%Y-%m-%d') - datetime.strptime(x['AGE'],'%Y-%m-%d')).days/365.25), axis=1)
         modeling_df['SEX'] = modeling_df['SEX'].map({'남':1,'여':2})
         modeling_df['ROUTE'] = modeling_df['ROUTE'].map({'IV':1,'SC':2,'.':'.'})
+
+        # raise ValueError
+        # modeling_df[modeling_df['AGE'] <= 18][['UID','NAME','AGE','IBD_TYPE']].drop_duplicates(['UID'], ignore_index=True)
 
 
         modeling_df = modeling_df[modeling_cols].sort_values(['ID','TIME'], ignore_index=True)

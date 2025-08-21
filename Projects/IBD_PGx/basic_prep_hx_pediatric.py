@@ -14,7 +14,7 @@ if not os.path.exists(output_dir):
 ## Orders
 drug_order_set = set()
 
-hx_files = glob.glob(f'{resource_dir}/hx/IBD_PGx_hx(*).txt')
+hx_files = glob.glob(f'{resource_dir}/hx_pediatric/*_*.txt')
 # dose_result_df = list()
 # wierd_result_df = list()
 # result_cols = ['ID','NAME','DATETIME','DRUG','DOSE','ROUTE','ACTING','PERIOD','ETC_INFO','PLACE']
@@ -28,8 +28,8 @@ cdai_df = list()
 cdsurvey_df = list()
 for finx, fpath in enumerate(hx_files): #break
 
-    pid = fpath.split('(')[-1].split('_')[0]
-    pname = fpath.split('_')[-1].split(')')[0]
+    pid = fpath.split('\\')[-1].split('_')[0]
+    pname = fpath.split('\\')[-1].split('_')[-1].replace('.txt','')
 
     print(f"({finx}) {pname} / {pid}")
     # if pname=='이학준':
@@ -38,9 +38,10 @@ for finx, fpath in enumerate(hx_files): #break
     # if pid in ("15322168", "19739357", "34835292", "37366865", "21618097", "36898756", "36975211", "37858047"):       # lab, order 파일 다시 수집 필요
     #     continue
 
-    with open(fpath, "r", encoding="utf-8") as f:
+    with open(fpath, "r", encoding="euc-kr") as f:
         f_content = f.read()
         # print(content)
+
     for fct_inx, fct_str in enumerate([fct.split('\n작성자')[0] for fct in f_content.split('작성과: ')][1:]): #break
 
         if 'Partial Mayo Score for Ulcerative Colitis' in fct_str:
@@ -151,8 +152,8 @@ for finx, fpath in enumerate(hx_files): #break
 
             # continue
             mss_df.append(mss_dict)
-        elif "Crohn's Disease Activity Index" in fct_str:
-            print("Crohn's Disease Activity Index")
+        elif "PCDAI(pedaitric Crohn's Disesase Activity Index)" in fct_str:
+            print("PCDAI(pediatric Crohn's Disesase Activity Index)")
             cdai_dict = {'ID': pid, 'NAME': pname}
             cdai_dict['DATE'] = re.findall(r'[\d][\d][\d][\d]-[\d][\d]-[\d][\d]', fct_str)[0]
             # fct_str_ori = fct_str
