@@ -8,9 +8,18 @@ resource_dir = f'{prj_dir}/resource'
 output_dir = f"{prj_dir}/results"
 
 induction_df = pd.read_excel(f"{resource_dir}/IBD-PGx_induction_date.xlsx")
-# induction_df.sort_values(['EMR ID']).to_csv(f"{resource_dir}/IBD-PGx_induction_date.csv",encoding='utf-8-sig',index=False)
 induction_df = induction_df.rename(columns={'EMR ID':'ID','name':'NAME','induction_start_date':'IND_START_DATE','IBD type':'IBD_TYPE'})
 induction_df['IND_START_DATE'] = induction_df['IND_START_DATE'].astype(str).replace('NaT','')
+
+induction_df2 = pd.read_csv(f"{resource_dir}/initial_induction_patients.csv")
+induction_df2 = induction_df2.rename(columns={'DATETIME':'START_INDMAINT'})
+induction_df2['START_INDMAINT'] = induction_df2['START_INDMAINT'].astype(str).replace('NaT','')
+
+induction_df = induction_df[['ID','NAME','IND_START_DATE','IBD_TYPE']].merge(induction_df2[['ID','START_INDMAINT']], on=['ID'], how='left')
+induction_df['IND_START_DATE'] = induction_df.apply(lambda x: x['START_INDMAINT'] if type(x['START_INDMAINT'])==str else x['IND_START_DATE'], axis=1)
+induction_df['START_INDMAINT'] = (induction_df['START_INDMAINT'].isna())*1
+# inddf = induction_df[~induction_df['START_INDMAINT'].isna()].reset_index(drop=True)
+# inddf[inddf['IND_START_DATE']!=inddf['START_INDMAINT']]
 
 totlab_df = pd.read_csv(f"{output_dir}/conc_df(lab).csv")
 cumlab_df = pd.read_csv(f"{output_dir}/conc_df(cum_lab).csv")
@@ -73,7 +82,7 @@ merged_df.to_csv(f'{output_dir}/merged_df.csv',index=False, encoding='utf-8-sig'
 
 merged_df['DATE'] = merged_df['DATETIME'].map(lambda x:x.split('T')[0])
 # merged_df['AZERO'] = 0
-merged_df = merged_df.merge(induction_df[['ID','IBD_TYPE']], on=['ID'], how='left')
+merged_df = merged_df.merge(induction_df[['ID', 'START_INDMAINT', 'IBD_TYPE']], on=['ID'], how='left')
 
 # Induction Phase 불일치 환자 구분 (전체 합친 데이터에서)
 
@@ -83,54 +92,39 @@ comp_df = min_dose_df.merge(induction_df[['ID','IND_START_DATE']], on=['ID'], ho
 comp_df = comp_df.reset_index(drop=True)
 # comp_df
 
-maint_cons_df = comp_df[comp_df['MIN_DOSE_DATE']==comp_df['IND_START_DATE']].reset_index(drop=True)
-maint_diff_df = comp_df[comp_df['MIN_DOSE_DATE']!=comp_df['IND_START_DATE']].reset_index(drop=True)
+
+## Adalimumab은 IND/MAINT 구분 또 다르게 해야할 듯!
+ind_pids = induction_df[induction_df['START_INDMAINT']==0]['ID'].reset_index(drop=True)
+maint_pids = induction_df[induction_df['START_INDMAINT']==1]['ID'].reset_index(drop=True)
+
+maint_cons_df = comp_df[comp_df['ID'].isin(ind_pids)].reset_index(drop=True)
+maint_diff_df = comp_df[comp_df['ID'].isin(maint_pids)].reset_index(drop=True)
+
+# maint_cons_df = comp_df[comp_df['MIN_DOSE_DATE']==comp_df['IND_START_DATE']].reset_index(drop=True)
+# maint_diff_df = comp_df[comp_df['MIN_DOSE_DATE']!=comp_df['IND_START_DATE']].reset_index(drop=True)
 
 # 17439372 -> 23.04.06 infliximab conc: 2.4 이며 타원에서 투약하다 전원됨
 # 37625588 -> 22.12.07 부터 infliximab 투약 / 타원에서 투약하다 전원됨
 # 35093356 -> 20.11.02 부터 infliximab 투약 / 타원에서 투약하다 전원됨
 # 36898756 -> 23.01.03 부터 infliximab 투약 / 타원에서 투약하다 전원됨
 
-# uids_in_cons = [25269024, 24590129, 27530683]
-uids_from_diff_to_cons = [32067581, 29336700, 35028484, 36325931]
+
 # set(uids_from_diff_to_cons)-set(maint_diff_df['ID'])
 # set(uids_in_cons)-set(maint_cons_df['ID'])
 
-for moving_uid in uids_from_diff_to_cons:
-    moving_df = maint_diff_df[maint_diff_df['ID']==moving_uid].copy()
-    if len(moving_df)==0:
-        continue
-    maint_diff_df = maint_diff_df[maint_diff_df['ID']!=moving_uid].copy()
-    maint_cons_df = pd.concat([maint_cons_df, moving_df])
-
-maint_cons_df['IND_START_DATE'] = maint_cons_df['MIN_DOSE_DATE']
-
-# maint_diff_df[maint_diff_df['ID']==29702679]  # Adalimumab 먼저 사용한 케이스
-# maint_cons_df[maint_cons_df['ID']==24590129]  # Adalimumab 먼저 사용한 케이스
-
-# merged_df[merged_df['DRUG']=='infliximab']
-
-
-# merged_df.drop_duplicates(['ID'])
-
-
-# lab_df['DATETIME']
-# dose_df['DATETIME']
-# dose_df['DRUG']
-
-# # Induction Phase 만 구분
+# uids_in_cons = [25269024, 24590129, 27530683]
+# uids_from_diff_to_cons = [32067581, 29336700, 35028484, 36325931]
 #
-# min_dose_df = dose_df.groupby(['ID','NAME']).agg({'DATETIME':'min'}).reset_index(drop=False)
-# min_dose_df['MIN_DOSE_DATE'] = min_dose_df['DATETIME'].map(lambda x:x.split('T')[0])
-# comp_df = min_dose_df.merge(induction_df[['ID','IND_START_DATE']], on=['ID'], how='left')
+# for moving_uid in uids_from_diff_to_cons:
+#     moving_df = maint_diff_df[maint_diff_df['ID']==moving_uid].copy()
+#     if len(moving_df)==0:
+#         continue
+#     maint_diff_df = maint_diff_df[maint_diff_df['ID']!=moving_uid].copy()
+#     maint_cons_df = pd.concat([maint_cons_df, moving_df])
 #
-# ind_cons_df = comp_df[comp_df['MIN_DOSE_DATE']==comp_df['IND_START_DATE']].reset_index(drop=True)
-# ind_diff_df = comp_df[comp_df['MIN_DOSE_DATE']!=comp_df['IND_START_DATE']].reset_index(drop=True)
+# maint_cons_df['IND_START_DATE'] = maint_cons_df['MIN_DOSE_DATE']
 
-# min_dose_df['ID']
-# comp_df['IND_START_DATE'].iloc[0]
-
-appended_frag_cols = ['UID', 'NAME', 'DRUG', 'ROUTE', 'TIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'DATETIME','IBD_TYPE']
+appended_frag_cols = ['UID', 'NAME', 'DRUG', 'ROUTE', 'TIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'DATETIME','IBD_TYPE','START_INDMAINT']
 
 ind_df = list()
 no_indconc_df = list()
@@ -378,7 +372,7 @@ else:
 # pd.concat([ada_ind_df, ada_maint_df])['UID'].drop_duplicates().reset_index(drop=True)
 
 drug_df_dict = dict()
-modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','DATETIME','IBD_TYPE','UID','NAME','ROUTE','DRUG']
+modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','DATETIME','IBD_TYPE','UID','NAME','ROUTE','DRUG','START_INDMAINT']
 
 for drug in set(ind_df['DRUG']).union(set(maint_df['DRUG'])):
     # drug_df_dict[drug]

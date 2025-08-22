@@ -27,6 +27,7 @@ clin_ind_df['NAME'] = clin_ind_df['NAME'].map(lambda x:x.split(':')[-1].replace(
 drug_sdate_ind_df = clin_ind_df[['ID','NAME','DRUG_START_DATE']].copy()
 
 ind_comp_df = drug_sdate_ind_df.merge(start_dosing_df, on=['ID'], how='left')
+ind_comp_df[ind_comp_df['ID']!=36898756].to_csv(f'{resource_dir}/initial_induction_patients.csv', index=False, encoding='utf-8-sig')
 # ind_diff_df = ind_comp_df[ind_comp_df['DRUG_START_DATE'] < ind_comp_df['DATETIME']].copy()
 ind_diff_df = ind_comp_df[ind_comp_df['DRUG_START_DATE'] != ind_comp_df['DATETIME']].copy()
 
