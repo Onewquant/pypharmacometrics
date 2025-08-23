@@ -12,6 +12,16 @@ output_dir = f"{prj_dir}/results"
 if not os.path.exists(output_dir):
     os.mkdir(output_dir)
 
+# Dosing 정보 불러오기
+
+dose_result_df = pd.read_csv(f"{output_dir}/final_dose_df.csv")
+dose_result_df['ID'] = dose_result_df['ID'].astype(str)
+dose_result_df['DOSE_DT'] = dose_result_df['DATE']+'T'+dose_result_df['TIME']
+dose_result_df['TIME'] = "T"+dose_result_df['TIME']
+dose_result_df = dose_result_df.rename(columns={'DATE':'DOSE_DATE','TIME':'DOSE_TIME'})
+dose_result_df = dose_result_df[['ID', 'NAME', 'DOSE_DATE','DOSE_TIME','DOSE_DT', 'DOSE']].copy()
+uniq_dose_pids = list(dose_result_df.drop_duplicates(['ID'])['ID'].astype(str))
+
 # 암호 걸린 파일 열기
 file_path = f"{resource_dir}/AMK_REQ_DATA/amk_req_conc_data.xlsx"
 password = "snubhsnubh"
@@ -30,12 +40,15 @@ result_cols = ['ID', 'NAME', '보고일', '오더일', 'DRUG', 'CONC', 'POT채�
 # raw_df = pd.read_excel(f"{resource_dir}/AMK_REQ_DATA/amk_req_drug_order_data.xlsx", engine="openpyxl")
 # raw_df.columns
 raw_df = raw_df.rename(columns={'환자번호':'ID','검사 접수일자':'DATE','환자명':'NAME', '오더일자':'오더일','검사 결과보고일자':'보고일', '검사 접수일시':'접수DT', '검사결과':'VALUE', '채혈일시':'SAMP_DT'})
+raw_df['ID'] = raw_df['ID'].astype(str)
 raw_df = raw_df.drop('SEQ',axis=1)
 raw_df['SAMP_DT'] = raw_df['SAMP_DT'].dt.strftime("%Y-%m-%dT%H:%M:%S")
+raw_df['NEW_SAMP_DT'] = raw_df['SAMP_DT'].map(lambda x:x[:-3])
 raw_df['REC_REASON'] = ''
-# raw_df[raw_df['REC_REASON']!='']
+raw_df = raw_df[raw_df['VALUE'] != '중복 오더임'].copy()
+raw_df['VALUE'] = raw_df['VALUE'].map(lambda x: float(x.replace('<','').replace('>','').replace('(재검)','')) if type(x)==str else x)
+
 ## 오더비고에 존재하는 채혈시각 반영
-# ordbigo_list = list()
 ordbigo_count = 0
 for inx, row in raw_df.iterrows():# break
     if type(row['오더비고'])==float:
@@ -53,264 +66,268 @@ for inx, row in raw_df.iterrows():# break
             day_str = ordbigo_samp_patterns[0].split('월')[-1].split('일')[0].strip().zfill(2)
             hour_str = ordbigo_samp_patterns[0].split('일')[-1].split('시')[0].strip().zfill(2)
             minute_str = ordbigo_samp_patterns[0].split('시')[-1].split('분')[0].strip().zfill(2)
+            ampm_str = ordbigo_samp_patterns[0].split('분')[-1].split(')')[0].strip().zfill(2)
+            if 'PM' in ampm_str.upper():
+                corrected_hour = int(hour_str) + 12
+                if corrected_hour < 24:
+                    hour_str=str(corrected_hour).zfill(2)
+                else:
+                    pass
+                # raise ValueError
+            elif 'AM' in ampm_str.upper():
+                pass
+                # raise ValueError
+            elif 'MD' in ampm_str.upper():
+                pass
+                # raise ValueError
+            elif ampm_str.upper()=='00':
+                # raise ValueError
+                pass
+            else:
+                print(ampm_str.upper())
+                raise ValueError
             dt_str = f"{year_str}-{month_str}-{day_str}T{hour_str}:{minute_str}"
-            raw_df.at[inx, 'SAMP_DT'] = dt_str
+            if dt_str == '2013-08-16T40:40':
+                dt_str = '2013-08-16T09:40'
+            raw_df.at[inx, 'NEW_SAMP_DT'] = dt_str
             raw_df.at[inx, 'REC_REASON'] = '오더비고반영'
             print(f'({inx}) / {row["ID"]} / {row["NAME"]} / {ordbigo_count} 번째 / {dt_str}')
-            # ordbigo_list.append(dt_str)
-raw_df['결과비고'].map(lambda x:x.lower() if type(x)!=float else 0)
-# raw_df = raw_df.dropna(subset=['VALUE'])
-# raw_df['UID'] = raw_df['UID'].map(lambda x:x.split('-')[0])
-# df['SAMPLING_DT'].unique()
-# df[df['SAMPLING_DT'].isna()]
-# df['SAMPLING_DT'].map(str)
-# raw_df['DATE'] = raw_df.apply(lambda x: x['DATE'] if str(x['SAMPLING_DT'])=='nan' else x['SAMPLING_DT'].split(' ')[0], axis=1)
-raw_df[raw_df['SAMPLING_DT'].isna()]
 
 
-raw_df = raw_df.rename(columns={'환자번호':'UID','채혈일시':'ACTING', '오더일자':'DATE', '검사 접수일자':'접수일','검사 접수일시':'접수일DT', '검사 결과보고일자':'보고일','[함량단위환산] 1일 처방량':'DAILY_DOSE','[함량단위환산] 1회 처방량':'DOSE', "[실처방] 경로":'ROUTE','약품명(성분명)':'DRUG','[실처방] 처방비고':'ETC_INFO'})
-raw_df['UID'] = raw_df['UID'].map(lambda x:x.split('-')[0])
-# df.columns
-# df['DRUG'].unique()
-drugname_dict = {'valproic acid':'valproate','lacosamide':'lacosamide'}
-for raw_drugname, drugname in drugname_dict.items():
+## 결과비고에 존재하는 채혈시각 반영
+resbigo_count = 0
+for inx, row in raw_df[(raw_df['REC_REASON']=='')].iterrows():# break
+    if type(row['결과비고'])==float:
+        continue
+    else:
+        resbigo_str = row['결과비고'].upper().replace('MN:','00:').replace('MD:','12:').replace('MD 시','12:').replace('MD ','12:').replace('12/27  MD','12/27 12:00').strip()
 
-    df = raw_df[raw_df['DRUG']==raw_drugname].copy()
-# raw_df[raw_df['DRUG']=='lacosamide']
-# df['[함량단위환산] 1회 처방량'].unique()
-
-    alter_acting_dict = {
-        '1일 1회':('q24h','09:00/Y'),
-        '1일 2회':('q12h','09:00/Y, 21:00/Y'),
-        '1일 3회':('q8h','08:00/Y, 16:00/Y, 23:59/Y'),
-        '1일 4회':('q6h','04:00/Y, 10:00/Y, 16:00/Y, 22:00/Y'),
-        '1일 5회':('q4.8h','04:00/Y, 09:00/Y, 13:00/Y, 18:00/Y, 23:00/Y'),
-        '1일 6회':('q4h','08:00/Y, 12:00/Y, 16:00/Y, 20:00/Y, 23:59/Y'),
-        '1일 8회':('q3h','02:00/Y, 05:00/Y, 08:00/Y, 11:00/Y, 14:00/Y, 17:00/Y, 20:00/Y, 23:00/Y'),
-        '필요시 자기전에':('q[hours]h','22:00/Y'),
-        '필요시 복용하세요':('q[hours]h','09:00/Y'),
-        '필요시 1시간전에': ('q[hours]h', '09:00/Y'),
-        '격일로 자기전':('q48h','22:00/Y'),
-        '격일로 저녁':('q48h','21:00/Y'),
-        '격일로 아침':('q48h','09:00/Y'),
-        '1년 1회':('q[hours]h','09:00/Y'),
-        '1주 3회':('q56h','09:00/Y'),
-        '의사지시대로 관류하세요':('q[hours]h','09:00/Y'),
-     }
-
-    # df[df['UID']=='352504997098455']
-    # df['REGIMEN'].unique()
-    # df['DOSE'].unique()
-    dose_list = list()
-    alter_acting_list = list()
-    interval_list = list()
-    ondemand_list = list()
-    count = 0
-    prev_uid = '0000'
-    for inx, row in df.iterrows():
-        if prev_uid!=row['UID']:
-            count+=1
-            print(f"({count}) {row['UID']}")
-            prev_uid = row['UID']
-        ## '250mg-500mg-500mg' 형태로 dose가 쓰여있는 경우
-        # if row['']
-        seq_dose_patterns = re.findall(r'\d+\.*\d*', row['DOSE'])
-        if len(seq_dose_patterns) >= 1:
-            dose_val = ('_'.join(seq_dose_patterns))
+        ## 월/일 시간:분 A,P 패턴인 경우
+        resbigo_samp_patterns = re.findall(r'\d+/\d+\s+\d+\:?\d*\s*[A|P]', resbigo_str)
+        if len(resbigo_samp_patterns)==0:
+            raw_df.at[inx, '결과비고'] = resbigo_str
         else:
-            dose_val = seq_dose_patterns[0]
-            # dose_val = re.findall(r'\d+',x.split('mg')[0].split('Remsima')[-1].split('Humira')[-1].split('Stelara')[-1].split(' ')[-1].strip())[0]
             # raise ValueError
-        dose_list.append(dose_val)
-
-        daily_count_str = ' '.join(row['REGIMEN'].split(' ')[:2])
-
-
-        if row['REGIMEN'].split(' ')[0]=='필요시':
-            # print(f"{row['REGIMEN']} / hour_str: {str(int(24/len(seq_dose_patterns)))} / DOSE: {row['DOSE']} ({row['DAILY_DOSE']})")
-            ondemand_list.append(True)
-        else:
-            ondemand_list.append(False)
-
-        alter_acting_list.append(alter_acting_dict[daily_count_str][-1])
-        hour_str = str(int(24/len(seq_dose_patterns)))
-        interval_list.append(alter_acting_dict[daily_count_str][0].replace('[hours]',hour_str))
-
-    # df['ROUTE'].unique()
-    df['DOSE'] = dose_list
-    df['ALTER_ACTING'] = alter_acting_list
-    df['INTERVAL'] = interval_list
-    df['ON_DEMAND'] = ondemand_list
-    df['DRUG'] = drugname
-
-    # df['DRUG']
-    df['ROUTE'] = df['ROUTE'].map({'P.O':'PO','MIV':'IV','PLT':'PO','IVS':'IV','SC':'SC','S.L':"SL", 'IntraPleural':'IP'}) # PLT: ( Par L-tube) / S.L: sublingual
-    df['ADDL'] = df['DAYS'].copy()
-    # df = df[df['ROUTE']!='Irrigation'].copy()
-
-
-    dose_cond1 = ~(df['ACTING'].isna())                         # 본원투약기록 -> 투약 기록대로 추가
-    dose_cond2 = (df['ADDL']>1)&(df['ACTING'].isna())           # 외래자가투약 / 타병원 투약 처방 -> 날짜대로 ALTER_ACTING으로 추가
-    # dose_cond3 = (df['ACTING'].isna())
-
-    df1 = df[dose_cond1].sort_values(['UID','DATE']).reset_index(drop=True)
-    df1['VIRTUALITY'] = False
-    df2 = df[dose_cond2].sort_values(['UID','DATE']).reset_index(drop=True)
-    df2['ACTING'] = df2['ALTER_ACTING'].copy()
-    df2['VIRTUALITY'] = True
-
-    # df[dose_cond3]
-
-    # df = pd.concat([df1, df2]).sort_values(['UID','DATE','ACTING'])
-    # df1[df1['DAYS']>1][['UID','DATE','INTERVAL','ADDL','ACTING']]
-
-    # ADDL 먼저 추가 작업해야함
-
-    df2["DATE"] = pd.to_datetime(df2["DATE"], errors="coerce")
-
-    raise ValueError
-
-    addl_applied_df2 = list()
-    for inx, row in df2.iterrows():#break
-        interval_num = float(row['INTERVAL'].replace('q','').replace('h',''))
-        print(f"({inx}) {row['UID']} / {row['ADDL']} ADDL")
-        if interval_num > 24:
-            day_step = interval_num/24
-            # raise ValueError
-            # pass
-        else:
-            day_step = 1
-
-        # end_date = day_step * row["ADDL"]
-
-        for i in range(row["ADDL"]):  # ADDL 포함해서 +1
-            new_row = row.copy()
-            new_row["DATE"] = (row["DATE"] + pd.Timedelta(days=day_step*i)).strftime("%Y-%m-%d")
-            new_row["ADDL"] = 1
-            addl_applied_df2.append(new_row)
-
-    df2 = pd.DataFrame(addl_applied_df2)
-
-    #######################################
-
-    # df = pd.concat([df1,df2]).sort_values(['UID','DATE']).reset_index(drop=True)
-
-    # DATETIME/DOSE 연결 작업
-
-    dt_dose_series = list()
-    vacant_data = '0000-00-00TNN:NN'
-    for inx, row in df.iterrows():
-        # raise ValueError
-
-        # if (row['ID']=='10023985')&(row['DATETIME']=='2004-04-19T06:51'):
-        #     raise ValueError
-        # else:
-        #     continue
-
-        # if (row['DATETIME']=='2005-06-27T20:00'):
-        #     raise ValueError
-        # else:
-        #     continue
-
-        rep_acting_str = row['ACTING'].replace('O.C,','').strip()
-
-        new_actval_str=''
-        for actval in rep_acting_str.split(','): #break
-
-            ## 빈칸일때
-            if actval=='':
-                # new_actval_str += f'_{vacant_data}'
-                continue
-
-
-            ## 날짜 시간/Y일때
-            y_val = re.findall(r"\d\d\d\d-\d\d-\d\d \d\d:\d\d/Y",actval)
-            if len(y_val) > 0:
-                new_actval_str+='_' + y_val[0].replace("/Y","").replace(" ","T")
-                continue
+            resbigo_count += 1
+            year_str = row['SAMP_DT'][:4]
+            rs_pattern = resbigo_samp_patterns[0].replace('  ',' ')
+            month_str = rs_pattern.split('/')[0].strip().zfill(2)
+            day_str = rs_pattern.split('/')[-1].split(' ')[0].strip().zfill(2)
+            if ':' not in rs_pattern:
+                hour_str = rs_pattern.split(':')[0].split(' ')[1].replace('A','').replace('P','').strip().zfill(2)
+                minute_str = '00'
+                ampm_str = rs_pattern[-1]
             else:
-                pass
-
-            ## 시간/Y 일떄
-            y_val = re.findall(r"\d\d:\d\d/Y",actval)
-            if len(y_val) > 0:
-                new_actval_str+=f'_{row["DATE"]}T{y_val[0].replace("/Y","")}'
-                continue
-            else:
-                rest_y_val = actval.split('/')[-1]
-
-                """
-                # 확인 필요한 부분: D나 N은 투약이 된것인지?
-                """
-                if (('Y ' in rest_y_val) or ('O ' in rest_y_val)):
-                    raise ValueError
+                hour_str = rs_pattern.split(':')[0].split(' ')[1].strip().zfill(2)
+                minute_str = rs_pattern.split(':')[-1].replace('A','').replace('P','').strip().zfill(2)
+                ampm_str = rs_pattern[-1]
+            if 'P' in ampm_str:
+                corrected_hour = int(hour_str) + 12
+                if corrected_hour < 24:
+                    hour_str=str(corrected_hour).zfill(2)
                 else:
-                    new_actval_str += f'_{vacant_data}'
-                    continue
+                    pass
+                # print(ampm_str)
+                # hour_str = str(int(hour_str) + 12).zfill(2)
+                # raise ValueError
+            elif 'A' in ampm_str:
+                pass
+                # print(ampm_str)
+                # raise ValueError
+            else:
+                # print(ampm_str)
+                raise ValueError
+            dt_str = f"{year_str}-{month_str}-{day_str}T{hour_str}:{minute_str}"
+            # if row['SAMP_DT']=='2003-11-30T21:04:59':
+            #     raise ValueError
+            raw_df.at[inx, 'NEW_SAMP_DT'] = dt_str
+            raw_df.at[inx, 'REC_REASON'] = '결과비고반영(날짜_시간AP)'
+            # raw_df.at[inx, '결과비고'] = resbigo_str
+            print(f'({inx}) / {row["ID"]} / {row["NAME"]} / {resbigo_count} 번째 / {dt_str}')
+            continue
 
-            raise ValueError
-
-        new_actval_str = new_actval_str[1:]
-        # print(22)
-        # raise ValueError
-        # DOSE 붙이기 작업
-        new_actval_split = new_actval_str.split('_')
-
-
-        new_actval_str = '_'.join([f"{nav}DOSE{row['DOSE']}" for nav in new_actval_split])
-        dt_dose_series.append(new_actval_str)
-    df['DT_DOSE'] = dt_dose_series
-
-    df.to_csv(f"{output_dir}/{raw_drugname}_dt_dose_df.csv", encoding='utf-8-sig', index=False)
-    # df[['UID', 'DATE', 'DRUG', 'DOSE', 'ROUTE','REGIMEN','DAYS', 'ETC_INFO', 'ACTING', 'ALTER_ACTING', 'INTERVAL', 'VIRTUALITY', 'DT_DOSE']]
-    # df['INTERVAL']
-    # dose_result_df[['DATE','DOSE','ACTING','DT_DOSE']]
-
-    #
-    # dose_result_df = pd.read_csv(f"{output_dir}/dt_dose_df.csv")
-    # vacant_data = '0000-00-00TNN:NN'
-    ## ACTING 기록 개별 분리작업
-
-    final_dose_df = list()
-    cur_id = ''
-    # df.columns
-    for inx, row in df.iterrows(): #break
-        if cur_id!=row['UID']:
-            print(f"({inx} / {len(df)}) {row['UID']} / ACTING 기록 개별 분리작업")
-            cur_id=row['UID']
-        row_df = pd.DataFrame(columns=['UID','DRUG','INTERVAL','DT_DOSE','ETC_INFO','VIRTUALITY'])
-        row_df['DT_DOSE'] = row['DT_DOSE'].split('_')
-        for c in ['UID','DRUG','INTERVAL','ETC_INFO','VIRTUALITY']:
-            row_df[c] = row[c]
-        final_dose_df.append(row_df)
-    final_dose_df = pd.concat(final_dose_df, ignore_index=True)
-    final_dose_df['DATE'] = final_dose_df['DT_DOSE'].map(lambda x:x.split('T')[0])
-    final_dose_df['TIME'] = final_dose_df['DT_DOSE'].map(lambda x:'T'+x.split('T')[-1].split('DOSE')[0])
-    final_dose_df['DOSE'] = final_dose_df['DT_DOSE'].map(lambda x:float(x.split('DOSE')[-1]))
-    final_dose_df = final_dose_df[(final_dose_df['DATE']!=vacant_data.split('T')[0])]
-
-    # 비품용 제외
-    final_dose_df = final_dose_df[~(final_dose_df['ETC_INFO'].map(lambda x:'비품' in x if type(x)!=float else False))].copy()
-
-
-    final_dose_df.to_csv(f"{output_dir}/{raw_drugname}_final_dose_df.csv", encoding='utf-8-sig', index=False)
-
-#
-
-# df2
-# df['REGIMEN'].unique()
-# df['ALTER_ACTING'] = ''
+        ## 월/일 시간:분 패턴인 경우
+        resbigo_samp_patterns = re.findall(r'\d+/\d+\s+\d+\:?\d*\s*', resbigo_str)
+        if len(resbigo_samp_patterns) == 0:
+            pass
+        else:
+            # raise ValueError
+            resbigo_count += 1
+            year_str = row['SAMP_DT'][:4]
+            rs_pattern = resbigo_samp_patterns[0].replace('  ', ' ')
+            month_str = rs_pattern.split('/')[0].strip().zfill(2)
+            day_str = rs_pattern.split('/')[-1].split(' ')[0].strip().zfill(2)
+            if ':' not in rs_pattern:
+                hour_str = rs_pattern.split(':')[0].split(' ')[1].replace('A', '').replace('P', '').strip().zfill(2)
+                minute_str = '00'
+            else:
+                hour_str = rs_pattern.split(':')[0].split(' ')[1].strip().zfill(2)
+                minute_str = rs_pattern.split(':')[-1].replace('A', '').replace('P', '').strip().zfill(2)
+            dt_str = f"{year_str}-{month_str}-{day_str}T{hour_str}:{minute_str}"
+            # if row['SAMP_DT']=='2003-11-30T21:04:59':
+            #     raise ValueError
+            raw_df.at[inx, 'NEW_SAMP_DT'] = dt_str
+            raw_df.at[inx, 'REC_REASON'] = '결과비고반영(날짜_시간)'
+            # raw_df.at[inx, '결과비고'] = resbigo_str
+            print(f'({inx}) / {row["ID"]} / {row["NAME"]} / {resbigo_count} 번째 / {dt_str}')
+            continue
 
 
+        ## 시간:분 A,P 패턴인 경우
+        # resbigo_str = resbigo_str.replace('AMK 450MG TID','')
+        resbigo_samp_patterns = re.findall(r'\d+\:\d*\s*[A|P]', resbigo_str)
+        if len(resbigo_samp_patterns)==0:
+            pass
+        else:
+            # raise ValueError
+            resbigo_count += 1
+            date_str = row['SAMP_DT'].split('T')[0]
+            rs_pattern = resbigo_samp_patterns[0].replace('  ',' ')
+            # month_str = rs_pattern.split('/')[0].strip().zfill(2)
+            # day_str = rs_pattern.split('/')[-1].split(' ')[0].strip().zfill(2)
+            if ':' not in rs_pattern:
+                hour_str = rs_pattern.split(':')[0].split(' ')[0].replace('A','').replace('P','').strip().zfill(2)
+                minute_str = '00'
+                ampm_str = rs_pattern[-1]
+            else:
+                hour_str = rs_pattern.split(':')[0].split(' ')[0].strip().zfill(2)
+                minute_str = rs_pattern.split(':')[-1].replace('A','').replace('P','').strip().zfill(2)
+                ampm_str = rs_pattern[-1]
+            if 'P' in ampm_str:
+                corrected_hour = int(hour_str) + 12
+                if corrected_hour < 24:
+                    hour_str=str(corrected_hour).zfill(2)
+                else:
+                    pass
+                # raise ValueError
+            elif 'A' in ampm_str:
+                pass
+                # print(ampm_str)
+                # raise ValueError
+            else:
+                # print(ampm_str)
+                raise ValueError
+            dt_str = f"{date_str}T{hour_str}:{minute_str}"
+            # if row['SAMP_DT']=='2003-11-30T21:04:59':
+            #     raise ValueError
+            raw_df.at[inx, 'NEW_SAMP_DT'] = dt_str
+            raw_df.at[inx, 'REC_REASON'] = '결과비고반영(시간_분AP)'
+            print(f'({inx}) / {row["ID"]} / {row["NAME"]} / {resbigo_count} 번째 / {dt_str}')
+            continue
+
+        ## 시간A,P분 패턴인 경우
+        # resbigo_str = resbigo_str.replace('AMK 450MG TID','')
+        resbigo_samp_patterns = re.findall(r'\d+[A|P]\d+\s*', resbigo_str)
+        if len(resbigo_samp_patterns) == 0:
+            pass
+        else:
+            # raise ValueError
+            resbigo_count += 1
+            date_str = row['SAMP_DT'].split('T')[0]
+            rs_pattern = resbigo_samp_patterns[0].replace('  ', ' ')
+            # month_str = rs_pattern.split('/')[0].strip().zfill(2)
+            # day_str = rs_pattern.split('/')[-1].split(' ')[0].strip().zfill(2)
+            if 'A' in rs_pattern:
+                ap_str = 'A'
+            elif 'P' in rs_pattern:
+                ap_str = 'P'
+            else:
+                ap_str = ''
+                raise ValueError
+            hour_str = rs_pattern.split(ap_str)[0].strip().zfill(2)
+            minute_str = rs_pattern.split(ap_str)[-1].replace(ap_str, '').strip().zfill(2)
+            dt_str = f"{date_str}T{hour_str}:{minute_str}"
+            # if row['SAMP_DT']=='2003-11-30T21:04:59':
+            #     raise ValueError
+            raw_df.at[inx, 'NEW_SAMP_DT'] = dt_str
+            raw_df.at[inx, 'REC_REASON'] = '결과비고반영(시간AP분)'
+            print(f'({inx}) / {row["ID"]} / {row["NAME"]} / {resbigo_count} 번째 / {dt_str}')
+            continue
 
 
-# odf['ROUTE'].unique()
-# odf[odf['ROUTE']=='IV'][['UID','오더일','DAYS','ROUTE','[실처방] 투약위치','ACTING']]
-# df['ROUTE'].unique()
-# df['ETC_INFO'].unique()
+# 채혈시간이 중복되는 데이터 처리 -> DOSING TIME 고려하여 P/T 구분
+dup_id_sampdate_df = raw_df.groupby(['ID','NEW_SAMP_DT'], as_index=False).agg({'NAME':'count'}).copy()
+# test_df = dup_id_sampdate_df.groupby('ID', as_index=False).agg({'NAME':'sum'}).copy()
+# test_df[test_df['NAME']]
+# dup_id_sampdate_df[dup_id_sampdate_df['NAME']>2]
+used_id_dosedt = list()
+dupsampdt_count = 0
+
+for inx, row in dup_id_sampdate_df[dup_id_sampdate_df['NAME']>1].copy().iterrows(): #break
+    dupsampdt_count+=1
+    dup_dt = row['NEW_SAMP_DT']
+    dup_date = dup_dt.split('T')[0]
+    changing_df = raw_df[(raw_df['ID']==row['ID'])&(raw_df['NEW_SAMP_DT']==dup_dt)].copy()
+    mean_value = changing_df['VALUE'].mean()
+    changing_df['TEMP_PT'] = (changing_df['VALUE'] > mean_value)*1
+
+    id_dose_df = dose_result_df[dose_result_df['ID']==row['ID']].copy()
+    if len(id_dose_df)==0:
+        # No dosing record
+        continue
+
+    id_dupdate_dose_df = id_dose_df[id_dose_df['DOSE_DATE']==dup_date].copy()
+
+    if len(id_dupdate_dose_df)==0:
+
+        if row['ID'] == '10042359':
+            id_dupdate_dose_df = id_dose_df[id_dose_df['DOSE_DATE'] == (datetime.strptime(dup_dt.split('T')[0], '%Y-%m-%d') - timedelta(days=1)).strftime('%Y-%m-%d')].copy()
+            # continue
+        # if row['ID']=='10014664':
+        #     id_dupdate_dose_df = id_dose_df[id_dose_df['DOSE_DATE']==(datetime.strptime(dup_dt.split('T')[0],'%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d')].copy()
+        #     continue
+        min_dose_date = id_dose_df['DOSE_DATE'].min()
+        max_dose_date = id_dose_df['DOSE_DATE'].max()
+
+        # 근처 투약력 있는 경우 -> 다음 투약 일로 추정
+        if (min_dose_date <= dup_date) and (max_dose_date >= dup_date):
+            id_dupdate_dose_df = id_dose_df[id_dose_df['DOSE_DATE'] == (datetime.strptime(dup_dt.split('T')[0], '%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d')].copy()
+            if len(id_dupdate_dose_df)==0:
+                for cg_inx, cg_row in changing_df.iterrows():  # break
+                    raw_df.at[cg_inx, 'NEW_SAMP_DT'] = np.nan
+                    raw_df.at[cg_inx, 'REC_REASON'] = '투약력부재로유추불가'
+                continue
+        # 근처 투약력 투약력 없는 경우
+        else:
+            for cg_inx, cg_row in changing_df.iterrows():  # break
+                raw_df.at[cg_inx, 'NEW_SAMP_DT'] = np.nan
+                raw_df.at[cg_inx, 'REC_REASON'] = '투약력부재로유추불가'
+            # ('10137505', '10125999', '10216802')
+            # No dosing record
+            continue
+
+    ## 중복된 DOSE 기록이 없게 DOSE DT 선택
+
+    for ddt_inx, dose_dt in enumerate(id_dupdate_dose_df['DOSE_DT']):
+        id_dosedt_str = f"{row['ID']}DT{dose_dt}"
+        if dose_dt not in used_id_dosedt:
+            used_id_dosedt.append(id_dosedt_str)
+            break
+        else:
+            ddt_inx += 1
+            continue
+    if (ddt_inx==len(id_dupdate_dose_df)):
+        raise ValueError
+
+    pre_dt = (datetime.strptime(dose_dt,'%Y-%m-%dT%H:%M')-timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
+    post_dt = (datetime.strptime(dose_dt,'%Y-%m-%dT%H:%M')+timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
+
+    for cg_inx, cg_row in changing_df.iterrows(): #break
+        if cg_row['TEMP_PT']==0:
+            raw_df.at[cg_inx, 'NEW_SAMP_DT'] = pre_dt
+            raw_df.at[cg_inx, 'REC_REASON'] = '채혈시간중복(TROUGH)'
+            print(f'({cg_inx}) / {cg_row["ID"]} / {cg_row["NAME"]} / {dupsampdt_count} 번째 / {pre_dt}')
+        else:
+            raw_df.at[cg_inx, 'NEW_SAMP_DT'] = post_dt
+            raw_df.at[cg_inx, 'REC_REASON'] = '채혈시간중복(PEAK)'
+            print(f'({cg_inx}) / {cg_row["ID"]} / {cg_row["NAME"]} / {dupsampdt_count} 번째 / {post_dt}')
 
 
-
-
-
-
+# dup_id_sampdate_df = raw_df.groupby(['ID','NEW_SAMP_DT'], as_index=False).agg({'NAME':'count'}).copy()
+final_conc_df = raw_df.copy()
+final_conc_df['SAMP_DT'] = final_conc_df['NEW_SAMP_DT'].copy()
+final_conc_df['DRUG'] = 'amikacin'
+final_conc_df['CONC'] = final_conc_df['VALUE'].copy()
+final_conc_df = final_conc_df[['ID', 'NAME', '보고일', '오더일', 'DRUG', 'CONC', 'SAMP_DT', 'REC_REASON']].copy()
+final_conc_df = final_conc_df[~final_conc_df['SAMP_DT'].isna()].copy()
+final_conc_df.to_csv(f"{output_dir}/final_conc_df(with sampling).csv", encoding='utf-8-sig', index=False)

@@ -84,7 +84,9 @@ for id, id_df in modeling_df.groupby('ID'): #break
     try:
         first_dose_dt = id_df[id_df['MDV']==1]['TIME'].iloc[0]
     except:
-        raise ValueError
+        # raise ValueError
+        # DOSING DATA가 없는 경우 해당
+        continue
     id_df['TIME'] = id_df['TIME'].map(lambda x:(datetime.strptime(x,'%Y-%m-%dT%H:%M')-datetime.strptime(first_dose_dt,'%Y-%m-%dT%H:%M')).total_seconds()/3600)
 
     ## TIME < 0 필터링
@@ -222,30 +224,20 @@ past_modeling_df[com_cols+['UID']].drop(['NAME'],axis=1).to_csv(f"{output_dir}/p
 
 ####### NONMEM SDTAB
 
-nmsdtab_df = pd.read_csv(f"{nonmem_dir}/run/sdtab105",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
-nmsdtab_df['ID'] = nmsdtab_df['ID'].astype(int)
-nmsdtab_df['TDM_YEAR'] = nmsdtab_df['TDM_YEAR'].astype(int)
-under_pred_df = nmsdtab_df[(nmsdtab_df['DV'] > 10)&(nmsdtab_df['IPRED'] < 7)].copy()
-over_pred_df = nmsdtab_df[(nmsdtab_df['DV'] < 7)&(nmsdtab_df['IPRED'] > 10)].copy()
-mis_pred_df = pd.concat([under_pred_df, over_pred_df])
+# nmsdtab_df = pd.read_csv(f"{nonmem_dir}/run/sdtab105",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
+# nmsdtab_df['ID'] = nmsdtab_df['ID'].astype(int)
+# nmsdtab_df['TDM_YEAR'] = nmsdtab_df['TDM_YEAR'].astype(int)
+# under_pred_df = nmsdtab_df[(nmsdtab_df['DV'] > 10)&(nmsdtab_df['IPRED'] < 7)].copy()
+# over_pred_df = nmsdtab_df[(nmsdtab_df['DV'] < 7)&(nmsdtab_df['IPRED'] > 10)].copy()
+# mis_pred_df = pd.concat([under_pred_df, over_pred_df])
+#
+# filt_modeling_df = final_modeling_df[~(final_modeling_df['ID'].isin(mis_pred_df['ID'].drop_duplicates()))]
+# filt_modeling_df.to_csv(f"{output_dir}/amk_modeling_df_filt.csv",index=False, encoding='utf-8-sig')
 
-# yr_mispred_df = mis_pred_df.groupby(['TDM_YEAR'])['DV'].count().reset_index(drop=False)
-# sns.barplot(yr_mispred_df, x='TDM_YEAR', y='DV')
-# plt.xticks(rotation=90)  # x축 라벨을 90도 회전
-# plt.tight_layout()       # 레이아웃 깨짐 방지 (선택 사항)
-# plt.show()
 
-# yr_mispred_df
-# mis_pred_df['ID'].drop_duplicates()
 
-# strange_modeling_df = final_modeling_df[(final_modeling_df['ID'].isin(mis_pred_df['ID'].drop_duplicates()))].copy()
-# strange_conc_modeling_df = final_modeling_df[(final_modeling_df['MDV']==0)&(final_modeling_df['ID'].isin(mis_pred_df['ID'].drop_duplicates()))].copy()
-# strange_modeling_df.to_csv(f"{output_dir}/strange_df.csv",index=False, encoding='utf-8-sig')
-# strange_conc_modeling_df.to_csv(f"{output_dir}/strange_conc_df.csv",index=False, encoding='utf-8-sig')
 
-filt_modeling_df = final_modeling_df[~(final_modeling_df['ID'].isin(mis_pred_df['ID'].drop_duplicates()))]
-filt_modeling_df.to_csv(f"{output_dir}/amk_modeling_df_filt.csv",index=False, encoding='utf-8-sig')
-# final_modeling_df['ID'].iloc[0]
+
 
 # 연도별
 

@@ -51,6 +51,12 @@ for c in list(totlab_df.columns)[2:]:  # break
 
 totlab_df = totlab_df.drop_duplicates(['UID','DATETIME'])
 totlab_df.to_csv(f"{output_dir}/totlab_df.csv", encoding='utf-8-sig', index=False)
+
+
+
+
+
+
 # totlab_df = pd.read_csv(f"{output_dir}/totlab_df.csv")
 
 # [c for c in totlab_df.columns.unique() if 'ada' in c.lower()]
@@ -162,9 +168,9 @@ covar_modeling_df.to_csv(f'{output_dir}/{drug}_modeling_df_covar.csv',index=Fals
 
 ####### NONMEM SDTAB
 
-nmsdtab_df = pd.read_csv(f"{output_dir}/sdtab105",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
+nmsdtab_df = pd.read_csv(f"{nonmem_dir}/run/sdtab008",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
 nmsdtab_df['ID'] = nmsdtab_df['ID'].astype(int)
-nmsdtab_df['TDM_YEAR'] = nmsdtab_df['TDM_YEAR'].astype(int)
+# nmsdtab_df['TDM_YEAR'] = nmsdtab_df['TDM_YEAR'].astype(int)
 under_pred_df = nmsdtab_df[(nmsdtab_df['DV'] > 10)&(nmsdtab_df['IPRED'] < 7)].copy()
 over_pred_df = nmsdtab_df[(nmsdtab_df['DV'] < 7)&(nmsdtab_df['IPRED'] > 10)].copy()
 mis_pred_df = pd.concat([under_pred_df, over_pred_df])
@@ -172,7 +178,12 @@ mis_pred_df = pd.concat([under_pred_df, over_pred_df])
 covar_modeling_df = covar_modeling_df[~(covar_modeling_df['ID'].isin(mis_pred_df['ID'].drop_duplicates()))]
 # covar_modeling_df['SEX'] = covar_modeling_df['SEX'].map({'M':1,'F':2})
 covar_modeling_df = covar_modeling_df.drop(['NAME'], axis=1)[['ID','TIME','TAD','DV','MDV','CMT','AMT','RATE','UID'] + list(covar_modeling_df.loc[:,'ALB':].iloc[:,:].columns)]
-covar_modeling_df.to_csv(f"{output_dir}/amk_modeling_df_covar_filt.csv",index=False, encoding='utf-8-sig')
+covar_modeling_df.to_csv(f"{nonmem_dir}/amk_modeling_df_covar_filt.csv",index=False, encoding='utf-8-sig')
+
+
+
+
+
 
 # covar_modeling_df.drop(['NAME','DATETIME'], axis=1).applymap(lambda x:x if (type(x)==str) else np.nan).dropna(axis=1)
 # covar_modeling_df['DV'].unique()
