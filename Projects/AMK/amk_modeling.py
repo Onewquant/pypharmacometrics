@@ -192,16 +192,20 @@ filt_based_on_date = pt_info.rename(columns={'ID':'UID'})[['UID','TDM_REQ_DATE']
 modeling_datacheck_df = modeling_datacheck_df.merge(filt_based_on_date, on='UID', how='left')
 modeling_datacheck_df['TDM_YEAR'] = modeling_datacheck_df['TDM_REQ_DATE'].map(lambda x:x.split('-')[0])
 
-modeling_datacheck_df.to_csv(f"{output_dir}/amk_modeling_datacheck.csv",index=False, encoding='utf-8-sig')
+modeling_datacheck_dir = f"{output_dir}/amk_modeling_datacheck"
+if not os.path.exists(modeling_datacheck_dir):
+    os.mkdir(modeling_datacheck_dir)
+
+modeling_datacheck_df.to_csv(f"{modeling_datacheck_dir}/amk_modeling_datacheck.csv",index=False, encoding='utf-8-sig')
 
 # final_modeling_df.columns
 
-final_modeling_df = modeling_datacheck_df[com_cols+['UID','TDM_YEAR']].drop(['NAME'],axis=1)
+# final_modeling_df = modeling_datacheck_df[com_cols+['UID','TDM_YEAR']].drop(['NAME'],axis=1)
 # final_modeling_df = modeling_datacheck_df[datacheck_basic_cols+['UID','DATETIME']].drop(['NAME'],axis=1)
-final_modeling_df.to_csv(f"{output_dir}/amk_modeling_df_tdmyrs.csv",index=False, encoding='utf-8-sig')
+# final_modeling_df.to_csv(f"{modeling_datacheck_dir}/amk_modeling_df_tdmyrs.csv",index=False, encoding='utf-8-sig')
 # final_modeling_df = modeling_datacheck_df[datacheck_basic_cols+['UID']].drop(['NAME'],axis=1)
 final_modeling_df = modeling_datacheck_df[com_cols+['UID']].drop(['NAME'],axis=1)
-final_modeling_df.to_csv(f"{output_dir}/amk_modeling_df.csv",index=False, encoding='utf-8-sig')
+final_modeling_df.to_csv(f"{modeling_datacheck_dir}/amk_modeling_df.csv",index=False, encoding='utf-8-sig')
 
 print(f"[Check Point] Modeling Dataset: {len(modeling_df['ID'].unique())} patients")
 print(f"CONC or DOSE Data 부재: {len(no_oneside_pids)} patients / NO CONC: {len(no_conc_pids)} + NO DOSE: {len(no_dose_pids)}")
@@ -213,18 +217,18 @@ print(f"[Completed] Final Modeling Dataset: {len(modeling_datacheck_df['ID'].uni
 
 
 recent_modeling_df = modeling_datacheck_df[modeling_datacheck_df['DATETIME'].map(lambda x:x.split('T')[0][0:4]) > '2020'].copy()
-recent_modeling_df.to_csv(f"{output_dir}/recent_amk_modeling_datacheck.csv",index=False, encoding='utf-8-sig')
-recent_modeling_df.drop(['NAME'],axis=1).to_csv(f"{output_dir}/recent_amk_modeling_df.csv",index=False, encoding='utf-8-sig')
+recent_modeling_df.to_csv(f"{modeling_datacheck_dir}/recent_amk_modeling_datacheck.csv",index=False, encoding='utf-8-sig')
+recent_modeling_df.drop(['NAME'],axis=1).to_csv(f"{modeling_datacheck_dir}/recent_amk_modeling_df.csv",index=False, encoding='utf-8-sig')
 
 # len(recent_modeling_df.drop(['NAME'],axis=1))
 
 past_modeling_df = modeling_datacheck_df[modeling_datacheck_df['DATETIME'].map(lambda x:x.split('T')[0][0:4]) < '2008'].copy()
-past_modeling_df.to_csv(f"{output_dir}/past_amk_modeling_datacheck.csv",index=False, encoding='utf-8-sig')
+past_modeling_df.to_csv(f"{modeling_datacheck_dir}/past_amk_modeling_datacheck.csv",index=False, encoding='utf-8-sig')
 past_modeling_df[com_cols+['UID']].drop(['NAME'],axis=1).to_csv(f"{output_dir}/past_amk_modeling_df.csv",index=False, encoding='utf-8-sig')
 
 ####### NONMEM SDTAB
 
-# nmsdtab_df = pd.read_csv(f"{nonmem_dir}/run/sdtab105",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
+# nmsdtab_df = pd.read_csv(f"{nonmem_dir}/run/sdtab008",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
 # nmsdtab_df['ID'] = nmsdtab_df['ID'].astype(int)
 # nmsdtab_df['TDM_YEAR'] = nmsdtab_df['TDM_YEAR'].astype(int)
 # under_pred_df = nmsdtab_df[(nmsdtab_df['DV'] > 10)&(nmsdtab_df['IPRED'] < 7)].copy()

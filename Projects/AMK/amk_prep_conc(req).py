@@ -250,6 +250,8 @@ dup_id_sampdate_df = raw_df.groupby(['ID','NEW_SAMP_DT'], as_index=False).agg({'
 # test_df = dup_id_sampdate_df.groupby('ID', as_index=False).agg({'NAME':'sum'}).copy()
 # test_df[test_df['NAME']]
 # dup_id_sampdate_df[dup_id_sampdate_df['NAME']>2]
+dup_id_sampdate_df[(dup_id_sampdate_df['NAME']>1)&(dup_id_sampdate_df['ID']=='10006221')]
+
 used_id_dosedt = list()
 dupsampdt_count = 0
 
@@ -260,6 +262,11 @@ for inx, row in dup_id_sampdate_df[dup_id_sampdate_df['NAME']>1].copy().iterrows
     changing_df = raw_df[(raw_df['ID']==row['ID'])&(raw_df['NEW_SAMP_DT']==dup_dt)].copy()
     mean_value = changing_df['VALUE'].mean()
     changing_df['TEMP_PT'] = (changing_df['VALUE'] > mean_value)*1
+
+    if (row['ID']=='10006221'):
+        raise ValueError
+        (changing_df['VALUE'].min() == 3.4)
+        changing_df[['VALUE']]
 
     id_dose_df = dose_result_df[dose_result_df['ID']==row['ID']].copy()
     if len(id_dose_df)==0:
@@ -311,6 +318,8 @@ for inx, row in dup_id_sampdate_df[dup_id_sampdate_df['NAME']>1].copy().iterrows
 
     pre_dt = (datetime.strptime(dose_dt,'%Y-%m-%dT%H:%M')-timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
     post_dt = (datetime.strptime(dose_dt,'%Y-%m-%dT%H:%M')+timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
+
+
 
     for cg_inx, cg_row in changing_df.iterrows(): #break
         if cg_row['TEMP_PT']==0:

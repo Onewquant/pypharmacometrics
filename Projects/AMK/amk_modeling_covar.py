@@ -25,39 +25,39 @@ demo_df['WT'] = demo_df['WT'].replace('71.4(+0.8)',72.2).astype(float)
 """
 
 ## LAB Covariates Loading
-lab_covar_rawcols = ['UID', 'DATETIME', 'Albumin', 'AST', 'AST(GOT)', 'ALT', 'ALT(GPT)', 'CRP', 'T. Bil.', 'γ-GT', 'Glucose', 'iCa','Cr (S)', 'Creatinine']
-lab_covar_modelcols = ['UID', 'DATETIME', 'ALB', 'AST', 'ALT','TBIL','GGT', 'CRP', 'CREATININE','ICAL']
-
-uid_fulldt_flist = glob.glob(f"{output_dir}/uid_lab_df/uid_fulldt_df(*).csv")
-totlab_df = list()
-for inx, fpath in enumerate(uid_fulldt_flist):
-    print(f'({inx}) {fpath.split("uid_lab_df")[-1][1:]}')
-    uid_lab_df = pd.read_csv(fpath)[lab_covar_rawcols].copy()
-    totlab_df.append(uid_lab_df)
-totlab_df = pd.concat(totlab_df, ignore_index=True)
-# totlab_df = totlab_df[lab_covar_rawcols].copy()
-for c in list(totlab_df.columns)[2:]:  # break
-    totlab_df[c] = totlab_df[c].map(lambda x: x if type(x) == float else float(re.findall(r'[\d]+.*[\d]*', str(x))[0]))
-totlab_df['UID'] = totlab_df['UID'].astype(str)
-totlab_df['AST'] = totlab_df[['AST', 'AST(GOT)']].max(axis=1)
-totlab_df['ALT'] = totlab_df[['ALT', 'ALT(GPT)']].max(axis=1)
-totlab_df['CREATININE'] = totlab_df[['Cr (S)', 'Creatinine']].max(axis=1)
-# set(totlab_df['Anti-Infliximab Ab [정밀면역검사] (정량)'].unique())
-totlab_df = totlab_df.rename(columns={'Albumin': 'ALB','T. Bil.':'TBIL','γ-GT':'GGT','Glucose':'GLU','iCa':'ICAL'})
-totlab_df = totlab_df[lab_covar_modelcols].copy()
-# totlab_df = totlab_df[['UID', 'DATETIME', 'ALB', 'AST', 'ALT', 'CRP', 'CALPRTSTL', 'CREATININE']].copy()
-for c in list(totlab_df.columns)[2:]:  # break
-    totlab_df[c] = totlab_df[c].map(lambda x: x if type(x) == float else float(re.findall(r'[\d]+.*[\d]*', str(x))[0]))
-
-totlab_df = totlab_df.drop_duplicates(['UID','DATETIME'])
-totlab_df.to_csv(f"{output_dir}/totlab_df.csv", encoding='utf-8-sig', index=False)
-
-
-
-
+# lab_covar_rawcols = ['UID', 'DATETIME', 'Albumin', 'AST', 'AST(GOT)', 'ALT', 'ALT(GPT)', 'CRP', 'T. Bil.', 'γ-GT', 'Glucose', 'iCa','Cr (S)', 'Creatinine']
+# lab_covar_modelcols = ['UID', 'DATETIME', 'ALB', 'AST', 'ALT','TBIL','GGT', 'CRP', 'CREATININE','ICAL']
+#
+# uid_fulldt_flist = glob.glob(f"{output_dir}/uid_lab_df/uid_fulldt_df(*).csv")
+# totlab_df = list()
+# for inx, fpath in enumerate(uid_fulldt_flist):
+#     print(f'({inx}) {fpath.split("uid_lab_df")[-1][1:]}')
+#     uid_lab_df = pd.read_csv(fpath)[lab_covar_rawcols].copy()
+#     totlab_df.append(uid_lab_df)
+# totlab_df = pd.concat(totlab_df, ignore_index=True)
+# # totlab_df = totlab_df[lab_covar_rawcols].copy()
+# for c in list(totlab_df.columns)[2:]:  # break
+#     totlab_df[c] = totlab_df[c].map(lambda x: x if type(x) == float else float(re.findall(r'[\d]+.*[\d]*', str(x))[0]))
+# totlab_df['UID'] = totlab_df['UID'].astype(str)
+# totlab_df['AST'] = totlab_df[['AST', 'AST(GOT)']].max(axis=1)
+# totlab_df['ALT'] = totlab_df[['ALT', 'ALT(GPT)']].max(axis=1)
+# totlab_df['CREATININE'] = totlab_df[['Cr (S)', 'Creatinine']].max(axis=1)
+# # set(totlab_df['Anti-Infliximab Ab [정밀면역검사] (정량)'].unique())
+# totlab_df = totlab_df.rename(columns={'Albumin': 'ALB','T. Bil.':'TBIL','γ-GT':'GGT','Glucose':'GLU','iCa':'ICAL'})
+# totlab_df = totlab_df[lab_covar_modelcols].copy()
+# # totlab_df = totlab_df[['UID', 'DATETIME', 'ALB', 'AST', 'ALT', 'CRP', 'CALPRTSTL', 'CREATININE']].copy()
+# for c in list(totlab_df.columns)[2:]:  # break
+#     totlab_df[c] = totlab_df[c].map(lambda x: x if type(x) == float else float(re.findall(r'[\d]+.*[\d]*', str(x))[0]))
+#
+# totlab_df = totlab_df.drop_duplicates(['UID','DATETIME'])
+# totlab_df.to_csv(f"{output_dir}/totlab_df.csv", encoding='utf-8-sig', index=False)
+#
+#
 
 
-# totlab_df = pd.read_csv(f"{output_dir}/totlab_df.csv")
+
+
+totlab_df = pd.read_csv(f"{output_dir}/totlab_df.csv")
 
 # [c for c in totlab_df.columns.unique() if 'ada' in c.lower()]
 
@@ -69,6 +69,7 @@ covar_modeling_df = pd.read_csv(f'{output_dir}/{drug}_modeling_datacheck.csv')
 
 # covar_modeling_df = pd.read_csv(f"{output_dir}/{drug}_modeling_df_filt.csv")
 covar_modeling_df['UID']= covar_modeling_df['UID'].astype(str)
+covar_modeling_df['DATETIME_ORI'] = covar_modeling_df['DATETIME'].copy()
 covar_modeling_df['DATETIME'] = covar_modeling_df['DATETIME'].map(lambda x:x.split('T')[0])
 
 # modeling_df['UID'].drop_duplicates()
@@ -85,14 +86,17 @@ covar_modeling_df = covar_modeling_df.merge(demo_df, on=['UID'], how='left')
 # demo_df['UID'].iloc[0]
 
 ## Covariates의 NA value 처리 (ffill 먼저 시도, 없으면 bfill, 그것도 없으면 전체의 median 값)
+keep_ori_covar_cols = ['DATETIME_ORI','REC_REASON']
+keep_ori_covar_df = covar_modeling_df[keep_ori_covar_cols].copy()
 
 md_df_list = list()
-for md_inx,md_df in covar_modeling_df.groupby(['UID']):
+for md_inx,md_df in covar_modeling_df.drop(keep_ori_covar_cols, axis=1).groupby(['UID']):
     md_df = md_df.sort_values(['TIME']).fillna(method='ffill').fillna(method='bfill')
     md_df_list.append(md_df)
 covar_modeling_df = pd.concat(md_df_list).reset_index(drop=True)
-
 covar_modeling_df = covar_modeling_df.fillna(covar_modeling_df.median(numeric_only=True))
+
+covar_modeling_df = pd.concat([covar_modeling_df, keep_ori_covar_df], axis=1)
 
 
 ## Covariates의 NA value 처리 (ffill 먼저 시도, 없으면 bfill, 그것도 없으면 전체의 median 값)
@@ -112,11 +116,17 @@ covar_modeling_df = covar_modeling_df.fillna(covar_modeling_df.median(numeric_on
 # data_check_cols = ['ID','UID','NAME','DATETIME','TIME','DV','MDV','AMT','DUR','CMT','IBD_TYPE','ADDED_ADDL'] + list(modeling_df.loc[:,'DRUG':].iloc[:,1:].columns)
 # modeling_df[data_check_cols].to_csv(f'{output_dir}/{drug}_{mode_str}_datacheck_covar.csv', index=False, encoding='utf-8-sig')
 # raise ValueError
+
+modeling_covar_dir = f"{output_dir}/amk_modeling_covar"
+if not os.path.exists(modeling_covar_dir):
+    os.mkdir(modeling_covar_dir)
+
 right_covar_col = 'TDM_REQ_DATE'
-datacheck_cols = ['ID',	'UID', 'NAME', 'DATETIME', 'TIME', 'DV', 'MDV', 'AMT', 'RATE', 'CMT'] + list(covar_modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
-covar_modeling_df[datacheck_cols].to_csv(f'{output_dir}/{drug}_modeling_datacheck_covar.csv', index=False, encoding='utf-8-sig')
+datacheck_cols = ['ID',	'UID', 'NAME', 'DATETIME', 'TIME', 'DV', 'MDV', 'AMT', 'RATE', 'CMT','REC_REASON'] + list(covar_modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
+covar_modeling_df[datacheck_cols].to_csv(f'{modeling_covar_dir}/{drug}_modeling_datacheck_covar.csv', index=False, encoding='utf-8-sig')
 # dcheck_df = modeling_df[~(modeling_df['DV'].isin(['.','0.0']))][['ID',	'UID', 'NAME', 'DATETIME', 'DV']].copy()
 # dcheck_df[dcheck_df['DV'].map(float) > 40]
+covar_modeling_df = covar_modeling_df.drop(keep_ori_covar_cols, axis=1)
 modeling_cols = ['ID','NAME','TIME','TAD','DV','MDV','CMT','AMT','RATE','UID'] + list(covar_modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
 
 # modeling_df['AGE'] = modeling_df.apply(lambda x: int((datetime.strptime(x['DATETIME'],'%Y-%m-%d') - datetime.strptime(x['AGE'],'%Y-%m-%d')).days/365.25), axis=1)
@@ -163,9 +173,10 @@ modeling_input_line = str(list(covar_modeling_df.columns)).replace("', '"," ")
 print(f"Mode: {modeling_input_line}")
 
 
-covar_modeling_df.to_csv(f'{output_dir}/{drug}_modeling_df_covar.csv',index=False, encoding='utf-8-sig')
+covar_modeling_df.to_csv(f'{modeling_covar_dir}/{drug}_modeling_df_covar.csv',index=False, encoding='utf-8-sig')
 # covar_modeling_df = pd.read_csv(f'{output_dir}/amk_modeling_datacheck_covar.csv')
 
+raise ValueError
 ####### NONMEM SDTAB
 
 nmsdtab_df = pd.read_csv(f"{nonmem_dir}/run/sdtab008",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
@@ -181,7 +192,21 @@ covar_modeling_df = covar_modeling_df.drop(['NAME'], axis=1)[['ID','TIME','TAD',
 covar_modeling_df.to_csv(f"{nonmem_dir}/amk_modeling_df_covar_filt.csv",index=False, encoding='utf-8-sig')
 
 
+####### NONMEM SDTAB
+# nmsdtab_df.columns
+modeling_covar_dir = f"{output_dir}/amk_modeling_datacheck"
+modeling_datacheck_df = pd.read_csv(f"{modeling_covar_dir}/amk_modeling_datacheck.csv")
+nmsdtab_df = pd.read_csv(f"{nonmem_dir}/run/sdtab008",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
+nmsdtab_df['ID'] = nmsdtab_df['ID'].astype(int)
 
+prep_conc_df = modeling_datacheck_df[modeling_datacheck_df['MDV']==0]
+nm_conc_df = nmsdtab_df[nmsdtab_df['MDV']==0]
+merge_conc_df = nm_conc_df.merge(prep_conc_df[['ID','TIME','REC_REASON']], on=['ID','TIME'], how='left')
+
+import matplotlib.font_manager as fm
+plt.rc('font', family='Malgun Gothic')
+plt.rcParams['axes.unicode_minus'] = False
+sns.scatterplot(data=merge_conc_df, x='IPRED',y='DV', hue='REC_REASON')
 
 
 
