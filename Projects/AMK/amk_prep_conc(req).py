@@ -47,9 +47,10 @@ raw_df['NEW_SAMP_DT'] = raw_df['SAMP_DT'].map(lambda x:x[:-3])
 raw_df['REC_REASON'] = ''
 raw_df = raw_df[raw_df['VALUE'] != '중복 오더임'].copy()
 raw_df['VALUE'] = raw_df['VALUE'].map(lambda x: float(x.replace('<','').replace('>','').replace('(재검)','')) if type(x)==str else x)
-
+# raw_df['ID'].drop_duplicates()
 ## 오더비고에 존재하는 채혈시각 반영
 ordbigo_count = 0
+ordbigo_patients = set()
 for inx, row in raw_df.iterrows():# break
     if type(row['오더비고'])==float:
         continue
@@ -60,6 +61,7 @@ for inx, row in raw_df.iterrows():# break
         if len(ordbigo_samp_patterns)==0:
             continue
         else:
+            ordbigo_patients.add(row['ID'])
             ordbigo_count+=1
             year_str = row['SAMP_DT'][:4]
             month_str = ordbigo_samp_patterns[0].split('(')[-1].split('월')[0].strip().zfill(2)
@@ -96,6 +98,7 @@ for inx, row in raw_df.iterrows():# break
 
 ## 결과비고에 존재하는 채혈시각 반영
 resbigo_count = 0
+resbigo_patients = set()
 for inx, row in raw_df[(raw_df['REC_REASON']=='')].iterrows():# break
     if type(row['결과비고'])==float:
         continue
@@ -109,6 +112,7 @@ for inx, row in raw_df[(raw_df['REC_REASON']=='')].iterrows():# break
         else:
             # raise ValueError
             resbigo_count += 1
+            resbigo_patients.add(row['ID'])
             year_str = row['SAMP_DT'][:4]
             rs_pattern = resbigo_samp_patterns[0].replace('  ',' ')
             month_str = rs_pattern.split('/')[0].strip().zfill(2)
@@ -153,6 +157,7 @@ for inx, row in raw_df[(raw_df['REC_REASON']=='')].iterrows():# break
         else:
             # raise ValueError
             resbigo_count += 1
+            resbigo_patients.add(row['ID'])
             year_str = row['SAMP_DT'][:4]
             rs_pattern = resbigo_samp_patterns[0].replace('  ', ' ')
             month_str = rs_pattern.split('/')[0].strip().zfill(2)
@@ -181,6 +186,7 @@ for inx, row in raw_df[(raw_df['REC_REASON']=='')].iterrows():# break
         else:
             # raise ValueError
             resbigo_count += 1
+            resbigo_patients.add(row['ID'])
             date_str = row['SAMP_DT'].split('T')[0]
             rs_pattern = resbigo_samp_patterns[0].replace('  ',' ')
             # month_str = rs_pattern.split('/')[0].strip().zfill(2)
@@ -223,6 +229,7 @@ for inx, row in raw_df[(raw_df['REC_REASON']=='')].iterrows():# break
         else:
             # raise ValueError
             resbigo_count += 1
+            resbigo_patients.add(row['ID'])
             date_str = row['SAMP_DT'].split('T')[0]
             rs_pattern = resbigo_samp_patterns[0].replace('  ', ' ')
             # month_str = rs_pattern.split('/')[0].strip().zfill(2)
@@ -250,7 +257,7 @@ dup_id_sampdate_df = raw_df.groupby(['ID','NEW_SAMP_DT'], as_index=False).agg({'
 # test_df = dup_id_sampdate_df.groupby('ID', as_index=False).agg({'NAME':'sum'}).copy()
 # test_df[test_df['NAME']]
 # dup_id_sampdate_df[dup_id_sampdate_df['NAME']>2]
-dup_id_sampdate_df[(dup_id_sampdate_df['NAME']>1)&(dup_id_sampdate_df['ID']=='10006221')]
+# dup_id_sampdate_df[(dup_id_sampdate_df['NAME']>1)&(dup_id_sampdate_df['ID']=='10006221')]
 
 used_id_dosedt = list()
 dupsampdt_count = 0
@@ -263,10 +270,10 @@ for inx, row in dup_id_sampdate_df[dup_id_sampdate_df['NAME']>1].copy().iterrows
     mean_value = changing_df['VALUE'].mean()
     changing_df['TEMP_PT'] = (changing_df['VALUE'] > mean_value)*1
 
-    if (row['ID']=='10006221'):
-        raise ValueError
-        (changing_df['VALUE'].min() == 3.4)
-        changing_df[['VALUE']]
+    # if (row['ID']=='10006221'):
+    #     raise ValueError
+    #     (changing_df['VALUE'].min() == 3.4)
+    #     changing_df[['VALUE']]
 
     id_dose_df = dose_result_df[dose_result_df['ID']==row['ID']].copy()
     if len(id_dose_df)==0:
@@ -319,8 +326,6 @@ for inx, row in dup_id_sampdate_df[dup_id_sampdate_df['NAME']>1].copy().iterrows
     pre_dt = (datetime.strptime(dose_dt,'%Y-%m-%dT%H:%M')-timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
     post_dt = (datetime.strptime(dose_dt,'%Y-%m-%dT%H:%M')+timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
 
-
-
     for cg_inx, cg_row in changing_df.iterrows(): #break
         if cg_row['TEMP_PT']==0:
             raw_df.at[cg_inx, 'NEW_SAMP_DT'] = pre_dt
@@ -331,6 +336,112 @@ for inx, row in dup_id_sampdate_df[dup_id_sampdate_df['NAME']>1].copy().iterrows
             raw_df.at[cg_inx, 'REC_REASON'] = '채혈시간중복(PEAK)'
             print(f'({cg_inx}) / {cg_row["ID"]} / {cg_row["NAME"]} / {dupsampdt_count} 번째 / {post_dt}')
 
+raw_df = raw_df.sort_values(['ID','NEW_SAMP_DT'], ignore_index=True)
+
+# 비 논리적 채혈시간/농도값 -> 투약 전~이후 혹은 후~이전으로 이동
+not_logical_samp_dt_count_dict = {'P_T':0,'T_P':0}
+not_logical_samp_id_dict = {'P_T':set(),'T_P':set()}
+total_count = 0
+for uid, id_conc_df in raw_df.groupby('ID'):
+    # id_conc_df['VALUE']
+    # if uid=='10036912':
+    #     raise ValueError
+    # if uid=='10014664':
+    #     raise ValueError
+    # if uid=='10024058':
+    #     raise ValueError
+    id_dose_df = dose_result_df[dose_result_df['ID'] == uid].copy()
+    # max_conc_value = id_conc_df['VALUE'].max()
+    # min_conc_value = id_conc_df['VALUE'].min()
+    # diff_max_min_value = max_conc_value-min_conc_value
+    # mid_conc_value = (max_conc_value+min_conc_value)/2
+    # if (diff_max_min_value < 7) or (mid_conc_value > 30):
+    mid_conc_value = 12
+
+    inclusion_of_not_logical_samp = False
+    # id_conc_df['VALUE']
+    for conc_inx, conc_row in id_conc_df.iterrows(): #break
+
+
+        samp_dt = pd.to_datetime(conc_row['NEW_SAMP_DT'])
+
+        after_df = id_dose_df[id_dose_df['DOSE_DT'] >= conc_row['NEW_SAMP_DT']].copy()
+        before_df = id_dose_df[id_dose_df['DOSE_DT'] <= conc_row['NEW_SAMP_DT']].copy()
+        # 가장 가까운 row 선택
+        if len(after_df)!=0:
+
+            closest_after_inx = ((pd.to_datetime(after_df["DOSE_DT"]) - samp_dt).abs()).idxmin()
+            closest_after_row = after_df.loc[closest_after_inx].copy()
+            dose_after_conc_timedelta = (pd.to_datetime(closest_after_row['DOSE_DT'])-samp_dt).total_seconds()/3600
+
+            if (dose_after_conc_timedelta < 6) and (conc_row['VALUE'] > mid_conc_value):
+                # id_conc_df[['NEW_SAMP_DT','VALUE']]
+                pre_exist_conc_df = (id_conc_df[id_conc_df['NEW_SAMP_DT'] > closest_after_row['DOSE_DT']])
+                change_pass = True
+                if len(pre_exist_conc_df)>0:
+                    # raise ValueError
+                    pre_exist_timedelta_series = (pd.to_datetime(pre_exist_conc_df['NEW_SAMP_DT'])-pd.to_datetime(closest_after_row['DOSE_DT'])).abs()
+                    pre_exist_conc_inx = pre_exist_timedelta_series.idxmin()
+                    pre_exist_conc_timedelta = pre_exist_timedelta_series[pre_exist_conc_inx].total_seconds() / 3600
+                    pre_exist_conc_row = pre_exist_conc_df.loc[pre_exist_conc_inx].copy()
+                    pre_exist_conc_value = pre_exist_conc_row['VALUE']
+                    if (pre_exist_conc_timedelta < 3) and (pre_exist_conc_value > conc_row['VALUE']):
+                        change_pass = False
+
+                # 이미 존재하는 PEAK CONC 있을경우 따로 변경하지 않음
+                if change_pass:
+                    new_conc_dt = (pd.to_datetime(closest_after_row['DOSE_DT']) + pd.Timedelta(minutes=30)).strftime("%Y-%m-%dT%H:%M")
+                    raw_df.at[conc_inx, 'REC_REASON'] += f"_비논리적채혈시간(T_P)({raw_df.at[conc_inx, 'NEW_SAMP_DT']})"
+                    raw_df.at[conc_inx, 'NEW_SAMP_DT'] = new_conc_dt
+                    not_logical_samp_dt_count_dict['T_P']+=1
+                    not_logical_samp_id_dict['T_P'].add(uid)
+                    inclusion_of_not_logical_samp = True
+                    total_count += 1
+                    print(f'({total_count}) / {uid} / {id_conc_df["NAME"].iloc[0]} / {inclusion_of_not_logical_samp}')
+
+        if len(before_df)!=0:
+            closest_before_inx = ((samp_dt-pd.to_datetime(before_df["DOSE_DT"])).abs()).idxmin()
+            closest_before_row = before_df.loc[closest_before_inx].copy()
+            dose_before_conc_timedelta = (samp_dt - pd.to_datetime(closest_before_row['DOSE_DT'])).total_seconds()/3600
+            if (dose_before_conc_timedelta < 6) and (conc_row['VALUE'] < mid_conc_value):
+                # id_conc_df[['NEW_SAMP_DT','VALUE']]
+                pre_exist_conc_df = (id_conc_df[id_conc_df['NEW_SAMP_DT'] < closest_before_row['DOSE_DT']])
+                change_pass = True
+
+                # 이미 존재하는 TROUGH CONC 있을경우 따로 변경하지 않음
+                if len(pre_exist_conc_df)>0:
+                    # raise ValueError
+                    pre_exist_timedelta_series = (pd.to_datetime(pre_exist_conc_df['NEW_SAMP_DT'])-pd.to_datetime(closest_before_row['DOSE_DT'])).abs()
+                    pre_exist_conc_inx = pre_exist_timedelta_series.idxmin()
+                    pre_exist_conc_timedelta = pre_exist_timedelta_series[pre_exist_conc_inx].total_seconds() / 3600
+                    pre_exist_conc_row = pre_exist_conc_df.loc[pre_exist_conc_inx].copy()
+                    pre_exist_conc_value = pre_exist_conc_row['VALUE']
+                    if (pre_exist_conc_timedelta < 3) and (pre_exist_conc_value < conc_row['VALUE']):
+                        change_pass = False
+
+                if change_pass:
+                    # raise ValueError
+                    new_conc_dt = (pd.to_datetime(closest_before_row['DOSE_DT']) - pd.Timedelta(minutes=30)).strftime("%Y-%m-%dT%H:%M")
+                    raw_df.at[conc_inx, 'REC_REASON'] += f"_비논리적채혈시간(P_T)({raw_df.at[conc_inx, 'NEW_SAMP_DT']})"
+                    raw_df.at[conc_inx, 'NEW_SAMP_DT'] = new_conc_dt
+                    not_logical_samp_dt_count_dict['P_T']+=1
+                    not_logical_samp_id_dict['P_T'].add(uid)
+                    inclusion_of_not_logical_samp = True
+                    total_count += 1
+                    print(f'({total_count}) / {uid} / {id_conc_df["NAME"].iloc[0]} / {inclusion_of_not_logical_samp}')
+
+        total_count += 1
+        print(f'({total_count}) / {uid} / {id_conc_df["NAME"].iloc[0]} / {inclusion_of_not_logical_samp}')
+
+print(f"오더비고 채혈시간 반영: {len(ordbigo_patients)} patients ({ordbigo_count} rows)")
+print(f"결과비고 채혈시간 반영: {len(resbigo_patients)} patients ({resbigo_count} rows)")
+print(f"비 논리적 채혈 시간 교정: \n [Total] {len(not_logical_samp_id_dict['T_P'].union(not_logical_samp_id_dict['P_T']))} patients ({not_logical_samp_dt_count_dict['T_P']+not_logical_samp_dt_count_dict['P_T']} rows) \n [T_P]: {len(not_logical_samp_id_dict['T_P'])} patients ({not_logical_samp_dt_count_dict['T_P']} rows) \n [P_T]: {len(not_logical_samp_id_dict['P_T'])} patients ({not_logical_samp_dt_count_dict['P_T']} rows) ")
+        # raise ValueError
+
+
+# 투약시간 직후인데, TROUGH에 해당하는 농도값을 나타내는 경우 -> 투약 이후로 이동
+
+
 
 # dup_id_sampdate_df = raw_df.groupby(['ID','NEW_SAMP_DT'], as_index=False).agg({'NAME':'count'}).copy()
 final_conc_df = raw_df.copy()
@@ -338,5 +449,5 @@ final_conc_df['SAMP_DT'] = final_conc_df['NEW_SAMP_DT'].copy()
 final_conc_df['DRUG'] = 'amikacin'
 final_conc_df['CONC'] = final_conc_df['VALUE'].copy()
 final_conc_df = final_conc_df[['ID', 'NAME', '보고일', '오더일', 'DRUG', 'CONC', 'SAMP_DT', 'REC_REASON']].copy()
-final_conc_df = final_conc_df[~final_conc_df['SAMP_DT'].isna()].copy()
+final_conc_df = final_conc_df[~final_conc_df['SAMP_DT'].isna()].sort_values(['ID','SAMP_DT'], ignore_index=True)
 final_conc_df.to_csv(f"{output_dir}/final_conc_df(with sampling).csv", encoding='utf-8-sig', index=False)

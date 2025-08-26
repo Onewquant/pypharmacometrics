@@ -65,7 +65,8 @@ totlab_df = pd.read_csv(f"{output_dir}/totlab_df.csv")
 
 ## Modeling Data Loading
 drug='amk'
-covar_modeling_df = pd.read_csv(f'{output_dir}/{drug}_modeling_datacheck.csv')
+modeling_datacheck_dir = f"{output_dir}/amk_modeling_datacheck"
+covar_modeling_df = pd.read_csv(f'{modeling_datacheck_dir}/{drug}_modeling_datacheck.csv')
 
 # covar_modeling_df = pd.read_csv(f"{output_dir}/{drug}_modeling_df_filt.csv")
 covar_modeling_df['UID']= covar_modeling_df['UID'].astype(str)
@@ -167,46 +168,64 @@ covar_modeling_df['TAD'] = add_time_after_dosing_column(df=covar_modeling_df)
 
 
 covar_modeling_df = covar_modeling_df[modeling_cols].sort_values(['ID','TIME'], ignore_index=True)
-
+covar_modeling_df = covar_modeling_df.drop(['NAME'],axis=1)
 modeling_input_line = str(list(covar_modeling_df.columns)).replace("', '"," ")
 
 print(f"Mode: {modeling_input_line}")
 
 
 covar_modeling_df.to_csv(f'{modeling_covar_dir}/{drug}_modeling_df_covar.csv',index=False, encoding='utf-8-sig')
-# covar_modeling_df = pd.read_csv(f'{output_dir}/amk_modeling_datacheck_covar.csv')
+covar_modeling_df.to_csv(f'{nonmem_dir}/{drug}_modeling_df_covar.csv',index=False, encoding='utf-8-sig')
 
+# covar_modeling_df = pd.read_csv(f'{output_dir}/amk_modeling_datacheck_covar.csv')
+# covar_modeling_df['ID'].drop_duplicates()
 raise ValueError
 ####### NONMEM SDTAB
-
-nmsdtab_df = pd.read_csv(f"{nonmem_dir}/run/sdtab008",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
+nmsdtab_df = pd.read_csv(f"{nonmem_dir}/run/sdtab009",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
 nmsdtab_df['ID'] = nmsdtab_df['ID'].astype(int)
 # nmsdtab_df['TDM_YEAR'] = nmsdtab_df['TDM_YEAR'].astype(int)
-under_pred_df = nmsdtab_df[(nmsdtab_df['DV'] > 10)&(nmsdtab_df['IPRED'] < 7)].copy()
-over_pred_df = nmsdtab_df[(nmsdtab_df['DV'] < 7)&(nmsdtab_df['IPRED'] > 10)].copy()
-mis_pred_df = pd.concat([under_pred_df, over_pred_df])
+under_pred_df = nmsdtab_df[(nmsdtab_df['DV'] >= 10)&(nmsdtab_df['IPRED'] < 10)].copy()
+over_pred_df = nmsdtab_df[(nmsdtab_df['DV'] < 10)&(nmsdtab_df['IPRED'] >= 10)].copy()
 
-covar_modeling_df = covar_modeling_df[~(covar_modeling_df['ID'].isin(mis_pred_df['ID'].drop_duplicates()))]
-# covar_modeling_df['SEX'] = covar_modeling_df['SEX'].map({'M':1,'F':2})
-covar_modeling_df = covar_modeling_df.drop(['NAME'], axis=1)[['ID','TIME','TAD','DV','MDV','CMT','AMT','RATE','UID'] + list(covar_modeling_df.loc[:,'ALB':].iloc[:,:].columns)]
-covar_modeling_df.to_csv(f"{nonmem_dir}/amk_modeling_df_covar_filt.csv",index=False, encoding='utf-8-sig')
+
+# under_pred_df.to_csv(f"{modeling_covar_dir}/amk_modeling_underpred.csv",index=False, encoding='utf-8-sig')
+# over_pred_df.to_csv(f"{modeling_covar_dir}/amk_modeling_overpred.csv",index=False, encoding='utf-8-sig')
+
+mis_pred_df = pd.concat([under_pred_df, over_pred_df])
+mis_pred_df['ID'].drop_duplicates()
+#
+# covar_modeling_df = covar_modeling_df[~(covar_modeling_df['ID'].isin(mis_pred_df['ID'].drop_duplicates()))]
+# # covar_modeling_df['SEX'] = covar_modeling_df['SEX'].map({'M':1,'F':2})
+# covar_modeling_df = covar_modeling_df.drop(['NAME'], axis=1)[['ID','TIME','TAD','DV','MDV','CMT','AMT','RATE','UID'] + list(covar_modeling_df.loc[:,'ALB':].iloc[:,:].columns)]
+# covar_modeling_df.to_csv(f"{nonmem_dir}/amk_modeling_df_covar_filt.csv",index=False, encoding='utf-8-sig')
 
 
 ####### NONMEM SDTAB
 # nmsdtab_df.columns
 modeling_covar_dir = f"{output_dir}/amk_modeling_datacheck"
 modeling_datacheck_df = pd.read_csv(f"{modeling_covar_dir}/amk_modeling_datacheck.csv")
-nmsdtab_df = pd.read_csv(f"{nonmem_dir}/run/sdtab008",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
+nmsdtab_df = pd.read_csv(f"{nonmem_dir}/run/sdtab009",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
 nmsdtab_df['ID'] = nmsdtab_df['ID'].astype(int)
 
-prep_conc_df = modeling_datacheck_df[modeling_datacheck_df['MDV']==0]
+prep_conc_df = modeling_datacheck_df[modeling_datacheck_df['MDV']==0].copy()
+prep_conc_df['REC_REASON'] = prep_conc_df['REC_REASON'].replace(np.nan,'Vacant')
 nm_conc_df = nmsdtab_df[nmsdtab_df['MDV']==0]
 merge_conc_df = nm_conc_df.merge(prep_conc_df[['ID','TIME','REC_REASON']], on=['ID','TIME'], how='left')
+
+# merge_conc_df['REC_REASON'].unique()
+filt_gdf = merge_conc_df.copy()
+filt_gdf.columns
+# filt_gdf = merge_conc_df[~merge_conc_df['REC_REASON'].isin(['오더비고반영', '결과비고반영(시간_분AP)', '결과비고반영(날짜_시간AP)', '결과비고반영(날짜_시간)'])].copy()
+
+# merge_conc_df['ID'].drop_duplicates()
+# filt_gdf['ID'].drop_duplicates()
+merge_conc_df[(merge_conc_df['REC_REASON']!='Vacant')]['ID'].drop_duplicates()
+merge_conc_df[(merge_conc_df['REC_REASON']=='Vacant')]['ID'].drop_duplicates()
 
 import matplotlib.font_manager as fm
 plt.rc('font', family='Malgun Gothic')
 plt.rcParams['axes.unicode_minus'] = False
-sns.scatterplot(data=merge_conc_df, x='IPRED',y='DV', hue='REC_REASON')
+sns.scatterplot(data=filt_gdf, x='IPRED',y='DV', hue='REC_REASON')
 
 
 

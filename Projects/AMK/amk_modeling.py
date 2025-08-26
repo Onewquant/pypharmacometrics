@@ -17,6 +17,7 @@ hd_df = pd.read_csv(f"{output_dir}/final_hd_df.csv",encoding='utf-8-sig')
 hd_pids = hd_df['ID'].drop_duplicates()
 
 conc_df = pd.read_csv(f"{output_dir}/final_conc_df(with sampling).csv")
+# conc_df['ID'].drop_duplicates()
 conc_df['DV'] = conc_df['CONC'].copy()
 conc_df['MDV'] = 0
 conc_df['TIME'] = conc_df['SAMP_DT'].copy()
@@ -26,6 +27,8 @@ conc_df['RATE'] = '.'
 # conc_df = conc_df[conc_df['SAMP_DT'].isna()]
 print(f"Deleted / NaN CONC: {len(conc_df[conc_df['SAMP_DT'].isna()])} rows / {len(conc_df[conc_df['SAMP_DT'].isna()]['ID'].unique())} patients")
 conc_df = conc_df[~conc_df['SAMP_DT'].isna()].copy()
+# conc_df[~conc_df['SAMP_DT'].isna()]['ID'].drop_duplicates()
+# conc_df = conc_df[~conc_df['REC_REASON'].isin(['오더비고반영', '결과비고반영(시간AP분)', '결과비고반영(시간_분AP)', '결과비고반영(날짜_시간AP)', '결과비고반영(날짜_시간)'])].copy()
 # conc_df[conc_df['TIME'].map(lambda x:x.split('T')[-1]=='NN:NN')]
 
 dose_df = pd.read_csv(f"{output_dir}/final_dose_df.csv")
@@ -35,6 +38,7 @@ dose_df['TIME'] = dose_df['DATE']+'T'+dose_df['TIME']
 dose_df['CMT'] = 1
 dose_df['AMT'] = dose_df['DOSE']
 dose_df['RATE'] = dose_df['AMT'] / 0.5
+# dose_df[dose_df['ID']==10036912][['TIME','AMT']]
 print(f"Deleted / Ambiguous dosing time : {len(dose_df[(dose_df['TIME'].map(lambda x:x.split('T')[-1]=='NN:NN'))])} rows / {len(dose_df[(dose_df['TIME'].map(lambda x:x.split('T')[-1]=='NN:NN'))]['ID'].unique())} patients")
 dose_df = dose_df[~(dose_df['TIME'].map(lambda x:x.split('T')[-1]=='NN:NN'))]
 dose_df['REC_REASON'] = ''
@@ -151,29 +155,30 @@ for id, id_df in modeling_df.groupby('ID'): #break
             mod_zero_non_dv_pids.add(id)
             id_df = id_df[~(id_df.index).isin(zero_non_dv_rows.index)].reset_index(drop=True)
 
-    ## 투약 간격이 너무 좁은 경우 (2h 이하)의 투약 테이터들 중 최신 것들만 남기고 삭제
+    # 투약 간격이 너무 좁은 경우 (2h 이하)의 투약 테이터들 중 최신 것들만 남기고 삭제
     # prev_id_df = id_df
     # first_cycle = True
-    while True:
-        prev_id_df = id_df.copy()
-
-        short_dosing_conc_rows = id_df[(id_df['MDV']==0)].copy()
-        short_dosing_dose_rows = id_df[(id_df['MDV']==1)].reset_index(drop=True)
-        short_dosing_interval_rows = short_dosing_dose_rows.copy()
-        short_dosing_interval_rows = short_dosing_interval_rows[(short_dosing_interval_rows['TIME'].diff() <= 2)].copy()
-
-        if len(short_dosing_interval_rows) > 0:
-
-            short_dosing_interval_pids.add(id)
-            short_dosing_dose_rows = short_dosing_dose_rows[~(short_dosing_dose_rows.index).isin([sdi_inx - 1 for sdi_inx in short_dosing_interval_rows.index])].copy()
-            id_df = pd.concat([short_dosing_conc_rows,short_dosing_dose_rows]).sort_values(['ID', 'DATETIME', 'MDV'], ignore_index=True)
-
-            # prev_id_df = id_df.copy()
-            # raise ValueError
-        if len(prev_id_df)==len(id_df):
-            # raise ValueError
-            break
-
+    #
+    # while True:
+    #     prev_id_df = id_df.copy()
+    #
+    #     short_dosing_conc_rows = id_df[(id_df['MDV']==0)].copy()
+    #     short_dosing_dose_rows = id_df[(id_df['MDV']==1)].reset_index(drop=True)
+    #     short_dosing_interval_rows = short_dosing_dose_rows.copy()
+    #     short_dosing_interval_rows = short_dosing_interval_rows[(short_dosing_interval_rows['TIME'].diff() <= 2)].copy()
+    #
+    #     if len(short_dosing_interval_rows) > 0:
+    #
+    #         short_dosing_interval_pids.add(id)
+    #         short_dosing_dose_rows = short_dosing_dose_rows[~(short_dosing_dose_rows.index).isin([sdi_inx - 1 for sdi_inx in short_dosing_interval_rows.index])].copy()
+    #         id_df = pd.concat([short_dosing_conc_rows,short_dosing_dose_rows]).sort_values(['ID', 'DATETIME', 'MDV'], ignore_index=True)
+    #
+    #         # prev_id_df = id_df.copy()
+    #         # raise ValueError
+    #     if len(prev_id_df)==len(id_df):
+    #         # raise ValueError
+    #         break
+    #
     modeling_datacheck_df.append(id_df)
 
 # print(f"CONC Data 부재: {len(no_conc_pids)} patients")
