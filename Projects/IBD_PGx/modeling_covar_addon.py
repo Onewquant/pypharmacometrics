@@ -6,6 +6,7 @@ prj_name = 'IBDPGX'
 prj_dir = './Projects/IBD_PGx'
 resource_dir = f'{prj_dir}/resource'
 output_dir = f"{prj_dir}/results"
+nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
 
 ## DEMO Covariates Loading
 
@@ -165,7 +166,8 @@ for drug in ['infliximab','adalimumab']:
 
         ## Modeling Data 생성
         right_covar_col = 'TIME(WEEK)'
-        datacheck_cols = ['ID',	'UID', 'NAME', 'DATETIME','TIME(WEEK)','TIME(DAY)','TIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'IBD_TYPE', 'START_INDMAINT', 'ROUTE','DRUG', 'ADDED_ADDL'] + list(modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
+        datacheck_cols = ['ID',	'UID', 'NAME', 'DATETIME','TIME(WEEK)','TIME(DAY)','TIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'IBD_TYPE', 'ROUTE','DRUG', 'ADDED_ADDL'] + list(modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
+        # datacheck_cols = ['ID', 'UID', 'NAME', 'DATETIME', 'TIME(WEEK)', 'TIME(DAY)', 'TIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'IBD_TYPE', 'START_INDMAINT', 'ROUTE', 'DRUG', 'ADDED_ADDL'] + list(modeling_df.loc[:, right_covar_col:].iloc[:, 1:].columns)
 
         if not os.path.exists(f'{output_dir}/modeling_df_covar'):
             os.mkdir(f'{output_dir}/modeling_df_covar')
@@ -173,7 +175,8 @@ for drug in ['infliximab','adalimumab']:
         ## Modeling Data Check용 파일 저장
         modeling_df[datacheck_cols].to_csv(f'{output_dir}/modeling_df_covar/{drug}_{mode_str}_datacheck(covar).csv', index=False, encoding='utf-8-sig')
 
-        modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','ROUTE','IBD_TYPE','START_INDMAINT'] + list(modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
+        modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','ROUTE','IBD_TYPE'] + list(modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
+        # modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','ROUTE','IBD_TYPE','START_INDMAINT'] + list(modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
 
         modeling_df['IBD_TYPE'] = modeling_df['IBD_TYPE'].map({'CD':1,'UC':2})
         modeling_df['AGE'] = modeling_df.apply(lambda x: int((datetime.strptime(x['DATETIME'],'%Y-%m-%d') - datetime.strptime(x['AGE'],'%Y-%m-%d')).days/365.25), axis=1)
@@ -193,9 +196,10 @@ for drug in ['infliximab','adalimumab']:
         modeling_df.drop(columns=pd_marker_list, axis=1).to_csv(f'{output_dir}/modeling_df_covar/{drug}_{mode_str}_modeling_df.csv',index=False, encoding='utf-8-sig')
         modeling_df['TIME']= modeling_df['TIME']/24
         modeling_df['DUR'] = modeling_df['DUR'].map(lambda x: float(x)/24 if x!='.' else x)
+        modeling_df.drop(columns=pd_marker_list, axis=1).to_csv(f'{output_dir}/modeling_df_covar/{drug}_{mode_str}_modeling_df_dayscale.csv',index=False, encoding='utf-8')
+        modeling_df.drop(columns=pd_marker_list, axis=1).to_csv(f'{nonmem_dir}/{drug}_{mode_str}_modeling_df_dayscale.csv',index=False, encoding='utf-8')
 
         ## PD 분석용 파일 저장
-        modeling_df.drop(columns=pd_marker_list, axis=1).to_csv(f'{output_dir}/modeling_df_covar/{drug}_{mode_str}_modeling_df_dayscale.csv',index=False, encoding='utf-8')
         modeling_df.to_csv(f'{output_dir}/modeling_df_covar/{drug}_{mode_str}_pdeda_df_dayscale.csv',index=False, encoding='utf-8')
 
 

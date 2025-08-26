@@ -34,19 +34,43 @@ with open(file_path, "rb") as f:
 
 # pandas로 읽기
 raw_df = pd.read_excel(decrypted, engine="openpyxl")
-result_cols = ['ID', 'NAME', '보고일', '오더일', 'DRUG', 'CONC', 'POT채혈DT', 'SAMP_DT', 'REC_REASON']
+raw_df = raw_df[~raw_df['검사결과'].isna()].copy()
+# raw_df['']
 
+file_path = f"{resource_dir}/AMK_REQ_DATA/amk_req_conc_data_prev.xlsx"
+decrypted = io.BytesIO()
+with open(file_path, "rb") as f:
+    office_file = msoffcrypto.OfficeFile(f)
+    office_file.load_key(password=password)   # 암호 입력
+    office_file.decrypt(decrypted)
+raw_df_prev = pd.read_excel(decrypted, engine="openpyxl")
+
+raw_df_prev = raw_df_prev.rename(columns={'채혈일시':'라벨출력일시'})[['환자번호','검사 접수일자','검사 접수일시','검사결과','라벨출력일시']]
+raw_df = raw_df.merge(raw_df_prev, on=['환자번호','검사 접수일자','검사 접수일시','검사결과'], how='left')
+
+
+result_cols = ['ID', 'NAME', '보고일', '오더일', 'DRUG', 'CONC', 'POT채혈DT', 'SAMP_DT', 'REC_REASON']
+# raw_df.columns
 
 # raw_df = pd.read_excel(f"{resource_dir}/AMK_REQ_DATA/amk_req_drug_order_data.xlsx", engine="openpyxl")
 # raw_df.columns
-raw_df = raw_df.rename(columns={'환자번호':'ID','검사 접수일자':'DATE','환자명':'NAME', '오더일자':'오더일','검사 결과보고일자':'보고일', '검사 접수일시':'접수DT', '검사결과':'VALUE', '채혈일시':'SAMP_DT'})
+raw_df = raw_df.rename(columns={'환자번호':'ID','검사 접수일자':'DATE','환자명':'NAME', '오더일자':'오더일','검사 결과보고일자':'보고일', '검사 접수일시':'접수DT', '검사결과':'VALUE', '채혈일시':'SAMP_DT','라벨출력일시':'LABEL_DT'})
 raw_df['ID'] = raw_df['ID'].astype(str)
 raw_df = raw_df.drop('SEQ',axis=1)
+raw_df['LABEL_DT'] = raw_df['LABEL_DT'].dt.strftime("%Y-%m-%dT%H:%M:%S")
 raw_df['SAMP_DT'] = raw_df['SAMP_DT'].dt.strftime("%Y-%m-%dT%H:%M:%S")
+# raw_df['SAMP_DT'].unique()
+raw_df['SAMP_DT'] =raw_df.apply(lambda x:x['LABEL_DT'] if type(x['SAMP_DT'])==float else x['SAMP_DT'], axis=1)
+# raw_df['SAMP_DT'] = raw_df.apply(lambda x:x['LABEL_DT'] if np.isnan(x['SAMP_DT']) else x['SAMP_DT'], axis=1)
+# raw_df[raw_df['LABEL_DT'].isna()]
+# raw_df[raw_df['SAMP_DT'].isna()]['SAMP_DT'].iloc[0]
+# raw_df['SAMP_DT'] = raw_df['SAMP_DT'].dt.strftime("%Y-%m-%dT%H:%M:%S")
 raw_df['NEW_SAMP_DT'] = raw_df['SAMP_DT'].map(lambda x:x[:-3])
 raw_df['REC_REASON'] = ''
 raw_df = raw_df[raw_df['VALUE'] != '중복 오더임'].copy()
+
 raw_df['VALUE'] = raw_df['VALUE'].map(lambda x: float(x.replace('<','').replace('>','').replace('(재검)','')) if type(x)==str else x)
+#
 # raw_df['ID'].drop_duplicates()
 ## 오더비고에 존재하는 채혈시각 반영
 ordbigo_count = 0

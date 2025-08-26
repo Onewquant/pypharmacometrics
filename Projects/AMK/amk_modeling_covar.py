@@ -181,15 +181,19 @@ covar_modeling_df.to_csv(f'{nonmem_dir}/{drug}_modeling_df_covar.csv',index=Fals
 # covar_modeling_df['ID'].drop_duplicates()
 raise ValueError
 ####### NONMEM SDTAB
+
 nmsdtab_df = pd.read_csv(f"{nonmem_dir}/run/sdtab009",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
+modeling_datacheck_df = pd.read_csv(f"{modeling_covar_dir}/amk_modeling_datacheck_covar.csv")
+nmsdtab_df = nmsdtab_df.merge(modeling_datacheck_df[['ID','UID']].drop_duplicates(['ID']), on=['ID'], how='left')
 nmsdtab_df['ID'] = nmsdtab_df['ID'].astype(int)
 # nmsdtab_df['TDM_YEAR'] = nmsdtab_df['TDM_YEAR'].astype(int)
 under_pred_df = nmsdtab_df[(nmsdtab_df['DV'] >= 10)&(nmsdtab_df['IPRED'] < 10)].copy()
 over_pred_df = nmsdtab_df[(nmsdtab_df['DV'] < 10)&(nmsdtab_df['IPRED'] >= 10)].copy()
 
 
-# under_pred_df.to_csv(f"{modeling_covar_dir}/amk_modeling_underpred.csv",index=False, encoding='utf-8-sig')
-# over_pred_df.to_csv(f"{modeling_covar_dir}/amk_modeling_overpred.csv",index=False, encoding='utf-8-sig')
+under_pred_df.to_csv(f"{modeling_covar_dir}/amk_modeling_underpred.csv",index=False, encoding='utf-8-sig')
+over_pred_df.to_csv(f"{modeling_covar_dir}/amk_modeling_overpred.csv",index=False, encoding='utf-8-sig')
+# under_pred_df['ID'].drop_duplicates()
 
 mis_pred_df = pd.concat([under_pred_df, over_pred_df])
 mis_pred_df['ID'].drop_duplicates()
@@ -208,19 +212,19 @@ nmsdtab_df = pd.read_csv(f"{nonmem_dir}/run/sdtab009",encoding='utf-8-sig', skip
 nmsdtab_df['ID'] = nmsdtab_df['ID'].astype(int)
 
 prep_conc_df = modeling_datacheck_df[modeling_datacheck_df['MDV']==0].copy()
-prep_conc_df['REC_REASON'] = prep_conc_df['REC_REASON'].replace(np.nan,'Vacant')
+prep_conc_df['REC_REASON'] = prep_conc_df['REC_REASON'].replace(np.nan,'Vacant').map(lambda x:x.split('(')[0])
 nm_conc_df = nmsdtab_df[nmsdtab_df['MDV']==0]
 merge_conc_df = nm_conc_df.merge(prep_conc_df[['ID','TIME','REC_REASON']], on=['ID','TIME'], how='left')
 
 # merge_conc_df['REC_REASON'].unique()
 filt_gdf = merge_conc_df.copy()
-filt_gdf.columns
+# filt_gdf.columns
 # filt_gdf = merge_conc_df[~merge_conc_df['REC_REASON'].isin(['오더비고반영', '결과비고반영(시간_분AP)', '결과비고반영(날짜_시간AP)', '결과비고반영(날짜_시간)'])].copy()
 
 # merge_conc_df['ID'].drop_duplicates()
-# filt_gdf['ID'].drop_duplicates()
-merge_conc_df[(merge_conc_df['REC_REASON']!='Vacant')]['ID'].drop_duplicates()
-merge_conc_df[(merge_conc_df['REC_REASON']=='Vacant')]['ID'].drop_duplicates()
+# # filt_gdf['ID'].drop_duplicates()
+# merge_conc_df[(merge_conc_df['REC_REASON']!='Vacant')]['ID'].drop_duplicates()
+# merge_conc_df[(merge_conc_df['REC_REASON']=='Vacant')]['ID'].drop_duplicates()
 
 import matplotlib.font_manager as fm
 plt.rc('font', family='Malgun Gothic')
