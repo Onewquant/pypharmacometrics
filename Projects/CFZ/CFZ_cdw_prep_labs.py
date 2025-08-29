@@ -11,8 +11,12 @@ resource_dir = f'{prj_dir}/resource'
 output_dir = f"{prj_dir}/results"
 # nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
 
-df = pd.read_csv(f"{resource_dir}/cfz_cdw_lab_data.csv")
-# df.columns
+df1 = pd.read_csv(f"{resource_dir}/cfz_cdw_lab_data.csv")
+df2 = pd.read_csv(f"{resource_dir}/cfz_cdw_lab_data2.csv")
+# df2 = df2.rename(columns={'환자번호':'UID','검사 접수일자':'DATE','검사 접수일시':'DATETIME', '검사명':'LAB','검사 세부 항목명':'LAB_DETAIL', '항목별 검사결과':'VALUE', '채혈일시':'SAMPLING_DT'})
+
+
+df=pd.concat([df1,df2])
 df = df.rename(columns={'환자번호':'UID','검사 접수일자':'DATE','검사 접수일시':'DATETIME', '검사명':'LAB','검사 세부 항목명':'LAB_DETAIL', '항목별 검사결과':'VALUE', '채혈일시':'SAMPLING_DT'})
 df = df.dropna(subset=['VALUE'])
 df['UID'] = df['UID'].map(lambda x:x.split('-')[0])
@@ -20,6 +24,67 @@ df['UID'] = df['UID'].map(lambda x:x.split('-')[0])
 # df[df['SAMPLING_DT'].isna()]
 # df['SAMPLING_DT'].map(str)
 df['DATE'] = df.apply(lambda x: x['DATE'] if str(x['SAMPLING_DT'])=='nan' else x['SAMPLING_DT'].split(' ')[0], axis=1)
+
+
+df_urbc = df[df['LAB']=='RBC'].copy()
+df_urbc = df_urbc[~df_urbc['VALUE'].isna()].copy()
+df_urbc = df_urbc[~df_urbc['VALUE'].isin(['.','q.n.s','+'])].copy()
+df_urbc_new = list()
+# df_urbc_cnt = list()
+# df_urbc_cnt_ul = list()
+# len(df_urbc)
+for inx, row in df_urbc.iterrows(): #break
+
+    value_split = re.findall(r'\d+[\.]?\d*',row['VALUE'])
+    if len(value_split)==1:
+        urbc_mean_cnt = pd.Series(value_split).astype(float).mean()
+        urbc_cnt_ul = np.nan
+    elif len(value_split)==2:
+        if len(re.findall(r'\(\d+[\.]?\d*/㎕\)',row['VALUE']))==1:
+            urbc_mean_cnt = float(value_split[0])
+            urbc_cnt_ul = float(value_split[-1])
+        else:
+            urbc_mean_cnt = pd.Series(value_split).astype(float).mean()
+            urbc_cnt_ul = np.nan
+    elif len(value_split)==3:
+        urbc_mean_cnt = pd.Series(value_split[:2]).astype(float).mean()
+        urbc_cnt_ul = float(value_split[-1])
+    elif len(value_split)==4:
+        urbc_mean_cnt = pd.Series(value_split[:2]).astype(float).mean()
+        urbc_cnt_ul = float(value_split[-1])
+    else:
+        raise ValueError
+
+    print(f"({inx}) {row['VALUE']} / num count: {len(value_split)} / {urbc_mean_cnt} / {urbc_cnt_ul}")
+    # value_split = row['VALUE'].split('(')
+    # if len(value_split)==1:
+    #     urbc_mean_cnt = pd.Series(re.findall(r'\d+[\.]?\d*',row['VALUE'])).mean()
+    #     urbc_cnt_ul = np.nan
+    # elif len(value_split)==2:
+    #     pre_split = value_split[0]
+    #     urbc_mean_cnt = float(re.findall(r'\d+[\.]?\d*', pre_split)[0])
+    #     post_split = value_split[1]
+    #     urbc_cnt_ul = float(re.findall(r'\d+[\.]?\d*', post_split)[0])
+    # else:
+    #     raise ValueError
+    new_row1 = row.copy()
+    new_row1['LAB'] = "RBC_count"
+    new_row1['VALUE'] = urbc_mean_cnt
+
+    new_row2 = row.copy()
+    new_row2['LAB'] = "RBC_ul"
+    new_row2['VALUE'] = urbc_cnt_ul
+
+    if not np.isnan(new_row1['VALUE']):
+        df_urbc_new.append(new_row1)
+    if not np.isnan(new_row2['VALUE']):
+        df_urbc_new.append(new_row2)
+
+# df_urbc['VALUE'] = df_urbc['VALUE'].map(lambda x:x.split('(')[-1].split('/')[0])
+df_urbc_new = pd.DataFrame(df_urbc_new)
+df_blood = df[df['LAB']=='Blood'].copy()
+df_blood['VALUE'] = df_blood['VALUE'].map({'-':0.0, '3+':3.0, '+/-':0.5, '1+':1.0, '2+':2.0, '?':np.nan, '1+(재검)':1.0, '2+(재검)':2.0,  '3+재검':3.0, '/':np.nan, '+':1.0, '.':np.nan, '1+(2번째검체로 재검)':1.0, '3+(재검)':3.0, ' 3+(재검)':3.0, '-+/-':0.0, '2+재검':2.0})
+df = pd.concat([df_urbc_new, df_blood])
 
 
 # Orders
@@ -60,6 +125,8 @@ for pid, fdf in df.groupby('UID'): #break
         lab_result_df = pd.concat([lab_result_df, fpv_df[total_lab_cols].copy()])
 
     uid_count+=1
+
+lab_result_df.sort_values(['UID','DATE']).to_csv(f"{output_dir}/cfz_semifinal_lab_df.csv", encoding='utf-8-sig', index=False, mode='w')
 
 print(f"# 날짜 전체로 매칭 시작\n")
 

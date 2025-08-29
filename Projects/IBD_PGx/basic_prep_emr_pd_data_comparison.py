@@ -38,6 +38,7 @@ clin_maint_df['NAME'] = clin_maint_df['NAME'].map(lambda x:x.split(':')[-1].repl
 drug_sdate_maint_df = clin_maint_df[['ID','NAME','DRUG_START_DATE']].copy()
 
 maint_comp_df = drug_sdate_maint_df.merge(start_dosing_df, on=['ID'], how='left')
+maint_comp_df.to_csv(f'{resource_dir}/initial_maintenance_patients.csv', index=False, encoding='utf-8-sig')
 # maint_diff_df = maint_comp_df[maint_comp_df['DRUG_START_DATE'] < maint_comp_df['DATETIME']].copy()
 maint_diff_df = maint_comp_df[maint_comp_df['DRUG_START_DATE'] != maint_comp_df['DATETIME']].copy()
 

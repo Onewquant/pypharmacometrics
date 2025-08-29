@@ -9,14 +9,15 @@ resource_dir = f'{prj_dir}/resource'
 output_dir = f"{prj_dir}/results"
 # nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
 
-lab_df = pd.read_csv(f"{output_dir}/cfz_final_lab_df.csv")
-lab_df = lab_df.rename(columns={'CK (CPK)':'CK'})
-lab_df = lab_df[['UID','DATE','CK']].copy()
+lab_df = pd.read_csv(f"{output_dir}/cfz_semifinal_lab_df.csv")
+lab_df = lab_df[['UID','DATE','Blood',  'RBC_count',  'RBC_ul']].copy()
 # lab_df[['Cr','eGFR','eGFR-Cockcroft-Gault','eGFR-Schwartz','eGFR-CKD-EPI','eGFR (CKD-EPI Cys)','eGFR (CKD-EPI Cr-Cys)','valproate_conc','lacosamide_conc']].isna().sum().sort_values()
 
 adm_df = pd.read_excel(f"{output_dir}/merged_adm_dates.xlsx")
 
 # adm_df.columns
+no_lab_uids = list()
+
 no_sbase_lab_uids = list()
 no_ibase_lab_uids = list()
 yes_sbase_lab_uids = list()
@@ -29,14 +30,33 @@ yes_iadm_lab_uids = list()
 # len(yes_sbase_lab_uids)
 surv_res_df = list()
 
-
-endpoint_lab = 'CK'
+# lab_df['Blood']
+endpoint_lab = 'RBC_count'
+endpoint_lab = 'Blood'
 # max_time_at_risk = 365 * 99999999999
 # max_time_at_risk = 365
-max_time_at_risk = 180
+# adm_df.columns
+max_time_at_risk = 10
 for inx, row in adm_df.iterrows(): #break
     uid = row['UID']
-    uid_lab_df = lab_df[lab_df['UID']==uid].copy()
+    sparse_uid_lab_df = lab_df[lab_df['UID']==uid].copy()
+
+    if len(sparse_uid_lab_df)==0:
+        print(f"({inx}) {uid} / No lab value")
+        no_lab_uids.append(uid)
+        continue
+
+    # uid_lab_df
+    min_lab_date = sparse_uid_lab_df['DATE'].min()
+    max_lab_date = sparse_uid_lab_df['DATE'].max()
+
+    uid_lab_df = pd.DataFrame(columns=['UID', 'DATE'])
+    uid_lab_df['DATE'] = pd.date_range(start=min_lab_date, end=max_lab_date).astype(str)
+    uid_lab_df['UID'] = uid
+
+    uid_lab_df = uid_lab_df.merge(sparse_uid_lab_df, on=['UID', 'DATE'], how='left').fillna(method='ffill')
+
+    # raise ValueError
 
     sbase_min_lab_date = (datetime.strptime(row['MIN_SINGLE_DATE'], '%Y-%m-%d') - timedelta(days=30)).strftime('%Y-%m-%d')
     uid_sbase_lab_df = uid_lab_df[(uid_lab_df['DATE'] <= row['MIN_SINGLE_DATE'])&(uid_lab_df['DATE'] >= sbase_min_lab_date)].sort_values(['DATE'])
@@ -57,29 +77,40 @@ for inx, row in adm_df.iterrows(): #break
         yes_sadm_lab_uids.append(uid)
 
     # raise ValueError
-    if endpoint_lab == 'CK':
-        sbl_rows = uid_sbase_lab_df[(~uid_sbase_lab_df['CK'].isna()) & (uid_sbase_lab_df['CK'] <= 270)]
+    if endpoint_lab == 'RBC_count':
+        sbl_rows = uid_sbase_lab_df[(~uid_sbase_lab_df[endpoint_lab].isna()) & (uid_sbase_lab_df[endpoint_lab] < 5)]
         # sbl_row = sbl_rows.iloc[-1]
         try:
             sbl_row = sbl_rows.iloc[-1]
             # Baseline에서 Cr이 이미 높아지는 경우 제외
-            if (uid_sbase_lab_df[uid_sbase_lab_df['DATE'] > sbl_row['DATE']]['CK'] > 270).sum() > 0:
+            if (uid_sbase_lab_df[uid_sbase_lab_df['DATE'] > sbl_row['DATE']][endpoint_lab] >= 5).sum() > 0:
                 continue
         except:
             continue
-        tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df['CK'] > 270)].copy()
+        tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df[endpoint_lab] >= 5)].copy()
+    elif endpoint_lab == 'Blood':
+        sbl_rows = uid_sbase_lab_df[(~uid_sbase_lab_df[endpoint_lab].isna()) & (uid_sbase_lab_df[endpoint_lab] < 3)]
+        # sbl_row = sbl_rows.iloc[-1]
+        try:
+            sbl_row = sbl_rows.iloc[-1]
+            # Baseline에서 Cr이 이미 높아지는 경우 제외
+            if (uid_sbase_lab_df[uid_sbase_lab_df['DATE'] > sbl_row['DATE']][endpoint_lab] >= 3).sum() > 0:
+                continue
+        except:
+            continue
+        tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df[endpoint_lab] >= 3)].copy()
 
 
     single_res_dict = {'ADM_TYPE':'SINGLE',
                        'DRUG':row['SINGLE_DRUG'],
                        'UID':uid,
                        'BL_DATE':sbl_row['DATE'],
-                       'BL_CK':sbl_row['CK'],
+                       f'BL_{endpoint_lab}':sbl_row[endpoint_lab],
                        'FIRST_ADM_DATE':uid_sadm_lab_df['DATE'].iloc[0],
                        'TRT':0,
                        'EV': 0 if len(tar_rows)==0 else 1,
                        'EV_DATE': uid_sadm_lab_df['DATE'].iloc[-1] if len(tar_rows)==0 else tar_rows['DATE'].iloc[0],
-                       'EV_CK': np.nan if len(tar_rows)==0 else tar_rows['CK'].iloc[0],
+                       f'EV_{endpoint_lab}': np.nan if len(tar_rows)==0 else tar_rows[endpoint_lab].iloc[0],
                        }
 
     single_res_dict['time'] = (datetime.strptime(single_res_dict['EV_DATE'],'%Y-%m-%d')-datetime.strptime(uid_sadm_lab_df['DATE'].iloc[0],'%Y-%m-%d')).total_seconds()/86400
@@ -111,27 +142,37 @@ for inx, row in adm_df.iterrows(): #break
     else:
         yes_iadm_lab_uids.append(uid)
 
-    if endpoint_lab=='CK':
-        bl_rows = uid_ibase_lab_df[(~uid_ibase_lab_df['CK'].isna())&(uid_ibase_lab_df['CK'] <= 270)]
+    if endpoint_lab=='RBC_count':
+        bl_rows = uid_ibase_lab_df[(~uid_ibase_lab_df[endpoint_lab].isna())&(uid_ibase_lab_df[endpoint_lab] < 5)]
         try:
             bl_row = bl_rows.iloc[-1]
             # Baseline에서 Cr이 이미 높아지는 경우 제외
-            if (uid_ibase_lab_df[uid_ibase_lab_df['DATE'] > bl_row['DATE']]['CK'] > 270).sum() > 0:
+            if (uid_ibase_lab_df[uid_ibase_lab_df['DATE'] > bl_row['DATE']][endpoint_lab] >= 5).sum() > 0:
                 continue
         except:
             continue
-        tar_rows = uid_iadm_lab_df[(uid_iadm_lab_df['CK'] >= 270)].copy()
+        tar_rows = uid_iadm_lab_df[(uid_iadm_lab_df[endpoint_lab] >= 5)].copy()
+    elif endpoint_lab=='Blood':
+        bl_rows = uid_ibase_lab_df[(~uid_ibase_lab_df[endpoint_lab].isna())&(uid_ibase_lab_df[endpoint_lab] < 3)]
+        try:
+            bl_row = bl_rows.iloc[-1]
+            # Baseline에서 Cr이 이미 높아지는 경우 제외
+            if (uid_ibase_lab_df[uid_ibase_lab_df['DATE'] > bl_row['DATE']][endpoint_lab] >= 3).sum() > 0:
+                continue
+        except:
+            continue
+        tar_rows = uid_iadm_lab_df[(uid_iadm_lab_df[endpoint_lab] >= 3)].copy()
 
     intersect_res_dict = {'ADM_TYPE':'INTSEC',
                           'DRUG':'BOTH',
                           'UID':uid,
                           'BL_DATE':bl_row['DATE'],
-                          'BL_CK':bl_row['CK'],
+                          f'BL_{endpoint_lab}':bl_row[endpoint_lab],
                           'FIRST_ADM_DATE':uid_iadm_lab_df['DATE'].iloc[0],
                           'TRT':1,
                           'EV': 0 if len(tar_rows)==0 else 1,
                           'EV_DATE': uid_iadm_lab_df['DATE'].iloc[-1] if len(tar_rows)==0 else tar_rows['DATE'].iloc[0],
-                          'EV_CK': np.nan if len(tar_rows)==0 else tar_rows['CK'].iloc[0],
+                          f'EV_{endpoint_lab}': np.nan if len(tar_rows)==0 else tar_rows[endpoint_lab].iloc[0],
                           }
 
     intersect_res_dict['time'] = (datetime.strptime(intersect_res_dict['EV_DATE'], '%Y-%m-%d') - datetime.strptime(uid_iadm_lab_df['DATE'].iloc[0], '%Y-%m-%d')).total_seconds() / 86400
@@ -224,7 +265,7 @@ for g, gdf in surv_res_df.groupby("group"):
 ax.set_title(f"Cumulative Incidence ({endpoint_lab}) by Group (with 95% CI)\nLog-rank test (p={round(results.summary['p'].iloc[0],3)})\nContingency Table: [{table[0][0]},{table[0][1]}]/[{table[1][0]},{table[1][1]}]")
 ax.set_xlabel("Time")
 ax.set_ylabel(f"Cumulative Incidence ({endpoint_lab})")
-ax.set_ylim(0, max_odds*3)
+ax.set_ylim(0, max_odds*10)
 ax.grid(True, linestyle="--")
 ax.legend(title="Group")
 
