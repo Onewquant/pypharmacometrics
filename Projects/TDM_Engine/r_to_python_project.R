@@ -2,6 +2,7 @@
 e = environment()
 
 raw_data = read.csv("C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/TDM_Engine/sample_vanco_loading_maintenance.csv", na.strings = c("", ".", "NA"), as.is = TRUE)
+raw_data = read.csv("C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/TDM_Engine/sample_vanco_pks.csv", na.strings = c("", ".", "NA"), as.is = TRUE)
 
 
 TH = c(3.8135955291021233, 39.889510090195238, 44.981835351176571, 2.0055189192561507)         # CL, V1, V2, Q?
@@ -341,7 +342,7 @@ rEBE = EBE(PredVanco, DATAi, TH, OM, SG)
 TIME = 50
 AMT = 1000
 RATE = 1000
-II = 12
+II = 24
 ADDL = 10
 npoints=500
 
