@@ -49,6 +49,6 @@ dmodel = vanco_adult()
 e = EBEEnvironment()
 rEBE = EBE(dmodel.Pred, DATAi, dmodel.TH, dmodel.OM, dmodel.SG, e)
 
-json.dumps(rEBE)
+json.dumps(rEBE, default=lambda x: x.tolist())
 
 
