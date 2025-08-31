@@ -1,5 +1,5 @@
-from Projects.TDM_Engine.lambda_tools_core import *
-from Projects.TDM_Engine.lambda_drug_models import *
+from Projects.TDM_Engine.tools_core import *
+from Projects.TDM_Engine.drug_models import *
 
 # 0. JSON request data 생성
 dose_conc_data = pd.read_csv(
@@ -48,3 +48,7 @@ DATAi = data_prepped.sort_values(by=["UID", "TIME"]).reset_index(drop=True)
 dmodel = vanco_adult()
 e = EBEEnvironment()
 rEBE = EBE(dmodel.Pred, DATAi, dmodel.TH, dmodel.OM, dmodel.SG, e)
+
+json.dumps(rEBE)
+
+
