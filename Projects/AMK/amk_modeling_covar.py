@@ -123,12 +123,12 @@ if not os.path.exists(modeling_covar_dir):
     os.mkdir(modeling_covar_dir)
 
 right_covar_col = 'TDM_REQ_DATE'
-datacheck_cols = ['ID',	'UID', 'NAME', 'DATETIME', 'TIME', 'DV', 'MDV', 'AMT', 'RATE', 'CMT','REC_REASON'] + list(covar_modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
+datacheck_cols = ['ID',	'UID', 'NAME', 'DATETIME', 'TIME', 'DV', 'MDV', 'AMT', 'RATE', 'CMT','LLOQ','BLQ','REC_REASON'] + list(covar_modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
 covar_modeling_df[datacheck_cols].to_csv(f'{modeling_covar_dir}/{drug}_modeling_datacheck_covar.csv', index=False, encoding='utf-8-sig')
 # dcheck_df = modeling_df[~(modeling_df['DV'].isin(['.','0.0']))][['ID',	'UID', 'NAME', 'DATETIME', 'DV']].copy()
 # dcheck_df[dcheck_df['DV'].map(float) > 40]
 covar_modeling_df = covar_modeling_df.drop(keep_ori_covar_cols, axis=1)
-modeling_cols = ['ID','NAME','TIME','TAD','DV','MDV','CMT','AMT','RATE','UID'] + list(covar_modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
+modeling_cols = ['ID','NAME','TIME','TAD','DV','MDV','CMT','AMT','RATE','UID','LLOQ','BLQ'] + list(covar_modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
 
 # modeling_df['AGE'] = modeling_df.apply(lambda x: int((datetime.strptime(x['DATETIME'],'%Y-%m-%d') - datetime.strptime(x['AGE'],'%Y-%m-%d')).days/365.25), axis=1)
 covar_modeling_df['SEX'] = covar_modeling_df['SEX'].map({'M':1,'F':2})
@@ -181,8 +181,8 @@ covar_modeling_df.to_csv(f'{nonmem_dir}/{drug}_modeling_df_covar.csv',index=Fals
 raise ValueError
 ####### NONMEM SDTAB
 
-nmsdtab_df = pd.read_csv(f"{nonmem_dir}/run/sdtab009",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
-modeling_datacheck_df = pd.read_csv(f"{modeling_covar_dir}/amk_modeling_datacheck_covar.csv")
+nmsdtab_df = pd.read_csv(f"{nonmem_dir}/run/sdtab011",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
+modeling_datacheck_df = pd.read_csv(f"{output_dir}/amk_modeling_covar/amk_modeling_datacheck_covar.csv")
 nmsdtab_df = nmsdtab_df.merge(modeling_datacheck_df[['ID','UID']].drop_duplicates(['ID']), on=['ID'], how='left')
 nmsdtab_df['ID'] = nmsdtab_df['ID'].astype(int)
 # nmsdtab_df['TDM_YEAR'] = nmsdtab_df['TDM_YEAR'].astype(int)
@@ -207,7 +207,7 @@ mis_pred_df['ID'].drop_duplicates()
 # nmsdtab_df.columns
 modeling_covar_dir = f"{output_dir}/amk_modeling_datacheck"
 modeling_datacheck_df = pd.read_csv(f"{modeling_covar_dir}/amk_modeling_datacheck.csv")
-nmsdtab_df = pd.read_csv(f"{nonmem_dir}/run/sdtab009",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
+nmsdtab_df = pd.read_csv(f"{nonmem_dir}/run/sdtab011",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
 nmsdtab_df['ID'] = nmsdtab_df['ID'].astype(int)
 
 prep_conc_df = modeling_datacheck_df[modeling_datacheck_df['MDV']==0].copy()

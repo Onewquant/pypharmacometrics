@@ -32,13 +32,15 @@ dose_df['TIME'] = dose_df['DATE']+'T'+dose_df['TIME']
 dose_df['CMT'] = 1
 dose_df['AMT'] = dose_df['DOSE']
 dose_df['RATE'] = dose_df['AMT'] / 0.5
+dose_df['LLOQ'] = np.nan
+dose_df['BLQ'] = '.'
 # dose_df[dose_df['ID']==10036912][['TIME','AMT']]
 print(f"Deleted / Ambiguous dosing time : {len(dose_df[(dose_df['TIME'].map(lambda x:x.split('T')[-1]=='NN:NN'))])} rows / {len(dose_df[(dose_df['TIME'].map(lambda x:x.split('T')[-1]=='NN:NN'))]['ID'].unique())} patients")
 dose_df = dose_df[~(dose_df['TIME'].map(lambda x:x.split('T')[-1]=='NN:NN'))]
 dose_df['REC_REASON'] = ''
 
-com_cols = ['ID','NAME','TIME','DV','MDV','CMT','AMT','RATE']
-datacheck_basic_cols = ['ID','NAME','TIME','DV','MDV','CMT','AMT','RATE','REC_REASON']
+com_cols = ['ID','NAME','TIME','DV','MDV','CMT','AMT','RATE','LLOQ','BLQ']
+datacheck_basic_cols = ['ID','NAME','TIME','DV','MDV','CMT','AMT','RATE','LLOQ','BLQ','REC_REASON']
 # id_df['TIME'].unique()
 
 modeling_df = pd.concat([conc_df[datacheck_basic_cols], dose_df[datacheck_basic_cols]]).sort_values(['ID','TIME'])
@@ -49,18 +51,26 @@ modeling_df = modeling_df.sort_values(['ID','TIME']).reset_index(drop=True)
 modeling_df['UID'] = modeling_df['ID']
 modeling_df['DVfloat'] = modeling_df['DV'].replace('.',np.nan).map(float)
 modeling_df['DATETIME'] = modeling_df['TIME']
+modeling_df['LLOQ'] = modeling_df['LLOQ'].fillna(method='bfill').fillna(method='ffill')
 
 
 ## 환자 수 필터링 (나이 / HD 필터링)
 
-# pt_info = pd.read_csv(f"{output_dir}/patient_info.csv",encoding='utf-8-sig')
+tdm_info = pd.read_csv(f"{output_dir}/patient_info.csv",encoding='utf-8-sig')
+tdm_info = tdm_info.rename(columns={'ID':'UID'})[['UID','TDM_REQ_DATE']].copy()
+
+pt_info = pd.read_csv(f"{output_dir}/final_req_ptinfo_data.csv",encoding='utf-8-sig')
+pt_info = pt_info.merge(tdm_info, on=['UID'], how='left')
+pt_info['TDM_REQ_DATE'] = pt_info['TDM_REQ_DATE'].fillna('1000-01-01')
+
 # pt_info['AGE'] = pt_info['AGE'].map(lambda x: float(x.replace('개월',''))/12 if '개월' in x else float(x.replace('세','')))
 # adult_pids = pt_info[pt_info['AGE'] >= 19].copy()['ID']
 mindt_df = modeling_df.groupby('UID',as_index=False)['DATETIME'].min()
 mindt_df['MIN_DATE'] = mindt_df['DATETIME'].map(lambda x:x.split('T')[0])
 mindt_df = mindt_df[['UID','MIN_DATE']].copy()
 
-pt_info = pd.read_csv(f"{output_dir}/final_req_ptinfo_data.csv",encoding='utf-8-sig')
+
+
 
 agedt_df = mindt_df.merge(pt_info, on=['UID'], how='left')
 agedt_df['AGE_AT_1ST_DOSE'] = ((pd.to_datetime(agedt_df['MIN_DATE'])-pd.to_datetime(agedt_df['BIRTH_DATE'])).dt.total_seconds()/(365.25*86400))
@@ -240,7 +250,7 @@ recent_modeling_df.to_csv(f"{modeling_datacheck_dir}/recent_amk_modeling_datache
 recent_modeling_df.drop(['NAME'],axis=1).to_csv(f"{modeling_datacheck_dir}/recent_amk_modeling_df.csv",index=False, encoding='utf-8-sig')
 
 # len(recent_modeling_df.drop(['NAME'],axis=1))
-
+# modeling_datacheck_df.columns
 past_modeling_df = modeling_datacheck_df[modeling_datacheck_df['DATETIME'].map(lambda x:x.split('T')[0][0:4]) < '2008'].copy()
 past_modeling_df.to_csv(f"{modeling_datacheck_dir}/past_amk_modeling_datacheck.csv",index=False, encoding='utf-8-sig')
 past_modeling_df[com_cols+['UID']].drop(['NAME'],axis=1).to_csv(f"{output_dir}/past_amk_modeling_df.csv",index=False, encoding='utf-8-sig')

@@ -75,6 +75,9 @@ dose_df['DUR'] = 1
 ## Dosing 패턴으로 Induction / Maintenacne 구분
 total_indmaint_df = list()
 for drug in ['infliximab', 'adalimumab', 'ustekinumab']: #break
+    # raise ValueError
+    # '36959194'
+    # indmaint_df[indmaint_df['ID']==36959194]
     indmaint_df = dose_df[dose_df['DRUG']==drug].copy()
     init_dosing_dt = indmaint_df.groupby('ID',as_index=False)['DATETIME'].min().rename(columns={"DATETIME":"INIT_DOSE_DT"})
     indmaint_df = indmaint_df.merge(init_dosing_dt, on=['ID'], how='left')
@@ -91,13 +94,13 @@ for drug in ['infliximab', 'adalimumab', 'ustekinumab']: #break
 
     # Infliximab: 첫 번째 ~ 두 번째 투약 간격이 4 미만 / IV 제제만 Induction으로 인정
     if drug=='infliximab':
-        indmaint_df = indmaint_df.groupby('ID', as_index=False).agg({'DRUG': 'first','DOSING_INTERVAL': 'min', 'ROUTE': 'first'})
+        indmaint_df = indmaint_df.groupby('ID', as_index=False).agg({'DRUG': 'first','DOSING_INTERVAL': 'first', 'ROUTE': 'first'})
         indmaint_df['START_INDMAINT'] = (~((indmaint_df['DOSING_INTERVAL'] < 4)&(indmaint_df['ROUTE']=='IV')))*1
     elif drug=='adalimumab':
-        indmaint_df = indmaint_df.groupby('ID', as_index=False).agg({'DRUG': 'first','DOSING_INTERVAL': 'min', 'ROUTE': 'first'})
+        indmaint_df = indmaint_df.groupby('ID', as_index=False).agg({'DRUG': 'first','DOSING_INTERVAL': 'first', 'ROUTE': 'first'})
         indmaint_df['START_INDMAINT'] = (~((indmaint_df['DOSING_INTERVAL'] < 4)&(indmaint_df['ROUTE']=='IV')))*1
     elif drug=='ustekinumab':
-        indmaint_df = indmaint_df.groupby('ID', as_index=False).agg({'DRUG': 'first','DOSING_INTERVAL': 'min', 'ROUTE': 'first'})
+        indmaint_df = indmaint_df.groupby('ID', as_index=False).agg({'DRUG': 'first','DOSING_INTERVAL': 'first', 'ROUTE': 'first'})
         indmaint_df['START_INDMAINT'] = (~((indmaint_df['DOSING_INTERVAL'] < 4)&(indmaint_df['ROUTE']=='IV')))*1
 
     total_indmaint_df.append(indmaint_df)
@@ -112,20 +115,20 @@ total_indmaint_df['INIT_DOSE_DATE'] = total_indmaint_df['INIT_DOSE_DT'].map(lamb
 
 ################################ Clinical Data 받은 것과 Comparison #######################
 
-inf_initdose_df = total_indmaint_df[total_indmaint_df['DRUG']=='infliximab'].copy()
-inf_induction_df = pd.read_csv(f"{resource_dir}/initial_induction_patients.csv")
-inf_maintenance_df = pd.read_csv(f"{resource_dir}/initial_maintenance_patients.csv")
-
-inf_maint_check_df = inf_initdose_df[inf_initdose_df['ID'].isin(inf_maintenance_df['ID'])].copy()
-inf_maint_check_df = inf_maint_check_df.merge(inf_maintenance_df[['ID','NAME','DRUG_START_DATE']].rename(columns={'DRUG_START_DATE':'CLIN_IND_START_DATE'}))
-filt_inf_maint_check_df = inf_maint_check_df[(inf_maint_check_df['CLIN_IND_START_DATE']==inf_maint_check_df['INIT_DOSE_DATE'])&(inf_maint_check_df['ROUTE']=='IV')].copy()
-# sns.displot(filt_inf_maint_check_df['DOSING_INTERVAL'])
-inf_maint_check_df['FILT'] = ((inf_maint_check_df['CLIN_IND_START_DATE']==inf_maint_check_df['INIT_DOSE_DATE'])&(inf_maint_check_df['ROUTE']=='IV'))
-inf_maint_check_df.to_csv(f"{output_dir}/data comparison/clin_maintenance_patients_comparison.csv", index=False, encoding='utf-8-sig')
-filt_inf_maint_check_df2 = filt_inf_maint_check_df[~(filt_inf_maint_check_df['ID'].isin(inf_induction_df['ID']))]
-filt_inf_maint_check_df2.to_csv(f"{output_dir}/data comparison/clin_maintenance_patients_comparison2.csv", index=False, encoding='utf-8-sig')
-sns.displot(filt_inf_maint_check_df2['DOSING_INTERVAL'])
-# inf_maint_check_df.columns
+# inf_initdose_df = total_indmaint_df[total_indmaint_df['DRUG']=='infliximab'].copy()
+# inf_induction_df = pd.read_csv(f"{resource_dir}/initial_induction_patients.csv")
+# inf_maintenance_df = pd.read_csv(f"{resource_dir}/initial_maintenance_patients.csv")
+#
+# inf_maint_check_df = inf_initdose_df[inf_initdose_df['ID'].isin(inf_maintenance_df['ID'])].copy()
+# inf_maint_check_df = inf_maint_check_df.merge(inf_maintenance_df[['ID','NAME','DRUG_START_DATE']].rename(columns={'DRUG_START_DATE':'CLIN_IND_START_DATE'}))
+# filt_inf_maint_check_df = inf_maint_check_df[(inf_maint_check_df['CLIN_IND_START_DATE']==inf_maint_check_df['INIT_DOSE_DATE'])&(inf_maint_check_df['ROUTE']=='IV')].copy()
+# # sns.displot(filt_inf_maint_check_df['DOSING_INTERVAL'])
+# inf_maint_check_df['FILT'] = ((inf_maint_check_df['CLIN_IND_START_DATE']==inf_maint_check_df['INIT_DOSE_DATE'])&(inf_maint_check_df['ROUTE']=='IV'))
+# inf_maint_check_df.to_csv(f"{output_dir}/data comparison/clin_maintenance_patients_comparison.csv", index=False, encoding='utf-8-sig')
+# filt_inf_maint_check_df2 = filt_inf_maint_check_df[~(filt_inf_maint_check_df['ID'].isin(inf_induction_df['ID']))]
+# filt_inf_maint_check_df2.to_csv(f"{output_dir}/data comparison/clin_maintenance_patients_comparison2.csv", index=False, encoding='utf-8-sig')
+# sns.displot(filt_inf_maint_check_df2['DOSING_INTERVAL'])
+# # inf_maint_check_df.columns
 ##########################################################################################
 
 mediator_cols = ['ID','NAME','DRUG','ROUTE','DATETIME','DV','MDV','AMT','DUR']
@@ -161,6 +164,7 @@ drug = 'infliximab'
 maint_cons_df = total_indmaint_df[(total_indmaint_df['DRUG']==drug)&(total_indmaint_df['START_INDMAINT']==0)].reset_index(drop=True)
 maint_diff_df = total_indmaint_df[(total_indmaint_df['DRUG']==drug)&(total_indmaint_df['START_INDMAINT']==1)].reset_index(drop=True)
 
+# maint_diff_df[maint_diff_df['ID']==36959194]
 # maint_cons_df = comp_df[comp_df['MIN_DOSE_DATE']==comp_df['IND_START_DATE']].reset_index(drop=True)
 # maint_diff_df = comp_df[comp_df['MIN_DOSE_DATE']!=comp_df['IND_START_DATE']].reset_index(drop=True)
 
@@ -192,7 +196,7 @@ no_indconc_df = list()
 no_indid_df = list()
 no_maintid_df = list()
 for inx, row in maint_cons_df.iterrows(): #break
-    # if row['ID']==24590129:
+    # if row['ID']==36959194:
     #     raise ValueError
 
     # if inx

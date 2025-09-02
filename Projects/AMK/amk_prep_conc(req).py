@@ -49,7 +49,7 @@ raw_df_prev = raw_df_prev.rename(columns={'채혈일시':'라벨출력일시'})[
 raw_df = raw_df.merge(raw_df_prev, on=['환자번호','검사 접수일자','검사 접수일시','검사결과'], how='left')
 
 
-result_cols = ['ID', 'NAME', '보고일', '오더일', 'DRUG', 'CONC', 'POT채혈DT', 'SAMP_DT', 'REC_REASON']
+result_cols = ['ID', 'NAME', '보고일', '오더일', 'DRUG', 'CONC', 'POT채혈DT', 'SAMP_DT', 'REC_REASON', 'LLOQ','BLQ']
 # raw_df.columns
 
 # raw_df = pd.read_excel(f"{resource_dir}/AMK_REQ_DATA/amk_req_drug_order_data.xlsx", engine="openpyxl")
@@ -68,10 +68,32 @@ raw_df['SAMP_DT'] =raw_df.apply(lambda x:x['LABEL_DT'] if type(x['SAMP_DT'])==fl
 raw_df['NEW_SAMP_DT'] = raw_df['SAMP_DT'].map(lambda x:x[:-3])
 raw_df['REC_REASON'] = ''
 raw_df = raw_df[raw_df['VALUE'] != '중복 오더임'].copy()
+# raw_df = raw_df.sort_values(['ID','SAMP_DT'])
+# raw_df[raw_df['ID']=='10011759']['VALUE']
+# raw_df[raw_df['VALUE'].map(lambda x: '<' in x)]['VALUE']
+# raw_df[(raw_df['VALUE'].map(lambda x: float(x.replace('<','').replace('(재검)','')) if '<' in x else np.nan)) > 1]
 
-raw_df['VALUE'] = raw_df['VALUE'].map(lambda x: float(x.replace('<','').replace('>','').replace('(재검)','')) if type(x)==str else x)
-#
-# raw_df['ID'].drop_duplicates()
+## LLOQ 고려
+raw_df['LLOQ'] = raw_df['VALUE'].map(lambda x: float(x.replace('<','').replace('(재검)','')) if '<' in x else np.nan).fillna(method='bfill').fillna(method='ffill')
+raw_df['BLQ'] = raw_df['VALUE'].map(lambda x: '<' in x)*1
+# raw_df['BLQ'].sum()
+val_list = list()
+for x in raw_df['VALUE']:
+    if type(x)==str:
+        if '<' in x:
+            val = 0.0
+        else:
+            val = float(x.replace('<','').replace('>','').replace('(재검)',''))
+    else:
+        val = x
+    val_list.append(val)
+raw_df['VALUE'] = val_list
+
+## LLOQ 고려 안 할때
+# raw_df['VALUE'] = raw_df['VALUE'].map(lambda x: '0' if '<' in x else x)
+# raw_df['VALUE'] = raw_df['VALUE'].map(lambda x: float(x.replace('<','').replace('>','').replace('(재검)','')) if type(x)==str else x)
+
+
 ## 오더비고에 존재하는 채혈시각 반영
 ordbigo_count = 0
 ordbigo_patients = set()
@@ -384,7 +406,7 @@ for uid, id_conc_df in raw_df.groupby('ID'):
     # diff_max_min_value = max_conc_value-min_conc_value
     # mid_conc_value = (max_conc_value+min_conc_value)/2
     # if (diff_max_min_value < 7) or (mid_conc_value > 30):
-    mid_conc_value = 12
+    mid_conc_value = 12.5
 
     inclusion_of_not_logical_samp = False
     # id_conc_df['VALUE']
@@ -476,6 +498,6 @@ final_conc_df = raw_df.copy()
 final_conc_df['SAMP_DT'] = final_conc_df['NEW_SAMP_DT'].copy()
 final_conc_df['DRUG'] = 'amikacin'
 final_conc_df['CONC'] = final_conc_df['VALUE'].copy()
-final_conc_df = final_conc_df[['ID', 'NAME', '보고일', '오더일', 'DRUG', 'CONC', 'SAMP_DT', 'REC_REASON']].copy()
+final_conc_df = final_conc_df[['ID', 'NAME', '보고일', '오더일', 'DRUG', 'CONC', 'SAMP_DT', 'REC_REASON', 'LLOQ', 'BLQ']].copy()
 final_conc_df = final_conc_df[~final_conc_df['SAMP_DT'].isna()].sort_values(['ID','SAMP_DT'], ignore_index=True)
 final_conc_df.to_csv(f"{output_dir}/final_conc_df(with sampling).csv", encoding='utf-8-sig', index=False)
