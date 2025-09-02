@@ -9,12 +9,6 @@ resource_dir = f'{prj_dir}/resource'
 output_dir = f"{prj_dir}/results"
 
 
-pt_info = pd.read_csv(f"{output_dir}/patient_info.csv",encoding='utf-8-sig')
-pt_info['AGE'] = pt_info['AGE'].map(lambda x: float(x.replace('개월',''))/12 if '개월' in x else float(x.replace('세','')))
-adult_pids = pt_info[pt_info['AGE'] >= 19].copy()['ID']
-
-hd_df = pd.read_csv(f"{output_dir}/final_hd_df.csv",encoding='utf-8-sig')
-hd_pids = hd_df['ID'].drop_duplicates()
 
 conc_df = pd.read_csv(f"{output_dir}/final_conc_df(with sampling).csv")
 # conc_df['ID'].drop_duplicates()
@@ -57,9 +51,29 @@ modeling_df['DVfloat'] = modeling_df['DV'].replace('.',np.nan).map(float)
 modeling_df['DATETIME'] = modeling_df['TIME']
 
 
-## 환자 수 필터링 (성인, Not HD)
-modeling_df = modeling_df[(modeling_df['ID'].isin(adult_pids))&(~(modeling_df['ID'].isin(hd_pids)))].copy()
+## 환자 수 필터링 (나이 / HD 필터링)
 
+# pt_info = pd.read_csv(f"{output_dir}/patient_info.csv",encoding='utf-8-sig')
+# pt_info['AGE'] = pt_info['AGE'].map(lambda x: float(x.replace('개월',''))/12 if '개월' in x else float(x.replace('세','')))
+# adult_pids = pt_info[pt_info['AGE'] >= 19].copy()['ID']
+mindt_df = modeling_df.groupby('UID',as_index=False)['DATETIME'].min()
+mindt_df['MIN_DATE'] = mindt_df['DATETIME'].map(lambda x:x.split('T')[0])
+mindt_df = mindt_df[['UID','MIN_DATE']].copy()
+
+pt_info = pd.read_csv(f"{output_dir}/final_req_ptinfo_data.csv",encoding='utf-8-sig')
+
+agedt_df = mindt_df.merge(pt_info, on=['UID'], how='left')
+agedt_df['AGE_AT_1ST_DOSE'] = ((pd.to_datetime(agedt_df['MIN_DATE'])-pd.to_datetime(agedt_df['BIRTH_DATE'])).dt.total_seconds()/(365.25*86400))
+adult_pids = agedt_df[agedt_df['AGE_AT_1ST_DOSE'] >= 19]['UID'].drop_duplicates()
+
+hd_df = pd.read_csv(f"{output_dir}/final_hd_df.csv",encoding='utf-8-sig')
+hd_df.rename(columns={'ID':'UID'})
+hd_pids = hd_df['ID'].drop_duplicates()
+
+modeling_df = modeling_df[(modeling_df['ID'].isin(adult_pids))&(~(modeling_df['ID'].isin(hd_pids)))].copy()
+# modeling_df['UID'].iloc[0]
+# modeling_df[modeling_df['UID']==24910778]
+# modeling_df[modeling_df['AMT']==25]
 
 # modeling_df['UID'] = modeling_df['ID']
 # len(modeling_df[modeling_df['TIME'].map(lambda x:x[:4] > '2007')]['ID'].unique())

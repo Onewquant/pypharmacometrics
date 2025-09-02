@@ -32,10 +32,10 @@ for finx, fpath in enumerate(order_files): #break
     #     print(f"({finx}) {pname} / {pid} / 확인 완료")
     #     continue
 
-    # if pid=='10908086':
-    #     raise ValueError
-    # else:
-    #     continue
+    if pid=='14188310':
+        raise ValueError
+    else:
+        continue
 
     # if pid in ['10078411', '10125999', '10218916', '10350663', '11216216', '11381622', '11573801', '11719638', '12038983', '12178975', '12273678', '12654044', '13210151', '13599924', '13669366', '13707655', '13999322', '14771293', '14874899', '14935073', '15792433', '19844189', '20141664', '20229672', '20403449', '21010679', '21232138', '21439650', '22110109', '22633695', '23082625', '23844892', '24166533', '24902412', '25122721', '25474011', '25566415', '26129958', '26381198', '26432351', '28026675', '28062981', '28181060', '28258092', '28323927', '29329889', '29428762', '30280977', '30520101', '30825589', '31263386', '31744575', '32364181', '32450020', '32647406', '32668852', '33015987', '33199885', '33991012', '34090905', '34200788', '35207054', '36009912', '36131701', '36623534', '37411570', '37769077', '38780318', '38946884']:       # lab, order 파일 다시 수집 필요
     #     continue
@@ -97,11 +97,32 @@ for finx, fpath in enumerate(order_files): #break
     dose_df['DT1'] = dose_df['약국_검사'].map(lambda x:re.findall(r'\d\d\d\d-\d\d-\d\d \d\d:\d\d',x)[0].replace(' ','T'))
     dose_df['DT2'] = dose_df['약국_검사'].map(lambda x:re.findall(r'\d\d\d\d-\d\d-\d\d \d\d:\d\d',x)[-1].replace(' ','T'))
     dose_df['DATETIME'] = dose_df[['DT1','DT2']].min(axis=1)
-
+    # dose_df[['DT1', 'DT2','Acting']]
+    # dose_df[['약국_검사', 'Acting']]
+    # dose_df[['DATETIME', 'Acting']]
     # dose_df.to_csv(f"{output_dir}/test_dose_df.csv", encoding='utf-8-sig', index=False)
 
     if pid == '17963774':  # 2010-01-10것이 2010-01-09로 잘못 들어감
-        dose_df.at[939,'DATETIME'] = dose_df.at[939,'DATETIME'].replace('2010-01-09','2010-01-10')
+        # raise ValueError
+        change_inx = 939
+        dose_df.at[change_inx ,'DATETIME'] = dose_df.at[change_inx ,'DATETIME'].replace('2010-01-09','2010-01-10')
+    elif pid=='24184973':
+        change_inx = 284
+        dose_df.at[change_inx,'DATETIME'] = dose_df.at[change_inx,'DATETIME'].replace('2023-01-29','2023-01-30')
+    elif pid=='17169200':
+        dose_df.at[2372,'DATETIME'] = dose_df.at[2372,'DATETIME'].replace('2013-12-13','2013-12-14')
+        dose_df.at[2732,'DATETIME'] = dose_df.at[2732,'DATETIME'].replace('2013-12-10','2013-12-11')
+        dose_df.at[2828,'DATETIME'] = dose_df.at[2828,'DATETIME'].replace('2013-12-09','2013-12-10')
+        dose_df.at[2934,'DATETIME'] = dose_df.at[2934,'DATETIME'].replace('2013-12-08','2013-12-09')
+        dose_df.at[3043,'DATETIME'] = dose_df.at[3043,'DATETIME'].replace('2013-12-07','2013-12-08')
+        dose_df.at[3151,'DATETIME'] = dose_df.at[3151,'DATETIME'].replace('2013-12-06','2013-12-07')
+        dose_df.at[3252,'DATETIME'] = dose_df.at[3252,'DATETIME'].replace('2013-12-05','2013-12-06')
+        dose_df.at[3362,'DATETIME'] = dose_df.at[3362,'DATETIME'].replace('2013-12-04','2013-12-05')
+        dose_df.at[3476,'DATETIME'] = dose_df.at[3476,'DATETIME'].replace('2013-12-03','2013-12-04')
+    elif pid=='14188310':
+        dose_df.at[533,'DATETIME'] = dose_df.at[533,'DATETIME'].replace('2015-04-25','2015-04-26')
+        dose_df.at[534,'DATETIME'] = dose_df.at[534,'DATETIME'].replace('2015-04-25','2015-04-26')
+
         # raise ValueError
     # if pid == '28340528':  # 2010-01-10것이 2010-01-09로 잘못 들어감
     #     dose_df.at[792,'DATETIME'] = dose_df.at[792,'DATETIME'].replace('2010-01-09','2010-01-10')
@@ -160,6 +181,12 @@ for finx, fpath in enumerate(order_files): #break
                 dose_val = mg_num * via_count
             # dose_val = re.findall(r'\d+',x.split('mg')[0].split('Remsima')[-1].split('Humira')[-1].split('Stelara')[-1].split(' ')[-1].strip())[0]
             # raise ValueError
+
+        # 잘못 기록된 것 있는 듯 (250 -> 25로 기록 해둠 / 10 배 해줘야)
+        # if type(dose_val)!=str:
+        #     if dose_val <= 140:
+        #         raise ValueError
+        #         dose_val = dose_val*10
         dose_series.append(dose_val)
 
     # raise ValueError

@@ -75,16 +75,19 @@ for finx, fpath in enumerate(order_files): #break
     else:
         print(f"({finx}) {pname} / {pid} / Yes hemodialysis data")
 
+    raise ValueError
+
     hd_df['ID'] = pid
     hd_df['NAME'] = pname
 
     # dose_df['HD_TYPE'] = dose_df['처방지시'].map(lambda x: re.search(regex_pattern, x, flags=re.IGNORECASE).group().lower().replace('(','').replace(')',''))
     hd_df['PLACE'] = hd_df['주사시행처']
     hd_df['ACTING'] = hd_df['Acting']
+    # hd_df.columns
 
     hd_df['DATETIME'] = '0000-00-00TNN:NN'
-    hd_df['HD_TYPE'] =  hd_df['처방지시']
-
+    hd_df['HD_TYPE'] = hd_df['처방지시']
+    # hd_df['변경의']
 
     # dose_df[['DATETIME','DOSE','ACTING']]
 

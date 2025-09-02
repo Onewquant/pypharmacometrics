@@ -173,7 +173,6 @@ modeling_input_line = str(list(covar_modeling_df.columns)).replace("', '"," ")
 
 print(f"Mode: {modeling_input_line}")
 
-
 covar_modeling_df.to_csv(f'{modeling_covar_dir}/{drug}_modeling_df_covar.csv',index=False, encoding='utf-8-sig')
 covar_modeling_df.to_csv(f'{nonmem_dir}/{drug}_modeling_df_covar.csv',index=False, encoding='utf-8-sig')
 

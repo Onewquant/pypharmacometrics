@@ -113,8 +113,12 @@ for inx, row in raw_df.iterrows():# break
                 print(ampm_str.upper())
                 raise ValueError
             dt_str = f"{year_str}-{month_str}-{day_str}T{hour_str}:{minute_str}"
-            if dt_str == '2013-08-16T40:40':
+            if (row['ID']=='11952372') and (dt_str == '2013-08-16T40:40'):
                 dt_str = '2013-08-16T09:40'
+            elif (row['ID']=='13523484') and (dt_str == '2010-07-20T23:30'):
+                dt_str = '2010-07-20T11:30'
+            elif (row['ID']=='13523484') and (dt_str == '2010-07-21T01:30'):
+                dt_str = '2010-07-20T13:30'
             raw_df.at[inx, 'NEW_SAMP_DT'] = dt_str
             raw_df.at[inx, 'REC_REASON'] = '오더비고반영'
             print(f'({inx}) / {row["ID"]} / {row["NAME"]} / {ordbigo_count} 번째 / {dt_str}')

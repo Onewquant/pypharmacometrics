@@ -10,6 +10,7 @@ output_dir = f"{prj_dir}/results"
 # nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
 
 lab_df = pd.read_csv(f"{output_dir}/cfz_final_lab_df.csv")
+# lab_df = pd.read_csv(f"{output_dir}/cfz_semifinal_lab_df.csv")
 lab_df = lab_df.rename(columns={'CK (CPK)':'CK'})
 lab_df = lab_df[['UID','DATE','CK']].copy()
 # lab_df[['Cr','eGFR','eGFR-Cockcroft-Gault','eGFR-Schwartz','eGFR-CKD-EPI','eGFR (CKD-EPI Cys)','eGFR (CKD-EPI Cr-Cys)','valproate_conc','lacosamide_conc']].isna().sum().sort_values()
@@ -33,7 +34,7 @@ surv_res_df = list()
 endpoint_lab = 'CK'
 # max_time_at_risk = 365 * 99999999999
 # max_time_at_risk = 365
-max_time_at_risk = 180
+max_time_at_risk = 10
 for inx, row in adm_df.iterrows(): #break
     uid = row['UID']
     uid_lab_df = lab_df[lab_df['UID']==uid].copy()
@@ -120,7 +121,7 @@ for inx, row in adm_df.iterrows(): #break
                 continue
         except:
             continue
-        tar_rows = uid_iadm_lab_df[(uid_iadm_lab_df['CK'] >= 270)].copy()
+        tar_rows = uid_iadm_lab_df[(uid_iadm_lab_df['CK'] > 270)].copy()
 
     intersect_res_dict = {'ADM_TYPE':'INTSEC',
                           'DRUG':'BOTH',
@@ -224,7 +225,7 @@ for g, gdf in surv_res_df.groupby("group"):
 ax.set_title(f"Cumulative Incidence ({endpoint_lab}) by Group (with 95% CI)\nLog-rank test (p={round(results.summary['p'].iloc[0],3)})\nContingency Table: [{table[0][0]},{table[0][1]}]/[{table[1][0]},{table[1][1]}]")
 ax.set_xlabel("Time")
 ax.set_ylabel(f"Cumulative Incidence ({endpoint_lab})")
-ax.set_ylim(0, max_odds*3)
+ax.set_ylim(0, max_odds*10)
 ax.grid(True, linestyle="--")
 ax.legend(title="Group")
 
