@@ -143,6 +143,10 @@ merged_df['DATE'] = merged_df['DATETIME'].map(lambda x:x.split('T')[0])
 # merged_df['AZERO'] = 0
 merged_df = merged_df.merge(ibd_type_df[['ID', 'IBD_TYPE']], on=['ID'], how='left')
 
+## ULOQ 넘는 농도값은 제거
+merged_df = merged_df[~((merged_df['DV']==48)&((merged_df['ID'].isin([21911051,])) & (merged_df['DATE'].isin(['2019-02-22',]))))].copy()
+# [21911051, 34019533, 32482522]
+
 # Induction Phase 불일치 환자 구분 (전체 합친 데이터에서)
 
 # min_dose_df = merged_df.groupby(['ID','DRUG']).agg({'NAME':'min','DATETIME':'min'}).reset_index(drop=False)
@@ -163,8 +167,9 @@ merged_df = merged_df.merge(ibd_type_df[['ID', 'IBD_TYPE']], on=['ID'], how='lef
 drug = 'infliximab'
 maint_cons_df = total_indmaint_df[(total_indmaint_df['DRUG']==drug)&(total_indmaint_df['START_INDMAINT']==0)].reset_index(drop=True)
 maint_diff_df = total_indmaint_df[(total_indmaint_df['DRUG']==drug)&(total_indmaint_df['START_INDMAINT']==1)].reset_index(drop=True)
-
+# raise ValueError
 # maint_diff_df[maint_diff_df['ID']==36959194]
+# maint_cons_df[maint_cons_df['ID']==36959194]
 # maint_cons_df = comp_df[comp_df['MIN_DOSE_DATE']==comp_df['IND_START_DATE']].reset_index(drop=True)
 # maint_diff_df = comp_df[comp_df['MIN_DOSE_DATE']!=comp_df['IND_START_DATE']].reset_index(drop=True)
 
@@ -295,13 +300,14 @@ maint_df = list()
 no_maintconc_df = list()
 for inx, row in maint_diff_df.iterrows():
 
-    # if row['ID']==32067581:
+    # if row['ID']==36959194:
     #     raise ValueError
 
     # if inx
     # break
     # start_date = row['IND_START_DATE']
     # end_date = (datetime.strptime(start_date,'%Y-%m-%d') + timedelta(days=127)).strftime('%Y-%m-%d')
+    # id_df['DV']
     id_df = merged_df[merged_df['ID']==row['ID']].copy()
     if (len(id_df)==0):
         no_maintid_df.append(pd.DataFrame([row]))
@@ -340,6 +346,8 @@ for inx, row in maint_diff_df.iterrows():
     #     raise ValueError
     # else:
     #     continue
+
+    # TROUGH 채혈이 투약보다 먼저 나오도록 설정
     maint_df_frag = maint_df_frag.sort_values(['ID', 'DATE', 'MDV'], ascending=[True, True, False])
     unique_date_df = maint_df_frag.groupby(['DATE'])['DV'].count().reset_index(drop=False)
     unique_date_df = unique_date_df[unique_date_df['DV'] >= 2].reset_index(drop=True)
@@ -367,6 +375,7 @@ for inx, row in maint_diff_df.iterrows():
     # if row['ID']==29702679:
     #     raise ValueError
 
+    # 약을 여러종류 사용했을경우, 첫 약은 maintenance일 수 있으나, 다음 약부터는 serial 하게 사용하므로 induction부터 시작
     for drug_inx, drug in enumerate(id_df['DRUG'].drop_duplicates()): #break
         if drug_inx==0:
             continue
@@ -438,11 +447,12 @@ else:
 
 # pd.concat([inf_ind_df, inf_maint_df])['UID'].drop_duplicates().reset_index(drop=True)
 # pd.concat([ada_ind_df, ada_maint_df])['UID'].drop_duplicates().reset_index(drop=True)
+# maint_df[maint_df['UID']==36959194]['DV']
 
 drug_df_dict = dict()
 modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','DATETIME','IBD_TYPE','UID','NAME','ROUTE','DRUG','START_INDMAINT']
 
-for drug in set(ind_df['DRUG']).union(set(maint_df['DRUG'])):
+for drug in set(ind_df['DRUG']).union(set(maint_df['DRUG'])): #break
     # drug_df_dict[drug]
     drug_ind_df = ind_df[ind_df['DRUG']==drug].copy()
     drug_maint_df = maint_df[maint_df['DRUG'] == drug].sort_values(['UID', 'DATETIME'], ignore_index=True)
