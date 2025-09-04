@@ -32,7 +32,7 @@ for finx, fpath in enumerate(order_files): #break
     #     print(f"({finx}) {pname} / {pid} / 확인 완료")
     #     continue
 
-    # if pid=='14188310':
+    # if pid=='11114219':
     #     raise ValueError
     # else:
     #     continue
@@ -100,9 +100,17 @@ for finx, fpath in enumerate(order_files): #break
     # dose_df[['DT1', 'DT2','Acting']]
     # dose_df[['약국_검사', 'Acting']]
     # dose_df[['DATETIME', 'Acting']]
+    # dose_df[['DATETIME','처방지시']]
+    # dose_df[['처방지시']]
     # dose_df.to_csv(f"{output_dir}/test_dose_df.csv", encoding='utf-8-sig', index=False)
 
-    if pid == '17963774':  # 2010-01-10것이 2010-01-09로 잘못 들어감
+    if pid == '11114219':
+        dose_df.at[855,'DATETIME'] = dose_df.at[855,'DATETIME'].replace('2013-05-19','2013-05-20')
+        dose_df.at[856,'DATETIME'] = dose_df.at[856,'DATETIME'].replace('2013-05-19','2013-05-20')
+        dose_df.at[965,'DATETIME'] = dose_df.at[965,'DATETIME'].replace('2013-05-17','2013-05-18')
+        dose_df.at[1279,'처방지시'] = dose_df.at[1279,'처방지시'].replace('500mg [IVS]','550mg [IVS]')
+        dose_df.at[1453,'처방지시'] = dose_df.at[1453,'처방지시'].replace('500mg [IVS]','550mg [IVS]')
+    elif pid == '17963774':  # 2010-01-10것이 2010-01-09로 잘못 들어감
         # raise ValueError
         change_inx = 939
         dose_df.at[change_inx ,'DATETIME'] = dose_df.at[change_inx ,'DATETIME'].replace('2010-01-09','2010-01-10')
@@ -138,7 +146,9 @@ for finx, fpath in enumerate(order_files): #break
     # dose_df['DOSE'] = dose_df['처방지시'].map(lambda x: re.findall(r'\d+', x.split('mg')[1].split('Remsima')[-1].split('Humira')[-1].split('Stelara')[-1].split(' ')[-1].strip())[0] if (" [SC] " not in x) else x.split('(Infliximab')[-1].split('(Adalimumab')[-1].split('(Ustekinumab')[-1].split('▣')[-1].split('srg')[0].split('via')[0].split('mg')[0].split(':')[0].split(' [SC] ')[0].strip())
     # mg_inx_dict = {'ustekinumab':0,'infliximab':1,'adalimumab':1}
     dose_series = list()
-    for dose_inx, dose_row in dose_df.iterrows():
+    for dose_inx, dose_row in dose_df.iterrows(): #break
+        # if dose_inx==1413:
+        #     raise ValueError
         x = dose_row['처방지시'].replace('inj신풍 2ml','inj신풍 500mg').split('h ')[0].split('ut dict')[0]  # 이걸해야 dose 2인 것 안 나오긴 함. 근데 그냥 아래서 수정
         # x = dose_row['처방지시']
         # raise ValueError
@@ -191,6 +201,7 @@ for finx, fpath in enumerate(order_files): #break
 
     # raise ValueError
     dose_df['DOSE'] = dose_series
+    # dose_df[['DATETIME','DOSE','Acting']]
     # dose_df['DOSE'] = dose_df['DOSE'].map({'1 pen': 40, '2 pen': 80, '2 pen': 160})
     # (1) [원내] Remsima 100mg inj (Infliximab Korea) ...
     dose_df['ACTING'] = dose_df['Acting']

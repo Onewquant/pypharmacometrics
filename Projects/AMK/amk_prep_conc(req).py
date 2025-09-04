@@ -59,19 +59,14 @@ raw_df['ID'] = raw_df['ID'].astype(str)
 raw_df = raw_df.drop('SEQ',axis=1)
 raw_df['LABEL_DT'] = raw_df['LABEL_DT'].dt.strftime("%Y-%m-%dT%H:%M:%S")
 raw_df['SAMP_DT'] = raw_df['SAMP_DT'].dt.strftime("%Y-%m-%dT%H:%M:%S")
-# raw_df['SAMP_DT'].unique()
-raw_df['SAMP_DT'] =raw_df.apply(lambda x:x['LABEL_DT'] if type(x['SAMP_DT'])==float else x['SAMP_DT'], axis=1)
-# raw_df['SAMP_DT'] = raw_df.apply(lambda x:x['LABEL_DT'] if np.isnan(x['SAMP_DT']) else x['SAMP_DT'], axis=1)
-# raw_df[raw_df['LABEL_DT'].isna()]
-# raw_df[raw_df['SAMP_DT'].isna()]['SAMP_DT'].iloc[0]
-# raw_df['SAMP_DT'] = raw_df['SAMP_DT'].dt.strftime("%Y-%m-%dT%H:%M:%S")
-raw_df['NEW_SAMP_DT'] = raw_df['SAMP_DT'].map(lambda x:x[:-3])
+
+
+raw_df['NEW_SAMP_DT'] =raw_df.apply(lambda x:x['LABEL_DT'] if type(x['SAMP_DT'])==float else x['SAMP_DT'], axis=1)
+
+
+raw_df['NEW_SAMP_DT'] = raw_df['NEW_SAMP_DT'].map(lambda x:x[:-3])
 raw_df['REC_REASON'] = ''
 raw_df = raw_df[raw_df['VALUE'] != '중복 오더임'].copy()
-# raw_df = raw_df.sort_values(['ID','SAMP_DT'])
-# raw_df[raw_df['ID']=='10011759']['VALUE']
-# raw_df[raw_df['VALUE'].map(lambda x: '<' in x)]['VALUE']
-# raw_df[(raw_df['VALUE'].map(lambda x: float(x.replace('<','').replace('(재검)','')) if '<' in x else np.nan)) > 1]
 
 ## LLOQ 고려
 raw_df['LLOQ'] = raw_df['VALUE'].map(lambda x: float(x.replace('<','').replace('(재검)','')) if '<' in x else np.nan).fillna(method='bfill').fillna(method='ffill')
@@ -103,13 +98,14 @@ for inx, row in raw_df.iterrows():# break
     else:
         # if '채혈시각' in row['오더비고']:
             # raise ValueError
+        row['오더비고'] = row['오더비고'].replace('MD   시','12   시')
         ordbigo_samp_patterns = re.findall(r'채혈시각\s*\(\s*\d+\s*월\s*\d+\s*일\s*\d+\s*시\s*\d+\s*분\s*.*\)',row['오더비고'])
         if len(ordbigo_samp_patterns)==0:
             continue
         else:
             ordbigo_patients.add(row['ID'])
             ordbigo_count+=1
-            year_str = row['SAMP_DT'][:4]
+            year_str = row['NEW_SAMP_DT'][:4]
             month_str = ordbigo_samp_patterns[0].split('(')[-1].split('월')[0].strip().zfill(2)
             day_str = ordbigo_samp_patterns[0].split('월')[-1].split('일')[0].strip().zfill(2)
             hour_str = ordbigo_samp_patterns[0].split('일')[-1].split('시')[0].strip().zfill(2)
@@ -141,6 +137,8 @@ for inx, row in raw_df.iterrows():# break
                 dt_str = '2010-07-20T11:30'
             elif (row['ID']=='13523484') and (dt_str == '2010-07-21T01:30'):
                 dt_str = '2010-07-20T13:30'
+            elif (row['ID']=='111657204') and (dt_str == '2010-06-23T22:00'):
+                dt_str = '2010-06-23T10:00'
             raw_df.at[inx, 'NEW_SAMP_DT'] = dt_str
             raw_df.at[inx, 'REC_REASON'] = '오더비고반영'
             print(f'({inx}) / {row["ID"]} / {row["NAME"]} / {ordbigo_count} 번째 / {dt_str}')
@@ -153,6 +151,9 @@ for inx, row in raw_df[(raw_df['REC_REASON']=='')].iterrows():# break
     if type(row['결과비고'])==float:
         continue
     else:
+        # if (row['ID']=='11504533') and (row['VALUE']==37.08):
+        #     raise ValueError
+
         resbigo_str = row['결과비고'].upper().replace('MN:','00:').replace('MD:','12:').replace('MD 시','12:').replace('MD ','12:').replace('12/27  MD','12/27 12:00').strip()
 
         ## 월/일 시간:분 A,P 패턴인 경우
@@ -163,7 +164,7 @@ for inx, row in raw_df[(raw_df['REC_REASON']=='')].iterrows():# break
             # raise ValueError
             resbigo_count += 1
             resbigo_patients.add(row['ID'])
-            year_str = row['SAMP_DT'][:4]
+            year_str = row['NEW_SAMP_DT'][:4]
             rs_pattern = resbigo_samp_patterns[0].replace('  ',' ')
             month_str = rs_pattern.split('/')[0].strip().zfill(2)
             day_str = rs_pattern.split('/')[-1].split(' ')[0].strip().zfill(2)
@@ -172,7 +173,7 @@ for inx, row in raw_df[(raw_df['REC_REASON']=='')].iterrows():# break
                 minute_str = '00'
                 ampm_str = rs_pattern[-1]
             else:
-                hour_str = rs_pattern.split(':')[0].split(' ')[1].strip().zfill(2)
+                hour_str = rs_pattern.split(':')[0].split(' ')[-1].strip().zfill(2)
                 minute_str = rs_pattern.split(':')[-1].replace('A','').replace('P','').strip().zfill(2)
                 ampm_str = rs_pattern[-1]
             if 'P' in ampm_str:
@@ -208,7 +209,7 @@ for inx, row in raw_df[(raw_df['REC_REASON']=='')].iterrows():# break
             # raise ValueError
             resbigo_count += 1
             resbigo_patients.add(row['ID'])
-            year_str = row['SAMP_DT'][:4]
+            year_str = row['NEW_SAMP_DT'][:4]
             rs_pattern = resbigo_samp_patterns[0].replace('  ', ' ')
             month_str = rs_pattern.split('/')[0].strip().zfill(2)
             day_str = rs_pattern.split('/')[-1].split(' ')[0].strip().zfill(2)
@@ -237,7 +238,7 @@ for inx, row in raw_df[(raw_df['REC_REASON']=='')].iterrows():# break
             # raise ValueError
             resbigo_count += 1
             resbigo_patients.add(row['ID'])
-            date_str = row['SAMP_DT'].split('T')[0]
+            date_str = row['NEW_SAMP_DT'].split('T')[0]
             rs_pattern = resbigo_samp_patterns[0].replace('  ',' ')
             # month_str = rs_pattern.split('/')[0].strip().zfill(2)
             # day_str = rs_pattern.split('/')[-1].split(' ')[0].strip().zfill(2)
@@ -280,7 +281,7 @@ for inx, row in raw_df[(raw_df['REC_REASON']=='')].iterrows():# break
             # raise ValueError
             resbigo_count += 1
             resbigo_patients.add(row['ID'])
-            date_str = row['SAMP_DT'].split('T')[0]
+            date_str = row['NEW_SAMP_DT'].split('T')[0]
             rs_pattern = resbigo_samp_patterns[0].replace('  ', ' ')
             # month_str = rs_pattern.split('/')[0].strip().zfill(2)
             # day_str = rs_pattern.split('/')[-1].split(' ')[0].strip().zfill(2)
@@ -303,7 +304,7 @@ for inx, row in raw_df[(raw_df['REC_REASON']=='')].iterrows():# break
 
 
 # 채혈시간이 중복되는 데이터 처리 -> DOSING TIME 고려하여 P/T 구분
-dup_id_sampdate_df = raw_df.groupby(['ID','NEW_SAMP_DT'], as_index=False).agg({'NAME':'count'}).copy()
+dup_id_sampdate_df = (raw_df.dropna(subset=['SAMP_DT'])).groupby(['ID','NEW_SAMP_DT'], as_index=False).agg({'NAME':'count'}).copy()
 # test_df = dup_id_sampdate_df.groupby('ID', as_index=False).agg({'NAME':'sum'}).copy()
 # test_df[test_df['NAME']]
 # dup_id_sampdate_df[dup_id_sampdate_df['NAME']>2]
@@ -393,25 +394,56 @@ not_logical_samp_dt_count_dict = {'P_T':0,'T_P':0}
 not_logical_samp_id_dict = {'P_T':set(),'T_P':set()}
 total_count = 0
 for uid, id_conc_df in raw_df.groupby('ID'):
+
+    #######################################################
     # id_conc_df['VALUE']
-    # if uid=='10036912':
+
+    # if uid=='30065611':
     #     raise ValueError
-    # if uid=='10014664':
-    #     raise ValueError
-    # if uid=='10024058':
-    #     raise ValueError
+    # else:
+    #     continuef[dose_result_df['ID'] == uid].copy()
     id_dose_df = dose_result_df[dose_result_df['ID'] == uid].copy()
-    # max_conc_value = id_conc_df['VALUE'].max()
-    # min_conc_value = id_conc_df['VALUE'].min()
-    # diff_max_min_value = max_conc_value-min_conc_value
-    # mid_conc_value = (max_conc_value+min_conc_value)/2
-    # if (diff_max_min_value < 7) or (mid_conc_value > 30):
+
     mid_conc_value = 12.5
-
     inclusion_of_not_logical_samp = False
-    # id_conc_df['VALUE']
     for conc_inx, conc_row in id_conc_df.iterrows(): #break
+        # id_conc_df[['SAMP_DT','NEW_SAMP_DT','VALUE']]
+        # if conc_row['VALUE']==36.1:
+        #     raise ValueError
 
+        # 채혈시간이 비어있는 데이터 처리 -> 검사접수일시 근처의 가장 가까운 Dose 기준으로 P/T 값으로 구분하여 배열
+        if (type(conc_row['SAMP_DT'])==float) and (conc_row['REC_REASON']==''):
+            rcdt_dose_df = id_dose_df[id_dose_df['DOSE_DT'].map(lambda x:x.split('T')[0])==conc_row['DATE']].copy()
+            no_adm_info_pass = False
+            if len(rcdt_dose_df)==0:
+                rcdt_dose_df = id_dose_df[id_dose_df['DOSE_DT'].map(lambda x: x.split('T')[0]) == (conc_row['LABEL_DT'].split('T')[0])].copy()
+                # if (len(rcdt_dose_df)==0) and (conc_row['VALUE'] < mid_conc_value) and ((id_dose_df['DOSE_DT'].iloc[-1]) < conc_row['LABEL_DT']):
+                #     no_adm_info_pass = True
+                if (len(rcdt_dose_df)==0):
+                    no_adm_info_pass = True
+
+            if no_adm_info_pass:
+                pass
+            else:
+                rcdt = pd.to_datetime(conc_row['DATE']+'T'+conc_row['접수DT'][:-3])
+                closest_dose_inx = ((pd.to_datetime(rcdt_dose_df["DOSE_DT"]) - rcdt).abs()).idxmin()
+                closest_dose_row = rcdt_dose_df.loc[closest_dose_inx].copy()
+
+                if conc_row['VALUE'] > mid_conc_value: # Peak로 배치
+                    new_conc_dt = (pd.to_datetime(closest_dose_row['DOSE_DT']) + pd.Timedelta(minutes=30)).strftime("%Y-%m-%dT%H:%M")
+                    raw_df.at[conc_inx, 'REC_REASON'] += f"채혈시간공란(P)"
+                    raw_df.at[conc_inx, 'NEW_SAMP_DT'] = new_conc_dt
+                    print(f'({total_count}) / {uid} / {conc_row["NAME"]} / 채혈시간공란(P)')
+
+                elif conc_row['VALUE'] <= mid_conc_value: # Trough로 배치
+                    new_conc_dt = (pd.to_datetime(closest_dose_row['DOSE_DT']) - pd.Timedelta(minutes=30)).strftime("%Y-%m-%dT%H:%M")
+                    raw_df.at[conc_inx, 'REC_REASON'] += f"채혈시간공란(T)"
+                    raw_df.at[conc_inx, 'NEW_SAMP_DT'] = new_conc_dt
+                    print(f'({total_count}) / {uid} / {conc_row["NAME"]} / 채혈시간공란(T)')
+                else:
+                    raise ValueError
+
+        #######################################################
 
         samp_dt = pd.to_datetime(conc_row['NEW_SAMP_DT'])
 
@@ -482,6 +514,8 @@ for uid, id_conc_df in raw_df.groupby('ID'):
 
         total_count += 1
         print(f'({total_count}) / {uid} / {id_conc_df["NAME"].iloc[0]} / {inclusion_of_not_logical_samp}')
+
+
 
 print(f"오더비고 채혈시간 반영: {len(ordbigo_patients)} patients ({ordbigo_count} rows)")
 print(f"결과비고 채혈시간 반영: {len(resbigo_patients)} patients ({resbigo_count} rows)")

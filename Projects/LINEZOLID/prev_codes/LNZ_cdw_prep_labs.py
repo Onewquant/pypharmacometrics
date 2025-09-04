@@ -3,16 +3,12 @@ from pynca.tools import *
 from datetime import datetime, timedelta
 from scipy.stats import spearmanr
 
-
 prj_name = 'LINEZOLID'
 prj_dir = './Projects/LINEZOLID'
 resource_dir = f'{prj_dir}/resource'
 output_dir = f"{prj_dir}/results"
 # nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
 
-lab_file_list = glob.glob(f"{resource_dir}")
-lab_data_list = list()
-# for f in :
 df = pd.read_csv(f"{resource_dir}/lnz_cdw_lab_data.csv")
 # df.columns
 df = df.rename(columns={'환자번호':'UID','검사 접수일자':'DATE','검사 접수일시':'DATETIME', '검사명':'LAB','검사 세부 항목명':'LAB_DETAIL', '항목별 검사결과':'VALUE', '채혈일시':'SAMPLING_DT'})

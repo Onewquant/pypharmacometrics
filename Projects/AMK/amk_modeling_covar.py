@@ -166,6 +166,12 @@ covar_modeling_df['SEX'] = covar_modeling_df['SEX'].map({'M':1,'F':2})
 # covar_modeling_df['TAD'] = covar_modeling_df['TAD'].replace(np.nan,0)
 covar_modeling_df['TAD'] = add_time_after_dosing_column(df=covar_modeling_df)
 
+to_change_rate = covar_modeling_df[(covar_modeling_df['TAD'] <= 0.5)&(covar_modeling_df['TAD'] != 0)&(covar_modeling_df['MDV'] == 0)].copy()
+for tad_inx in (to_change_rate.index): #break
+    rate_change_inx = tad_inx-1
+    covar_modeling_df.at[rate_change_inx,'RATE'] = float(covar_modeling_df.at[rate_change_inx,'AMT'])/(covar_modeling_df.at[tad_inx,'TAD']*0.9)
+# raise ValueError
+
 
 covar_modeling_df = covar_modeling_df[modeling_cols].sort_values(['ID','TIME'], ignore_index=True)
 covar_modeling_df = covar_modeling_df.drop(['NAME'],axis=1)
