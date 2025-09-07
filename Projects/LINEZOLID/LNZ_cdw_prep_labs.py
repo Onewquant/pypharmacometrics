@@ -10,19 +10,22 @@ resource_dir = f'{prj_dir}/resource'
 output_dir = f"{prj_dir}/results"
 # nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
 
-lab_file_list = glob.glob(f"{resource_dir}")
+lab_file_list = glob.glob(f"{resource_dir}/lab_frag_data/L_*.csv")
 lab_data_list = list()
-# for f in :
-df = pd.read_csv(f"{resource_dir}/lnz_cdw_lab_data.csv")
-# df.columns
-df = df.rename(columns={'환자번호':'UID','검사 접수일자':'DATE','검사 접수일시':'DATETIME', '검사명':'LAB','검사 세부 항목명':'LAB_DETAIL', '항목별 검사결과':'VALUE', '채혈일시':'SAMPLING_DT'})
-df = df.dropna(subset=['VALUE'])
-df['UID'] = df['UID'].map(lambda x:x.split('-')[0])
-# df['SAMPLING_DT'].unique()
-# df[df['SAMPLING_DT'].isna()]
-# df['SAMPLING_DT'].map(str)
-df['DATE'] = df.apply(lambda x: x['DATE'] if str(x['SAMPLING_DT'])=='nan' else x['SAMPLING_DT'].split(' ')[0], axis=1)
+for finx, f in enumerate(lab_file_list): #break
 
+    lab_frag_df = pd.read_csv(f, encoding='utf-8-sig')
+    lab_frag_df = lab_frag_df.rename(columns={'환자번호':'UID','검사 접수일자':'DATE','검사 접수일시':'DATETIME', '검사명':'LAB', '항목별 검사결과':'VALUE', '채혈일시':'SAMPLING_DT', '검사 오더일자':'ORD_DATE','검사 시행일자':'PRAC_DATE','검사 결과보고일자':'REP_DATE','검사 코드':'LAB_CODE'})
+    lab_frag_df = lab_frag_df.dropna(subset=['VALUE'])
+    lab_frag_df['UID'] = lab_frag_df['UID'].map(lambda x:x.split('-')[0])
+    lab_frag_df['DATE'] = lab_frag_df.apply(lambda x: x['DATE'] if str(x['SAMPLING_DT'])=='nan' else x['SAMPLING_DT'].split(' ')[0], axis=1)
+    # raise ValueError
+    lab_name = f.split('L_')[-1].replace('.csv','')
+    print(f"({finx}) {lab_name} / {len(lab_frag_df)} rows")
+    lab_frag_df.to_csv(f"{resource_dir}/lnz_cdw_lab_data.csv", index=False, mode='a', header=True if finx==0 else False)
+# lab_frag_df.columns
+#
+df = pd.read_csv(f"{resource_dir}/lnz_cdw_lab_data.csv")
 
 # Orders
 total_lab_cols = list(df['LAB'].drop_duplicates().sort_values())
@@ -78,18 +81,11 @@ for uid, uid_df in lab_result_df.groupby('UID',as_index=False): #break
     uid_fulldt_df['UID'] = uid
 
     uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATE'], how='left').fillna(method='ffill')
-    # uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left')
 
     if count == 0:
-        full_result_df = uid_fulldt_df.copy()
+        header = True
     else:
-        full_result_df = pd.concat([full_result_df, uid_fulldt_df.copy()])
-
-    # if not os.path.exists(f"{output_dir}/uid_lab_df"):
-    #     os.mkdir(f"{output_dir}/uid_lab_df")
-    # uid_fulldt_df.to_csv(f"{output_dir}/uid_lab_df/uid_fulldt_df({uid}).csv", encoding='utf-8-sig', index=False)
+        header = False
+    uid_fulldt_df.to_csv(f"{output_dir}/lnz_final_lab_df.csv", encoding='utf-8-sig', index=False, header=header, mode='a')
 
     count += 1
-
-full_result_df = full_result_df.reset_index(drop=True)
-full_result_df.to_csv(f"{output_dir}/lnz_final_lab_df.csv", encoding='utf-8-sig', index=False)

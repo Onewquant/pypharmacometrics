@@ -1,0 +1,127 @@
+from tools import *
+from pynca.tools import *
+from datetime import datetime, timedelta
+from scipy.stats import spearmanr
+
+prj_name = 'LNZ'
+prj_dir = './Projects/LINEZOLID'
+resource_dir = f'{prj_dir}/resource'
+output_dir = f"{prj_dir}/results"
+
+ptinfo_df = pd.read_csv(f"{output_dir}/lnz_final_ptinfo_df.csv")
+lab_df = pd.read_csv(f"{output_dir}/lnz_final_lab_df.csv")
+bodysize_df = pd.read_csv(f"{output_dir}/lnz_final_bodysize_df.csv")
+dose_df = pd.read_csv(f"{output_dir}/lnz_final_dose_df.csv")
+surv_res_df = pd.read_csv(f"{output_dir}/lnz_surv_res_df.csv")
+
+# lab_df 처리
+pd_list = ['ANC', 'ANC (em)', 'Hct', 'Hct (em)', 'Hct(i-STAT)', 'Hematocrit (ICU용)', 'Hematocrit (마취과용)', 'Hematocrit (응급실용)', 'PCT', 'PDW', 'PLT', 'PLT (em)', 'PT (%)', 'PT (INR)', 'PT (INR) (em)', 'PT (sec)', 'Plasma cell', 'Lymphocyte', 'MCH', 'MCHC', 'MCV', 'MPV', 'Metamyelocyte', 'Mixing test (PT, aPTT 제외)', 'Monocyte', 'Myelocyte', 'Normoblast', 'Other', 'Band neutrophil', 'Basophil',  'CBC (em) (differential count) RDW제외', 'Blast', 'Eosinophil', 'Eosinophil count',  '절대단구수', '절대림프구수', 'Promyelocyte', 'Prothrombin time (%) : MIX', 'Prothrombin time (INR) : MIX', 'Prothrombin time (sec) : MIX', 'RBC', 'RBC (em)', 'RDW(CV)', 'RDW(SD)', 'Reticulocyte', 'Segmented neutrophil', 'WBC', 'WBC (em)', 'WBC stick', 'WBC stick (em)', 'Hb', 'Hb (em)', 'Hb(i-STAT)', 'Hemoglobin (ICU용)', 'Hemoglobin (마취과용)', 'Hemoglobin (응급실용)', 'Immature cell', 'Joint WBC stick (em)', 'Activated PTT : MIX', 'Atypical lymphocyte',  'BE', 'BE(i-STAT)','aPTT', 'aPTT (em)',]
+etc_list1 = ['Creatinine (random urine)', 'Creatinine (urine, em)', 'Creatinine Clerarance (24hrs urine, Ccr)','Creatinine (24hrs urine) (g/day)', 'Creatinine (24hrs urine) (mg/dL)','Glucose (간이혈당기용)', 'Urine creatinine (24hrs urine)' ]
+etc_list2 = ['FBS (serum)', 'Fibrinogen', 'HCO3-', 'HCO3-(i-STAT)',  'Microalbumin (random urine)', 'Microalbumin/Creatinine ratio', 'O₂CT', 'O₂SAT', 'O₂SAT(i-STAT)', 'Potasium(i-STAT)', 'Protein (random urine)', 'Protein/Creatinine ratio',  'Sodium(i-STAT)', 'TotalCO₂(i-STAT)',   'eGFR (CKD-EPI Cys)',  'eGFR-Cockcroft-Gault', 'eGFR-Schwartz(소아)',  'i- Calcium (i-STAT)', 'pCO₂', 'pCO₂(i-STAT)','pO₂', 'pO₂(i-STAT)',]
+
+lab_df = lab_df.drop(pd_list+etc_list1+etc_list2,axis=1)
+lab_df['ALT'] = lab_df[['ALT(GPT) (em)','GPT (ALT)']].max(axis=1)
+lab_df['AST'] = lab_df[['AST(GOT) (em)','GOT (AST)']].max(axis=1)
+lab_df['GGT'] = lab_df[['GGT', 'GGT (em)']].max(axis=1)
+lab_df['ALB'] = lab_df[['Albumin', 'Albumin (em)']].max(axis=1)
+lab_df['SCR'] = lab_df[['Creatinine', 'Creatinine  (응급실용)', 'Creatinine (ICU용)','Creatinine (serum)', 'Creatinine (serum, em)', ]].max(axis=1)
+lab_df['GLU'] = lab_df[['Glucose', 'Glucose (ICU용)', 'Glucose (em)', 'Glucose (마취과용)', 'Glucose (응급실용)']].max(axis=1)
+lab_df['CRP'] = lab_df[['CRP (em)', 'CRP (hsCRP)', 'hsCRP (em)',]].max(axis=1)
+lab_df['TPRO'] = lab_df[['Protein, total', 'Protein, total (em)',]].max(axis=1)
+lab_df['TBIL'] = lab_df[['Bilirubin, total', 'Bilirubin, total  (em)', 'Bilirubin, total (NICU)',]].max(axis=1)
+lab_df['LACT'] = lab_df[['Lactate (ICU용)', 'Lactate (마취과용)', 'Lactate (응급실용)', 'Lactate, Lactic acid (em)', ]].max(axis=1)
+lab_df['PROCAL'] = lab_df[['Procalcitonin', 'Procalcitonin 정량', ]].max(axis=1)
+lab_df['eGFR'] = lab_df[['eGFR', ]].min(axis=1)
+lab_df['pH'] = lab_df[['pH', 'pH (i-STAT)']].min(axis=1)
+lab_df['DBIL'] = lab_df[['Bilirubin, direct', ]].min(axis=1)
+lab_df['eGFR-CKD-EPI'] = lab_df[['eGFR-CKD-EPI',]].min(axis=1)
+lab_df['ESR'] = lab_df['ESR']
+
+lab_covar_list = ['ALT','AST','GGT','ALB','SCR','GLU','CRP','TPRO','TBIL','LACT','PROCAL','pH','DBIL','ESR']
+lab_df = lab_df[['UID', 'DATE']+lab_covar_list].copy()
+
+# list(lab_df.columns)[2:]
+
+# ep_surv_df.columns
+# surv_res_df['ENDPOINT'].unique()
+ep_res_dict = dict()
+for endpoint, ep_surv_df in surv_res_df.groupby('ENDPOINT'):
+    ep_res_df = list()
+    # if endpoint=='PLT':
+    #     raise ValueError
+    for inx, row in ep_surv_df.iterrows():
+        uid = row['UID']
+        bl_date = row['BL_DATE']
+        bl_date_bf1mo = (datetime.strptime(bl_date,'%Y-%m-%d')-timedelta(days=30)).strftime('%Y-%m-%d')
+        ev_date = row['EV_DATE']
+        ev = row['EV']
+
+        res_dict = {'UID':uid}
+
+        # patient info
+        ptinfo_row = ptinfo_df[ptinfo_df['UID']==uid].iloc[0]
+        for col in ['SEX','BIRTH_DATE']:
+            if col == 'BIRTH_DATE':
+                res_dict['AGE'] = ptinfo_row[col]
+                continue
+            res_dict[col] = ptinfo_row[col]
+
+        # lab
+        uid_lab_df = lab_df[lab_df['UID']==uid].copy()
+        uid_bl_lab_df = uid_lab_df[(uid_lab_df['DATE'] >= bl_date_bf1mo) & (uid_lab_df['DATE'] <= bl_date)].fillna(method='ffill')
+        bl_lab_row = uid_bl_lab_df.iloc[-1]
+        # col='DATE'
+        for col in ['DATE']+lab_covar_list:
+            if col=='DATE':
+                res_dict[f'BL_{col}'] = bl_lab_row[col]
+                res_dict['AGE'] = int((datetime.strptime(bl_lab_row[col],'%Y-%m-%d') - datetime.strptime(res_dict['AGE'],'%Y-%m-%d')).days/365.25)
+                continue
+            res_dict[col] = bl_lab_row[col]
+
+        # bodysize
+        uid_bs_df = bodysize_df[bodysize_df['UID']==uid].copy()
+        uid_bl_bs_df = uid_bs_df[(uid_bs_df['DATE'] >= bl_date_bf1mo) & (uid_bs_df['DATE'] <= bl_date)].copy()
+        if len(uid_bl_bs_df)==0:
+            bl_bs_row = {'DATE':bl_date,'HT':np.nan,'WT':np.nan,'BMI':np.nan}
+        else:
+            uid_bl_bs_df = uid_bl_bs_df.pivot_table(index="DATE", columns="BODYSIZE", values="VALUE", aggfunc="median").reset_index(drop=False).sort_values(['DATE'],ignore_index=True).fillna(method='ffill')
+            uid_bl_bs_df.columns.name = None
+            if len(uid_bl_bs_df.drop(['DATE'],axis=1).columns)<=1:
+                for bs_col in ['WT','HT','BMI']:
+                    if bs_col in uid_bl_bs_df.columns:
+                        continue
+                    else:
+                        uid_bl_bs_df[bs_col]=np.nan
+            if 'HT' not in uid_bl_bs_df.columns:
+                uid_bl_bs_df['HT'] = (np.sqrt(uid_bl_bs_df['WT']/uid_bl_bs_df['BMI'])*100).map(lambda x:round(x,1))
+            if 'WT' not in uid_bl_bs_df.columns:
+                uid_bl_bs_df['WT'] = (np.square(uid_bl_bs_df['HT']/100) * uid_bl_bs_df['BMI']).map(lambda x:round(x,1))
+            if 'BMI' not in uid_bl_bs_df.columns:
+                uid_bl_bs_df['BMI'] = (uid_bl_bs_df['WT'] / np.square(uid_bl_bs_df['HT']/100)).map(lambda x:round(x,1))
+            uid_bl_bs_df = uid_bl_bs_df[['DATE','HT','WT','BMI']].copy()
+            bl_bs_row = uid_bl_bs_df.iloc[-1]
+
+        for col in ['HT','WT','BMI']:
+            res_dict[col] = bl_bs_row[col]
+
+        # dose
+        uid_dose_df = dose_df[dose_df['UID']==uid].copy()
+        uid_cum_dose_df = uid_dose_df[(uid_dose_df['DATE'] >= bl_date) & (uid_dose_df['DATE'] <= ev_date)].copy()
+        daily_dose = (uid_cum_dose_df['DOSE'].sum())/((datetime.strptime(uid_cum_dose_df['DATE'].iloc[-1],'%Y-%m-%d') - datetime.strptime(uid_cum_dose_df['DATE'].iloc[0],'%Y-%m-%d')).days + 1)
+        res_dict['DOSE24'] = daily_dose
+        res_dict['EV'] = ev
+        ep_res_df.append(res_dict)
+    # raise ValueError
+    ep_res_df = pd.DataFrame(ep_res_df)
+    ep_res_df['ENDPOINT'] = endpoint
+
+    ep_res_dict[endpoint] = ep_res_df.copy()
+
+endpoint = 'PLT'
+epreg_df = ep_res_dict[endpoint].copy()
+epreg_df = epreg_df.drop(['BL_DATE','UID','ENDPOINT'],axis=1)
+epreg_df['SEX']=epreg_df['SEX'].map({'남':1,'여':2})
+epreg_df = epreg_df.fillna(epreg_df.median(numeric_only=True))
+
+epreg_df.to_csv(f"{output_dir}/lnz_mvlreg_{endpoint}_df.csv", encoding='utf-8-sig', index=False)
+# ep_res_dict.keys()

@@ -61,8 +61,8 @@ for uid, uid_df in pd_df.groupby('UID',as_index=False): #break
     uid_fulldt_df['DATETIME'] = pd.date_range(start=min_lab_date,end=max_lab_date).astype(str)
     uid_fulldt_df['UID'] = uid
 
-    # uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left').fillna(method='bfill')
-    uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left')
+    uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left').fillna(method='bfill')
+    # uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left')
     # uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left')
 
     if count==0:
@@ -103,8 +103,8 @@ for uid, uid_df in bsize_df.groupby('UID',as_index=False): #break
     uid_fulldt_df['DATETIME'] = pd.date_range(start=min_lab_date,end=max_lab_date).astype(str)
     uid_fulldt_df['UID'] = uid
 
-    # uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left').fillna(method='ffill')
-    uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left')
+    uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left').fillna(method='ffill')
+    # uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left')
 
     if count==0:
         full_result_df = uid_fulldt_df.copy()
@@ -113,9 +113,9 @@ for uid, uid_df in bsize_df.groupby('UID',as_index=False): #break
 
     count+=1
 
-# bsize_df = full_result_df.fillna(full_result_df.median(numeric_only=True))
+bsize_df = full_result_df.fillna(full_result_df.median(numeric_only=True))
 
 
 pd_bsize_df = pd_df.merge(bsize_df, on=['UID','DATETIME'], how='left')
-# pd_bsize_df.to_csv(f"{output_dir}/pd_bsize_df.csv", encoding='utf-8-sig', index=False)
-pd_bsize_df.to_csv(f"{output_dir}/pd_bsize_df_ori.csv", encoding='utf-8-sig', index=False)
+pd_bsize_df.to_csv(f"{output_dir}/pd_bsize_df.csv", encoding='utf-8-sig', index=False)
+# pd_bsize_df.to_csv(f"{output_dir}/pd_bsize_df_ori.csv", encoding='utf-8-sig', index=False)

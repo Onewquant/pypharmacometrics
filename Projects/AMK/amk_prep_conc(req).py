@@ -137,7 +137,8 @@ for inx, row in raw_df.iterrows():# break
                 dt_str = '2010-07-20T11:30'
             elif (row['ID']=='13523484') and (dt_str == '2010-07-21T01:30'):
                 dt_str = '2010-07-20T13:30'
-            elif (row['ID']=='111657204') and (dt_str == '2010-06-23T22:00'):
+            elif (row['ID']=='11657204') and (dt_str == '2010-06-23T22:00'):
+                # raise ValueError
                 dt_str = '2010-06-23T10:00'
             raw_df.at[inx, 'NEW_SAMP_DT'] = dt_str
             raw_df.at[inx, 'REC_REASON'] = '오더비고반영'
@@ -516,14 +517,19 @@ for uid, id_conc_df in raw_df.groupby('ID'):
         print(f'({total_count}) / {uid} / {id_conc_df["NAME"].iloc[0]} / {inclusion_of_not_logical_samp}')
 
 
+# 직접 확인시 abnormal 데이터 제거
+
+# raw_df=raw_df[~(raw_df['ID'].isin([]))].copy()
+raw_df=raw_df[~raw_df['ID'].isin(['15561615'])].copy()
+
 
 print(f"오더비고 채혈시간 반영: {len(ordbigo_patients)} patients ({ordbigo_count} rows)")
 print(f"결과비고 채혈시간 반영: {len(resbigo_patients)} patients ({resbigo_count} rows)")
 print(f"비 논리적 채혈 시간 교정: \n [Total] {len(not_logical_samp_id_dict['T_P'].union(not_logical_samp_id_dict['P_T']))} patients ({not_logical_samp_dt_count_dict['T_P']+not_logical_samp_dt_count_dict['P_T']} rows) \n [T_P]: {len(not_logical_samp_id_dict['T_P'])} patients ({not_logical_samp_dt_count_dict['T_P']} rows) \n [P_T]: {len(not_logical_samp_id_dict['P_T'])} patients ({not_logical_samp_dt_count_dict['P_T']} rows) ")
-        # raise ValueError
 
 
-# 투약시간 직후인데, TROUGH에 해당하는 농도값을 나타내는 경우 -> 투약 이후로 이동
+
+
 
 
 

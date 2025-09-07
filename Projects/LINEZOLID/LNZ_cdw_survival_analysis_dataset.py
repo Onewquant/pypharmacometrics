@@ -10,7 +10,6 @@ output_dir = f"{prj_dir}/results"
 # nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
 
 lab_df = pd.read_csv(f"{output_dir}/lnz_final_lab_df.csv")
-# lab_df = lab_df[['UID','DATE','Blood',  'RBC_count',  'RBC_ul']].copy()
 # lab_df.columns
 # lab_df[['UID', 'DATE', 'ANC', 'Atypical lymphocyte', 'Band neutrophil', 'Basophil', 'Blast', 'Eosinophil', 'Hb', 'Hct', 'Immature cell', 'Lymphocyte', 'MCH', 'MCHC', 'MCV', 'MPV', 'Metamyelocyte', 'Monocyte', 'Myelocyte', 'Normoblast', 'Other', 'PCT', 'PDW', 'PLT', 'Plasma cell', 'Promyelocyte', 'RBC', 'RDW(CV)', 'RDW(SD)', 'Segmented neutrophil', 'WBC', '절대단구수', '절대림프구수']].isna().sum().sort_values()
 # lab_df['PLT'].max()
@@ -34,6 +33,7 @@ surv_res_df = list()
 
 # lab_df.columns
 # lab_df['WBC']
+
 
 for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC']:
     # endpoint_lab = 'PLT'
@@ -127,15 +127,14 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC']:
             tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df[endpoint_lab] < 4)].copy()
 
 
-        single_res_dict = {'ENDPOINT':endpoint_lab,
-                           'ADM_TYPE':'SINGLE',
+        single_res_dict = {'UID':uid,
+                           'ENDPOINT':endpoint_lab,
                            'DRUG':row['SINGLE_DRUG'],
-                           'UID':uid,
-                           'BL_DATE':sbl_row['DATE'],
-                           f'BL_{endpoint_lab}':sbl_row[endpoint_lab],
                            'FIRST_ADM_DATE':uid_sadm_lab_df['DATE'].iloc[0],
-                           'TRT':0,
+                           'LAST_ADM_DATE':uid_sadm_lab_df['DATE'].iloc[-1],
                            'EV': 0 if len(tar_rows)==0 else 1,
+                           'BL_DATE':sbl_row['DATE'],
+                           f'BL_{endpoint_lab}': sbl_row[endpoint_lab],
                            'EV_DATE': uid_sadm_lab_df['DATE'].iloc[-1] if len(tar_rows)==0 else tar_rows['DATE'].iloc[0],
                            f'EV_{endpoint_lab}': np.nan if len(tar_rows)==0 else tar_rows[endpoint_lab].iloc[0],
                            }
@@ -146,7 +145,7 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC']:
             single_res_dict['event'] = 0
         else:
             single_res_dict['event'] = single_res_dict['EV']
-        single_res_dict['group'] = single_res_dict['TRT']
+        single_res_dict['group'] = 0
 
         surv_res_df.append(single_res_dict)
 
@@ -203,18 +202,20 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC']:
         # surv_res_df.append(intersect_res_dict)
 
 surv_res_df = pd.DataFrame(surv_res_df).sort_values(['time','event'])
+surv_res_df.to_csv(f"{output_dir}/lnz_surv_res_df.csv", encoding='utf-8-sig', index=False)
 # surv_res_df
 
 
 ## Fisher's Exact Test
 
-single_survres_df = surv_res_df[surv_res_df['ADM_TYPE']=='SINGLE'].copy()
+single_survres_df = surv_res_df.copy()
+# single_survres_df = surv_res_df[surv_res_df['ADM_TYPE']=='SINGLE'].copy()
 # intsec_survres_df = surv_res_df[surv_res_df['ADM_TYPE']=='INTSEC'].copy()
 
 # single_survres_df['UID']
 
 
-single_ev_count = single_survres_df['EV'].sum()
+# single_ev_count = single_survres_df['EV'].sum()
 # intsec_ev_count = intsec_survres_df['EV'].sum()
 
 from scipy.stats import fisher_exact
@@ -279,11 +280,11 @@ for g, gdf in surv_res_df.groupby("ENDPOINT"):
     ax.fill_between(ci_curve.index, lower, upper, step="post", alpha=0.2)
 
 # 서식
-ax.set_title(f"Cumulative Incidence ({endpoint_lab}) by Group (with 95% CI)")
+ax.set_title(f"Cumulative Incidence (myelosuppression) by Group (with 95% CI)")
 
 # ax.set_title(f"Cumulative Incidence ({endpoint_lab}) by Group (with 95% CI)\nLog-rank test (p={round(results.summary['p'].iloc[0],3)})\nContingency Table: [{table[0][0]},{table[0][1]}]/[{table[1][0]},{table[1][1]}]")
 ax.set_xlabel("Time")
-ax.set_ylabel(f"Cumulative Incidence ({endpoint_lab})")
+ax.set_ylabel(f"Cumulative Incidence (myelosuppression)")
 ax.set_ylim(0, 1.2)
 ax.grid(True, linestyle="--")
 ax.legend(title="Group")
