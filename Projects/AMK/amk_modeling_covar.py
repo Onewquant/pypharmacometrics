@@ -165,11 +165,13 @@ covar_modeling_df['SEX'] = covar_modeling_df['SEX'].map({'M':1,'F':2})
 #
 # covar_modeling_df['TAD'] = covar_modeling_df['TAD'].replace(np.nan,0)
 covar_modeling_df['TAD'] = add_time_after_dosing_column(df=covar_modeling_df)
+covar_modeling_df['TAD'] = covar_modeling_df['TAD'].map(lambda x:round(x,7))
+covar_modeling_df['TIME'] = covar_modeling_df['TIME'].map(lambda x:round(x,7))
 
 to_change_rate = covar_modeling_df[(covar_modeling_df['TAD'] <= 0.5)&(covar_modeling_df['TAD'] != 0)&(covar_modeling_df['MDV'] == 0)].copy()
 for tad_inx in (to_change_rate.index): #break
     rate_change_inx = tad_inx-1
-    covar_modeling_df.at[rate_change_inx,'RATE'] = float(covar_modeling_df.at[rate_change_inx,'AMT'])/(covar_modeling_df.at[tad_inx,'TAD']*0.9)
+    covar_modeling_df.at[rate_change_inx,'RATE'] = round(float(covar_modeling_df.at[rate_change_inx,'AMT'])/(covar_modeling_df.at[tad_inx,'TAD']*0.9),7)
 # raise ValueError
 
 
@@ -181,6 +183,8 @@ print(f"Mode: {modeling_input_line}")
 
 covar_modeling_df.to_csv(f'{modeling_covar_dir}/{drug}_modeling_df_covar.csv',index=False, encoding='utf-8-sig')
 covar_modeling_df.to_csv(f'{nonmem_dir}/{drug}_modeling_df_covar.csv',index=False, encoding='utf-8-sig')
+
+# (covar_modeling_df['MDV']==0).sum()
 
 # covar_modeling_df = pd.read_csv(f'{output_dir}/amk_modeling_datacheck_covar.csv')
 # covar_modeling_df['ID'].drop_duplicates()

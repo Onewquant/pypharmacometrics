@@ -108,6 +108,7 @@ for endpoint, ep_surv_df in surv_res_df.groupby('ENDPOINT'):
         uid_dose_df = dose_df[dose_df['UID']==uid].copy()
         uid_cum_dose_df = uid_dose_df[(uid_dose_df['DATE'] >= bl_date) & (uid_dose_df['DATE'] <= ev_date)].copy()
         daily_dose = (uid_cum_dose_df['DOSE'].sum())/((datetime.strptime(uid_cum_dose_df['DATE'].iloc[-1],'%Y-%m-%d') - datetime.strptime(uid_cum_dose_df['DATE'].iloc[0],'%Y-%m-%d')).days + 1)
+        res_dict['DOSE_PERIOD'] = ((datetime.strptime(uid_cum_dose_df['DATE'].iloc[-1],'%Y-%m-%d') - datetime.strptime(uid_cum_dose_df['DATE'].iloc[0],'%Y-%m-%d')).days)
         res_dict['DOSE24'] = daily_dose
         res_dict['EV'] = ev
         ep_res_df.append(res_dict)
@@ -117,11 +118,17 @@ for endpoint, ep_surv_df in surv_res_df.groupby('ENDPOINT'):
 
     ep_res_dict[endpoint] = ep_res_df.copy()
 
-endpoint = 'PLT'
-epreg_df = ep_res_dict[endpoint].copy()
-epreg_df = epreg_df.drop(['BL_DATE','UID','ENDPOINT'],axis=1)
-epreg_df['SEX']=epreg_df['SEX'].map({'남':1,'여':2})
-epreg_df = epreg_df.fillna(epreg_df.median(numeric_only=True))
+for endpoint in surv_res_df['ENDPOINT'].unique():
+    # endpoint = 'PLT'
+    # endpoint = 'Hb'
+    # endpoint = 'WBC'
+    # endpoint = 'ANC'
 
-epreg_df.to_csv(f"{output_dir}/lnz_mvlreg_{endpoint}_df.csv", encoding='utf-8-sig', index=False)
-# ep_res_dict.keys()
+    epreg_df = ep_res_dict[endpoint].copy()
+    epreg_df = epreg_df.drop(['BL_DATE','UID','ENDPOINT'],axis=1)
+    epreg_df['SEX']=epreg_df['SEX'].map({'남':1,'여':2})
+    epreg_df = epreg_df.fillna(epreg_df.median(numeric_only=True))
+
+    epreg_df.to_csv(f"{output_dir}/lnz_mvlreg_{endpoint}_df.csv", encoding='utf-8-sig', index=False)
+    print(f'lnz_mvlreg_{endpoint}_df.csv / generated')
+    # ep_res_dict.keys()

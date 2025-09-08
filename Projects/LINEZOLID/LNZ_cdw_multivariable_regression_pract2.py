@@ -111,6 +111,7 @@ def drop_by_vif(X: pd.DataFrame, threshold: float = 10.0, max_iter: int = 50):
     """
     dropped = []
     X_work = X.copy()
+    print(f"[Drop by VIF value]\n")
     for _ in range(max_iter):
         vif_df = compute_vif(X_work)
         if vif_df.empty:
@@ -122,6 +123,7 @@ def drop_by_vif(X: pd.DataFrame, threshold: float = 10.0, max_iter: int = 50):
         drop_feat = vif_df.iloc[0]["feature"]
         dropped.append(drop_feat)
         X_work = X_work.drop(columns=[drop_feat])
+        print(f"{drop_feat} / VIF: {max_vif} / Dropped")
         if X_work.shape[1] <= 1:  # const만 남는 상황
             break
     return X_work, dropped
@@ -134,6 +136,16 @@ def fit_ev_logistic(csv_path: str,
                     enable_vif_filter: bool = True,
                     verbose: bool = True,
                     drop_intercept_in_output: bool = True):
+
+
+    # csv_path=csv_path
+    # out_csv=out_csv
+    # corr_threshold=0.7     # |r| 임계값 (보통 0.8~0.95)
+    # vif_threshold=10.0     # VIF 임계값 (보통 5 또는 10)
+    # enable_corr_filter=True
+    # enable_vif_filter=True
+    # verbose=True
+
     # 1) 데이터 로드
     df = pd.read_csv(csv_path)
     if "EV" not in df.columns:
@@ -243,31 +255,40 @@ def fit_ev_logistic(csv_path: str,
 
 # 사용 예시: 경로만 바꿔서 실행하세요.
 output_dir = 'C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/LINEZOLID/results'
-csv_path = f"{output_dir}/lnz_mvlreg_PLT_df.csv"     # <-- 본인 파일 경로
-out_csv  = f"{output_dir}/lnz_mvlreg_PLT_res.csv"
+endpoint = 'PLT'
+# endpoint = 'Hb'
+# endpoint = 'WBC'
+# endpoint = 'ANC'
 
+csv_path = f"{output_dir}/lnz_mvlreg_{endpoint}_df.csv"     # <-- 본인 파일 경로
+out_csv  = f"{output_dir}/lnz_mvlreg_{endpoint}_res.csv"
+
+
+
+
+# raise ValueError
 res, or_table, info = fit_ev_logistic(
-    csv_path,
+    csv_path=csv_path,
     out_csv=out_csv,
     corr_threshold=0.7,     # |r| 임계값 (보통 0.8~0.95)
-    vif_threshold=10.0,     # VIF 임계값 (보통 5 또는 10)
+    vif_threshold=13.0,     # VIF 임계값 (보통 5 또는 10)
     enable_corr_filter=True,
     enable_vif_filter=True,
     verbose=True
 )
 
-print(f"[Fitted with] {info['fitted_with']}")
-print("\n[Model Summary]")
+print(f"[Fitted with] / {endpoint} / {info['fitted_with']}")
+print(f"\n[Model Summary ({endpoint})]")
 print(res.summary())
-print("\n[Odds Ratio Table]")
+print(f"\n[Odds Ratio Table ({endpoint})]")
 print(or_table)
 print(f"\nSaved OR table to: {out_csv}")
 
-print("\n[Correlation dropped]")
+print(f"\n[Correlation dropped ({endpoint})]")
 print(info["corr_dropped"])
-print("\n[VIF dropped]")
+print("\n[VIF dropped ({endpoint})]")
 print(info["vif_dropped"])
-print("\n[Final features]")
+print("\n[Final features ({endpoint})]")
 print(info["final_features"])
-print("\n[Final VIF]")
+print("\n[Final VIF ({endpoint})]")
 print(info["final_vif"])

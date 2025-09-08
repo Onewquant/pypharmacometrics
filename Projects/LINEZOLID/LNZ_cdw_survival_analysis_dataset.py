@@ -125,6 +125,19 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC']:
             except:
                 continue
             tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df[endpoint_lab] < 4)].copy()
+        elif endpoint_lab == 'Lactate':
+            # lactate_cond =
+            sbl_rows = uid_sbase_lab_df[(~uid_sbase_lab_df[endpoint_lab].isna()) & (uid_sbase_lab_df[endpoint_lab] < 4)]
+
+            # sbl_row = sbl_rows.iloc[-1]
+            try:
+                sbl_row = sbl_rows.iloc[-1]
+                # Baseline에서 Cr이 이미 높아지는 경우 제외
+                if (uid_sbase_lab_df[uid_sbase_lab_df['DATE'] > sbl_row['DATE']][endpoint_lab] >= 4).sum() > 0:
+                    continue
+            except:
+                continue
+            tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df[endpoint_lab] >= 4)].copy()
 
 
         single_res_dict = {'UID':uid,
