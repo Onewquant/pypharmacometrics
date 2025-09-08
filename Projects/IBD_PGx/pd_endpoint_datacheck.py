@@ -129,7 +129,21 @@ for uid, uid_df in df.groupby('UID'): #break
     res_df.append(res_dict)
 res_df = pd.DataFrame(res_df)
 
+# res_df.to_csv(f"{}")
+ind_res_df.columns
 ind_res_df = res_df[res_df['PHASE']=='Induction'].copy()
 ind_res_df[~(ind_res_df['BL_DATE'].isna())]
+ind_res_df[(ind_res_df['BL_DATE'].isna())]
 ind_res_df[~(ind_res_df['TG_DATE'].isna())]
-ind_res_df[(~(ind_res_df['BL_DATE'].isna()))&(~(ind_res_df['TG_DATE'].isna()))]
+# df.columns
+ind_na_pd_df = ind_res_df[(ind_res_df['TG_DATE'].isna())].copy()
+fdate_df = df.groupby('UID',as_index=False).agg({'NAME':'min','DATETIME':'min'}).rename(columns={'DATETIME':'FIRST_DATA_DATE'})
+ind_na_pd_df = ind_na_pd_df.merge(fdate_df,on=['UID'], how='left')[['UID','NAME','IBD_TYPE','FIRST_DATA_DATE']]
+first_pd_df = pd_df[pd_df['UID'].isin(ind_na_pd_df['UID'])].groupby('UID',as_index=False).agg({'PD_PRO2':'first','DATETIME':'min'}).rename(columns={'DATETIME':'FIRST_PD_DATE'})
+ind_na_pd_df = ind_na_pd_df.merge(first_pd_df,on=['UID'], how='left')
+
+ind_na_pd_df['FIRST_DATA_DATE'] = ind_na_pd_df['FIRST_DATA_DATE'].map(lambda x:x.split('T')[0])
+ind_na_pd_df.to_csv(f"{output_dir}/vacant_indpd_list.csv", index=False, encoding='utf-8-sig')
+# ind_res_df[((ind_res_df['BL_DATE'].isna()))&((ind_res_df['TG_DATE'].isna()))]
+
+# ind_res_df[(~(ind_res_df['BL_DATE'].isna()))&(~(ind_res_df['TG_DATE'].isna()))]
