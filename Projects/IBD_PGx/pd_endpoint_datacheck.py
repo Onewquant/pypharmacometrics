@@ -68,6 +68,10 @@ for uid, uid_df in df.groupby('UID'): #break
     ## IND / MAINT Phase 구분하여 기록
 
     if uid in ind_uids:
+        # raise ValueError
+
+        ## [IND 기간 처리]
+
         ind_count+=1
         # raise ValueError
         print(f'[IND ({ind_count})] / {uid}')
@@ -98,6 +102,18 @@ for uid, uid_df in df.groupby('UID'): #break
         res_dict['TG_DATE'] = tgpd_date
         for pdc in pd_cols:
             res_dict['TG_'+pdc] = tg_pd_row[pdc]
+
+        ## [Maint in IND 기간 처리]
+
+        uid_df['DATE'] = uid_df['DATETIME'].map(lambda x:x.split('T')[0])
+        maint_in_ind_uid_df = uid_df[uid_df['DATE'] >= dose4th_date].copy()
+        mii_min_date = max(maint_in_ind_uid_df['DATE'].min(), uid_pd_df['DATETIME'].min())
+        mii_max_date = min(maint_in_ind_uid_df['DATE'].max(), uid_pd_df['DATETIME'].max())
+        mii_pd_df = uid_pd_df[(uid_pd_df['DATETIME'] >= mii_min_date)&(uid_pd_df['DATETIME'] <= mii_max_date)].copy()
+        mii_df =uid_df[(uid_df['DATE'] >= mii_min_date)&(uid_df['DATE'] <= mii_max_date)].copy()
+        # 이 상태에서 mii_df / mii_pd_df 이 두개로 Baseline 기록 및 Target in Maint 기록해야함
+        # mii_pd_df['DATETIME']
+        # mii_df['DATE']
 
     else:
         maint_count+=1
