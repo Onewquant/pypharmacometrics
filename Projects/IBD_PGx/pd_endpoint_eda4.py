@@ -1,12 +1,9 @@
 ## PK parameter와 PD marker 관계 그려보기 - CD/UC 및 IND/MAINT 서브그룹 나눠서
 
-
 from tools import *
 from pynca.tools import *
 from datetime import datetime, timedelta
 from scipy.stats import spearmanr
-
-
 
 prj_name = 'IBDPGX'
 prj_dir = './Projects/IBD_PGx'
