@@ -8,8 +8,21 @@ prj_name = 'IBDPGX'
 prj_dir = './Projects/IBD_PGx'
 resource_dir = f'{prj_dir}/resource'
 output_dir = f"{prj_dir}/results"
+nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
+
+## Simulation용 데이터셋 생성
+
+simulation_df = pd.read_csv(f"{output_dir}/modeling_df_covar/infliximab_integrated_presim_df_dayscale.csv")
+interval = 1
+for_sim_df = get_model_population_sim_df(df=simulation_df, interval=interval, add_on_period=0)
+for_sim_df = for_sim_df.replace(np.nan,'.')
+
+for_sim_df = for_sim_df[['ID', 'TIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'ROUTE', 'IBD_TYPE', 'ALB', 'ADA', 'AGE', 'SEX', 'WT', 'HT', 'BMI', 'REALDATA', 'RATE', 'TAD', 'DT_YEAR', 'DT_MONTH', 'DT_DAY']].copy()
+for_sim_df.to_csv(f"{output_dir}/modeling_df_covar/infliximab_integrated_simulation_df.csv",index=False, encoding='utf-8-sig')
+for_sim_df.to_csv(f'{nonmem_dir}/infliximab_integrated_simulation_df.csv',index=False, encoding='utf-8')
 
 ## 모델링 데이터셋 로딩
+
 df = pd.read_csv(f'{output_dir}/modeling_df_datacheck(for pda)/infliximab_integrated_datacheck(for pda).csv')
 df['TIME'] = df['TIME(DAY)'].copy()
 uniq_df = df.drop_duplicates(['UID'])[['UID','NAME','START_INDMAINT']].copy()

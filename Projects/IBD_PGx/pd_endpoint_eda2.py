@@ -13,7 +13,8 @@ nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
 ## DEMO Covariates Loading
 
 # simulation_df = pd.read_csv(f"{output_dir}/infliximab_integrated_modeling_df_dayscale.csv")
-simulation_df = pd.read_csv(f"{output_dir}/modeling_df_covar/infliximab_integrated_pdeda_df_dayscale.csv")
+simulation_df = pd.read_csv(f"{output_dir}/modeling_df_covar/infliximab_integrated_presim_df_dayscale.csv")
+# simulation_df['DATETIME']
 # simulation_df['TIME_DIFF'] = simulation_df['TIME'].diff()
 # simulation_df[simulation_df['TIME_DIFF']>0]['TIME_DIFF'].sort_values()
 # interval = 3/24
@@ -26,6 +27,7 @@ for_sim_df = for_sim_df.replace(np.nan,'.')
 for_sim_df = for_sim_df[['ID', 'TIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'ROUTE', 'IBD_TYPE', 'ALB', 'ADA', 'AGE', 'SEX', 'WT', 'HT', 'BMI', 'PD_INDEXISTS', 'PD_PRO2', 'PD_PRO2_BL', 'PD_PRO2_DELT', 'PD_CR', 'PD_CR_BL', 'PD_CR_DELT', 'PD_CRP', 'PD_CRP_BL', 'PD_CRP_DELT', 'PD_FCAL', 'PD_FCAL_BL', 'PD_FCAL_DELT', 'REALDATA', 'RATE', 'TAD']].copy()
 # for_sim_df = for_sim_df[['ID', 'TIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'ROUTE', 'IBD_TYPE', 'ALB', 'ADA', 'AGE', 'SEX', 'WT', 'HT', 'BMI', 'PD_CRP', 'PD_CALPRTSTL','PD_PRO2', 'REALDATA', 'RATE', 'TAD']].copy()
 for_sim_df.to_csv(f"{output_dir}/modeling_df_covar/infliximab_integrated_simulation_df.csv",index=False, encoding='utf-8-sig')
+for_sim_df.to_csv(f'{nonmem_dir}/infliximab_integrated_simulation_df.csv',index=False, encoding='utf-8')
 
 
 # for_sim_df.columns

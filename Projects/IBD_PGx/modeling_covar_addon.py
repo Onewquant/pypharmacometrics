@@ -189,13 +189,23 @@ for drug in ['infliximab','adalimumab']:
         # raise ValueError
         # modeling_df[modeling_df['AGE'] <= 18][['UID','NAME','AGE','IBD_TYPE']].drop_duplicates(['UID'], ignore_index=True)
 
+        ## SIM 데이터 생성용 파일 저장
+        pre_sim_df = modeling_df[modeling_cols+['DATETIME']].sort_values(['ID', 'TIME'], ignore_index=True)
+        pre_sim_df['DT_YEAR'] = pre_sim_df['DATETIME'].map(lambda x:int(x.split('-')[0]))
+        pre_sim_df['DT_MONTH'] = pre_sim_df['DATETIME'].map(lambda x:int(x.split('-')[1]))
+        pre_sim_df['DT_DAY'] = pre_sim_df['DATETIME'].map(lambda x:int(x.split('-')[-1]))
+        # pre_sim_df['DATETIME'] = pre_sim_df['DATETIME'].map(lambda x:int(x.replace('-','')))
+        pre_sim_df['TIME'] = pre_sim_df['TIME'] / 24
+        pre_sim_df['DUR'] = pre_sim_df['DUR'].map(lambda x: float(x) / 24 if x != '.' else x)
+        pre_sim_df.to_csv(f'{output_dir}/modeling_df_covar/{drug}_{mode_str}_presim_df_dayscale.csv', index=False, encoding='utf-8')
+
+        ## 실제 NONMEM Modeling용 파일 저장
 
         modeling_df = modeling_df[modeling_cols].sort_values(['ID','TIME'], ignore_index=True)
         modeling_input_line = str(list(modeling_df.columns)).replace("', '"," ")
 
         print(f"Mode: {mode_str} / {modeling_input_line}")
 
-        ## 실제 NONMEM Modeling용 파일 저장
         modeling_df.drop(columns=pd_marker_list, axis=1).to_csv(f'{output_dir}/modeling_df_covar/{drug}_{mode_str}_modeling_df.csv',index=False, encoding='utf-8-sig')
         modeling_df['TIME']= modeling_df['TIME']/24
         modeling_df['DUR'] = modeling_df['DUR'].map(lambda x: float(x)/24 if x!='.' else x)
@@ -204,6 +214,9 @@ for drug in ['infliximab','adalimumab']:
 
         ## PD 분석용 파일 저장
         modeling_df.to_csv(f'{output_dir}/modeling_df_covar/{drug}_{mode_str}_pdeda_df_dayscale.csv',index=False, encoding='utf-8')
+
+
+
 
 
 
