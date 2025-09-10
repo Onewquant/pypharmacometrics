@@ -212,12 +212,12 @@ def fit_ev_logistic(df,
 
     # 12) 적합 (Logit → 문제시 GLM Binomial 폴백)
     try:
-        print('test1')
+        # print('test1')
         model = sm.Logit(y, X)
         res = model.fit(disp=False, maxiter=200)
         fitted_with = "Logit"
     except (PerfectSeparationError, np.linalg.LinAlgError):
-        print('test2')
+        # print('test2')
         model = sm.GLM(y, X, family=sm.families.Binomial())
         res = model.fit()
         fitted_with = "GLM Binomial (fallback)"
@@ -264,6 +264,7 @@ def fit_ev_logistic(df,
 output_dir = 'C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/LINEZOLID/results'
 multivar_res_df = list()
 for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
+# for endpoint in ['ANC', ]:
     # endpoint = 'PLT'
     # endpoint = 'Hb'
     # endpoint = 'WBC'
@@ -317,7 +318,7 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
         # print(f"\n[Model Summary ({endpoint})]")
         # print(res.summary())
         print(f"\n[Odds Ratio Table ({endpoint})]")
-        or_threshold = 0.2
+        or_threshold = 0.3
         sig_res_frag = or_table[(or_table['pvalue']<0.05)&(np.abs(or_table['OR']-1)>=or_threshold)].copy()
         sig_res_frag['endpoint'] = endpoint
         sig_res_frag['subgroup'] = age_subgroup
@@ -342,15 +343,22 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
 
 
 multivar_res_df = pd.concat(multivar_res_df)
-print(multivar_res_df[['subgroup','endpoint','feature','N','EVPct','OR','pvalue']])
+print(multivar_res_df[['subgroup','endpoint','feature','N','EVPct','OR','pvalue']].reset_index(drop=True))
 multivar_res_df.to_csv(f"{output_dir}/mvlreg_output/lnz_mvlreg_significant_results({str(or_threshold)[-1]}).csv", index=False, encoding='utf-8-sig')
 
 
 ######################################
 
+# df_ori.columns
 # import seaborn as sns
-# sns.relplot(data=df_ori, x='eGFR', y='DOSE_PERIOD(TOTAL)')
+# sns.relplot(data=df_ori, x='SCR', y='CUM_DOSE')
+# sns.relplot(data=df_ori, x='SCR', y='DOSE_PERIOD(TOTAL)')
+# sns.relplot(data=df_ori, x='DBIL', y='CUM_DOSE')
+# sns.relplot(data=df_ori, x='DBIL', y='DOSE_PERIOD(TOTAL)')
 # sns.relplot(data=df_ori, x='TBIL', y='DOSE_PERIOD(TOTAL)')
+# sns.relplot(data=df_ori, x='AST', y='DOSE_PERIOD(TOTAL)')
+# sns.relplot(data=df_ori, x='eGFR', y='DOSE_PERIOD(TOTAL)')
+# # sns.relplot(data=df_ori, x='TBIL', y='DOSE_PERIOD(TOTAL)')
 # sns.relplot(data=df_ori, x='AGE', y='DOSE_PERIOD(TOTAL)')
 # sns.distplot(df_ori['DOSE_PERIOD(TOTAL)'])
 # df_ori['DOSE_PERIOD(TOTAL)']
