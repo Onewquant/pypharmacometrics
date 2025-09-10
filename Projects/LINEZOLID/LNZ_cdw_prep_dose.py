@@ -141,6 +141,8 @@ for raw_drugname, drugname in drugname_dict.items():
 
     sdf_row_count = 0
     for uid, uid_sdf in sdf.groupby('UID'): #break
+        # if uid=='155505674746153':
+        #     raise ValueError
         # frag_sdf1 = frag_sdf[frag_sdf['ADDL']==1].copy()
         # frag_sdf1_acting_rows = frag_sdf1[frag_sdf1['ACTING'].map(lambda x: ('/Y' in x) or ('/O' in x))].copy()
         # if len(frag_sdf1_acting_rows)==0:
@@ -149,6 +151,7 @@ for raw_drugname, drugname in drugname_dict.items():
         #     frag_sdf1_dates = set(frag_sdf1_acting_rows['DATE'])
         #
         # frag_sdf2 = frag_sdf[frag_sdf['ADDL']>1].copy()
+        uid_sdf = uid_sdf[uid_sdf['ACTING'].map(lambda x: False if (('/C' in x) and ('/Y' not in x)) else True)]
         uid_sdf['II_NUM'] = uid_sdf['INTERVAL'].map(lambda x: float(x.replace('q','').replace('h','')))
         uid_sdf['II_APPLIED'] = uid_sdf['II_NUM'].map(lambda x: x/24 if x>24 else 1.0)
 
@@ -206,6 +209,8 @@ no_intsec_adm_count = 0
 no_single_adm = list()
 no_single_adm_count = 0
 for inx, row in mdf.iterrows(): #break
+    # if row['UID']==155505674746153:
+    #     raise ValueError
 
     single_drug = 'linezolid'
     single_drug_dates = pd.Series(row['LNZ_DATES'])

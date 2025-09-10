@@ -51,6 +51,8 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
     max_time_at_risk = 90
     for inx, row in adm_df.iterrows(): #break
         uid = row['UID']
+        # if uid==155505674746153:
+        #     raise ValueError
         sparse_uid_lab_df = lab_df[lab_df['UID']==uid].copy()
 
         if len(sparse_uid_lab_df)==0:

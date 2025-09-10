@@ -282,8 +282,12 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
     # raise ValueError
 
     for age_subgroup in ['Adult','Elderly','Total_Adult']:
+        # df.columns
+        df = df_ori[df_ori['DOSE_PERIOD'] >= 2].copy()
+        df = df.drop(['DOSE_PERIOD(TOTAL)'], axis=1)
+        # df = df.drop(['DOSE_PERIOD(TOTAL)','CUM_DOSE', 'DOSE_PERIOD', 'DOSE24', 'DOSE24PERWT'], axis=1)
+        # df = df.drop(['DOSE_PERIOD(TOTAL)', 'DOSE_PERIOD', 'DOSE24',], axis=1)
 
-        df = df_ori[df_ori['DOSE_PERIOD'] > 1].copy()
         if endpoint == 'Lactate':
             df = df.drop(['LACT', 'pH'], axis=1)
 
@@ -302,7 +306,7 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
         res, or_table, info = fit_ev_logistic(
             df=df,
             out_csv=out_csv,
-            corr_threshold=0.7,     # |r| 임계값 (보통 0.8~0.95)
+            corr_threshold=0.8,     # |r| 임계값 (보통 0.8~0.95)
             vif_threshold=10.0,     # VIF 임계값 (보통 5 또는 10)
             enable_corr_filter=True,
             enable_vif_filter=True,
@@ -313,11 +317,13 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
         # print(f"\n[Model Summary ({endpoint})]")
         # print(res.summary())
         print(f"\n[Odds Ratio Table ({endpoint})]")
-        sig_res_frag = or_table[(or_table['pvalue']<0.05)&(np.abs(or_table['OR']-1)>=0.2)].copy()
+        or_threshold = 0.2
+        sig_res_frag = or_table[(or_table['pvalue']<0.05)&(np.abs(or_table['OR']-1)>=or_threshold)].copy()
         sig_res_frag['endpoint'] = endpoint
         sig_res_frag['subgroup'] = age_subgroup
         sig_res_frag['N'] = len(df)
-        sig_res_frag = sig_res_frag[['subgroup','endpoint','N']+list(sig_res_frag.columns)[:-3]]
+        sig_res_frag['EVPct'] = round(100*sum(df['EV'])/len(df),2)
+        sig_res_frag = sig_res_frag[['subgroup','endpoint','N','EVPct']+list(sig_res_frag.columns)[:-4]]
         multivar_res_df.append(sig_res_frag)
         print(sig_res_frag)
         # print(f"\nSaved OR table to: {out_csv}")
@@ -332,7 +338,19 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
         # print(info["final_vif"])
 
 # df[df['DOSE_PERIOD']!=0]
+# multivar_res_df.columns
+
 
 multivar_res_df = pd.concat(multivar_res_df)
-print(multivar_res_df)
-multivar_res_df.to_csv(f"{output_dir}/mvlreg_output/lnz_mvlreg_significant_results.csv", index=False, encoding='utf-8-sig')
+print(multivar_res_df[['subgroup','endpoint','feature','N','EVPct','OR','pvalue']])
+multivar_res_df.to_csv(f"{output_dir}/mvlreg_output/lnz_mvlreg_significant_results({str(or_threshold)[-1]}).csv", index=False, encoding='utf-8-sig')
+
+
+######################################
+
+# import seaborn as sns
+# sns.relplot(data=df_ori, x='eGFR', y='DOSE_PERIOD(TOTAL)')
+# sns.relplot(data=df_ori, x='TBIL', y='DOSE_PERIOD(TOTAL)')
+# sns.relplot(data=df_ori, x='AGE', y='DOSE_PERIOD(TOTAL)')
+# sns.distplot(df_ori['DOSE_PERIOD(TOTAL)'])
+# df_ori['DOSE_PERIOD(TOTAL)']

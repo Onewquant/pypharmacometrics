@@ -14,6 +14,8 @@ bodysize_df = pd.read_csv(f"{output_dir}/lnz_final_bodysize_df.csv")
 dose_df = pd.read_csv(f"{output_dir}/lnz_final_dose_df.csv")
 surv_res_df = pd.read_csv(f"{output_dir}/lnz_surv_res_df.csv")
 
+# dose_df[dose_df['UID']==155505674746153]
+
 # lab_df 처리
 pd_list = ['ANC', 'ANC (em)', 'Hct', 'Hct (em)', 'Hct(i-STAT)', 'Hematocrit (ICU용)', 'Hematocrit (마취과용)', 'Hematocrit (응급실용)', 'PCT', 'PDW', 'PLT', 'PLT (em)', 'PT (%)', 'PT (INR)', 'PT (INR) (em)', 'PT (sec)', 'Plasma cell', 'Lymphocyte', 'MCH', 'MCHC', 'MCV', 'MPV', 'Metamyelocyte', 'Mixing test (PT, aPTT 제외)', 'Monocyte', 'Myelocyte', 'Normoblast', 'Other', 'Band neutrophil', 'Basophil',  'CBC (em) (differential count) RDW제외', 'Blast', 'Eosinophil', 'Eosinophil count',  '절대단구수', '절대림프구수', 'Promyelocyte', 'Prothrombin time (%) : MIX', 'Prothrombin time (INR) : MIX', 'Prothrombin time (sec) : MIX', 'RBC', 'RBC (em)', 'RDW(CV)', 'RDW(SD)', 'Reticulocyte', 'Segmented neutrophil', 'WBC', 'WBC (em)', 'WBC stick', 'WBC stick (em)', 'Hb', 'Hb (em)', 'Hb(i-STAT)', 'Hemoglobin (ICU용)', 'Hemoglobin (마취과용)', 'Hemoglobin (응급실용)', 'Immature cell', 'Joint WBC stick (em)', 'Activated PTT : MIX', 'Atypical lymphocyte',  'BE', 'BE(i-STAT)','aPTT', 'aPTT (em)',]
 etc_list1 = ['Creatinine (random urine)', 'Creatinine (urine, em)', 'Creatinine Clerarance (24hrs urine, Ccr)','Creatinine (24hrs urine) (g/day)', 'Creatinine (24hrs urine) (mg/dL)','Glucose (간이혈당기용)', 'Urine creatinine (24hrs urine)' ]
@@ -112,10 +114,13 @@ for endpoint, ep_surv_df in surv_res_df.groupby('ENDPOINT'):
         uid_dose_df = dose_df[dose_df['UID']==uid].copy()
         uid_cum_dose_df = uid_dose_df[(uid_dose_df['DATE'] >= bl_date) & (uid_dose_df['DATE'] <= ev_date)].copy()
         daily_dose = (uid_cum_dose_df['DOSE'].sum())/((datetime.strptime(uid_cum_dose_df['DATE'].iloc[-1],'%Y-%m-%d') - datetime.strptime(uid_cum_dose_df['DATE'].iloc[0],'%Y-%m-%d')).days + 1)
+        res_dict['CUM_DOSE'] = (uid_cum_dose_df['DOSE'].sum())
         res_dict['DOSE_PERIOD'] = ((datetime.strptime(uid_cum_dose_df['DATE'].iloc[-1],'%Y-%m-%d') - datetime.strptime(uid_cum_dose_df['DATE'].iloc[0],'%Y-%m-%d')).days + 1)
-        res_dict['DOSE_PERIOD(TOTAL)'] = ((datetime.strptime(dose_df['DATE'].iloc[-1],'%Y-%m-%d') - datetime.strptime(dose_df['DATE'].iloc[0],'%Y-%m-%d')).days + 1)
+        res_dict['DOSE_PERIOD(TOTAL)'] = ((datetime.strptime(uid_dose_df['DATE'].iloc[-1],'%Y-%m-%d') - datetime.strptime(uid_dose_df['DATE'].iloc[0],'%Y-%m-%d')).days + 1)
         res_dict['DOSE24'] = daily_dose
         res_dict['DOSE24PERWT'] = (daily_dose / res_dict['WT'])
+        res_dict['DOSE_INTERVAL'] = uid_cum_dose_df['INTERVAL'].map(lambda x:float(x.replace('q','').replace('h',''))).mean()
+        # raise ValueError
         res_dict['EV'] = ev
         ep_res_df.append(res_dict)
     # raise ValueError
@@ -135,7 +140,7 @@ for endpoint in surv_res_df['ENDPOINT'].unique():
         os.mkdir(f'{output_dir}/datacheck')
     epreg_df.to_csv(f"{output_dir}/datacheck/lnz_datacheck_{endpoint}_df.csv", encoding='utf-8-sig', index=False)
     epreg_df = epreg_df.drop(['BL_DATE','UID','ENDPOINT'],axis=1)
-    epreg_df['SEX']=epreg_df['SEX'].map({'남':1,'여':2})
+    epreg_df['SEX']=epreg_df['SEX'].map({'남':0,'여':1})
     epreg_df = epreg_df.fillna(epreg_df.median(numeric_only=True))
     if not os.path.exists(f'{output_dir}/mvlreg'):
         os.mkdir(f'{output_dir}/mvlreg')

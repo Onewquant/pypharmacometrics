@@ -181,9 +181,9 @@ for drug in ['infliximab','adalimumab']:
         modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','ROUTE','IBD_TYPE'] + list(modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
         # modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','ROUTE','IBD_TYPE','START_INDMAINT'] + list(modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
 
-        modeling_df['IBD_TYPE'] = modeling_df['IBD_TYPE'].map({'CD':1,'UC':2})
+        modeling_df['IBD_TYPE'] = modeling_df['IBD_TYPE'].map({'CD':0,'UC':1})
         modeling_df['AGE'] = modeling_df.apply(lambda x: int((datetime.strptime(x['DATETIME'],'%Y-%m-%d') - datetime.strptime(x['AGE'],'%Y-%m-%d')).days/365.25), axis=1)
-        modeling_df['SEX'] = modeling_df['SEX'].map({'남':1,'여':2})
+        modeling_df['SEX'] = modeling_df['SEX'].map({'남':0,'여':1})
         modeling_df['ROUTE'] = modeling_df['ROUTE'].map({'IV':1,'SC':2,'.':'.'})
 
         # raise ValueError
