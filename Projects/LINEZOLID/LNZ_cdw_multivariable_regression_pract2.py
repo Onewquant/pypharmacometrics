@@ -15,6 +15,7 @@ import statsmodels.api as sm
 from statsmodels.tools import add_constant
 from statsmodels.tools.sm_exceptions import PerfectSeparationError
 from statsmodels.stats.outliers_influence import variance_inflation_factor
+import os
 
 def _to_binary_series(s: pd.Series) -> pd.Series:
     """EV를 이진(0/1)으로 변환: bool, {0,1}, 임의의 2값, 문자열 2수준 지원."""
@@ -123,12 +124,12 @@ def drop_by_vif(X: pd.DataFrame, threshold: float = 10.0, max_iter: int = 50):
         drop_feat = vif_df.iloc[0]["feature"]
         dropped.append(drop_feat)
         X_work = X_work.drop(columns=[drop_feat])
-        print(f"{drop_feat} / VIF: {max_vif} / Dropped")
+        # print(f"{drop_feat} / VIF: {max_vif} / Dropped")
         if X_work.shape[1] <= 1:  # const만 남는 상황
             break
     return X_work, dropped
 
-def fit_ev_logistic(csv_path: str,
+def fit_ev_logistic(df,
                     out_csv: str = None,
                     corr_threshold: float = 0.9,
                     vif_threshold: float = 10.0,
@@ -147,7 +148,7 @@ def fit_ev_logistic(csv_path: str,
     # verbose=True
 
     # 1) 데이터 로드
-    df = pd.read_csv(csv_path)
+
     if "EV" not in df.columns:
         raise ValueError("데이터에 'EV' 컬럼이 필요합니다.")
 
@@ -159,20 +160,21 @@ def fit_ev_logistic(csv_path: str,
 
     # 4) 숫자/범주 분리
     num_cols = X.select_dtypes(include=[np.number]).columns.tolist()
-    cat_cols = [c for c in X.columns if c not in num_cols]
 
     # 5) 숫자 컬럼 정리: inf -> NaN -> median 대치
     if num_cols:
         X[num_cols] = X[num_cols].replace([np.inf, -np.inf], np.nan)
         X[num_cols] = X[num_cols].fillna(X[num_cols].median())
 
-    # 6) 범주 컬럼 정리: mode 대치 -> 원-핫 인코딩
-    if cat_cols:
-        for c in cat_cols:
-            mode_val = X[c].mode(dropna=True)
-            fill_val = mode_val.iloc[0] if len(mode_val) else "MISSING"
-            X[c] = X[c].fillna(fill_val).astype(str)
-        X = pd.get_dummies(X, columns=cat_cols, drop_first=True)
+
+    # cat_cols = [c for c in X.columns if c not in num_cols]
+    # # 6) 범주 컬럼 정리: mode 대치 -> 원-핫 인코딩
+    # if cat_cols:
+    #     for c in cat_cols:
+    #         mode_val = X[c].mode(dropna=True)
+    #         fill_val = mode_val.iloc[0] if len(mode_val) else "MISSING"
+    #         X[c] = X[c].fillna(fill_val).astype(str)
+    #     X = pd.get_dummies(X, columns=cat_cols, drop_first=True)
 
     if X.shape[1] == 0:
         raise ValueError("EV 외 설명변수가 없습니다.")
@@ -181,7 +183,8 @@ def fit_ev_logistic(csv_path: str,
     zero_var_cols = [c for c in X.columns if X[c].nunique(dropna=False) <= 1]
     if zero_var_cols:
         if verbose:
-            print(f"[Zero-variance drop] {zero_var_cols}")
+            # print(f"[Zero-variance drop] {zero_var_cols}")
+            pass
         X = X.drop(columns=zero_var_cols)
 
     # 8) [추가] 상관계수 기반 컬럼 제거
@@ -189,7 +192,8 @@ def fit_ev_logistic(csv_path: str,
     if enable_corr_filter and X.shape[1] > 1:
         X, corr_dropped = drop_by_correlation(X, threshold=corr_threshold)
         if verbose and corr_dropped:
-            print(f"[Correlation filter |r|>{corr_threshold}] dropped: {corr_dropped}")
+            # print(f"[Correlation filter |r|>{corr_threshold}] dropped: {corr_dropped}")
+            pass
 
     # 9) 상수항 추가
     X = add_constant(X, has_constant='add')
@@ -199,7 +203,8 @@ def fit_ev_logistic(csv_path: str,
     if enable_vif_filter and X.shape[1] > 2:  # const + >=2 features
         X, vif_dropped = drop_by_vif(X, threshold=vif_threshold, max_iter=100)
         if verbose and vif_dropped:
-            print(f"[VIF filter > {vif_threshold}] dropped: {vif_dropped}")
+            # print(f"[VIF filter > {vif_threshold}] dropped: {vif_dropped}")
+            pass
 
     # 11) 형식 정리
     X = X.astype(float)
@@ -207,10 +212,12 @@ def fit_ev_logistic(csv_path: str,
 
     # 12) 적합 (Logit → 문제시 GLM Binomial 폴백)
     try:
+        print('test1')
         model = sm.Logit(y, X)
         res = model.fit(disp=False, maxiter=200)
         fitted_with = "Logit"
     except (PerfectSeparationError, np.linalg.LinAlgError):
+        print('test2')
         model = sm.GLM(y, X, family=sm.families.Binomial())
         res = model.fit()
         fitted_with = "GLM Binomial (fallback)"
@@ -255,40 +262,77 @@ def fit_ev_logistic(csv_path: str,
 
 # 사용 예시: 경로만 바꿔서 실행하세요.
 output_dir = 'C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/LINEZOLID/results'
-endpoint = 'PLT'
-# endpoint = 'Hb'
-# endpoint = 'WBC'
-# endpoint = 'ANC'
+multivar_res_df = list()
+for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
+    # endpoint = 'PLT'
+    # endpoint = 'Hb'
+    # endpoint = 'WBC'
+    # endpoint = 'ANC'
+    # endpoint = 'Lactate'
 
-csv_path = f"{output_dir}/lnz_mvlreg_{endpoint}_df.csv"     # <-- 본인 파일 경로
-out_csv  = f"{output_dir}/lnz_mvlreg_{endpoint}_res.csv"
+    csv_path = f"{output_dir}/mvlreg/lnz_mvlreg_{endpoint}_df.csv"     # <-- 본인 파일 경로
 
+    if not os.path.exists(f'{output_dir}/mvlreg_output'):
+        os.mkdir(f'{output_dir}/mvlreg_output')
+    out_csv  = f"{output_dir}/mvlreg_output/lnz_mvlreg_{endpoint}_res.csv"
 
+    # raise ValueError
+    df_ori = pd.read_csv(csv_path)
 
+    # raise ValueError
 
-# raise ValueError
-res, or_table, info = fit_ev_logistic(
-    csv_path=csv_path,
-    out_csv=out_csv,
-    corr_threshold=0.7,     # |r| 임계값 (보통 0.8~0.95)
-    vif_threshold=13.0,     # VIF 임계값 (보통 5 또는 10)
-    enable_corr_filter=True,
-    enable_vif_filter=True,
-    verbose=True
-)
+    for age_subgroup in ['Adult','Elderly','Total_Adult']:
 
-print(f"[Fitted with] / {endpoint} / {info['fitted_with']}")
-print(f"\n[Model Summary ({endpoint})]")
-print(res.summary())
-print(f"\n[Odds Ratio Table ({endpoint})]")
-print(or_table)
-print(f"\nSaved OR table to: {out_csv}")
+        df = df_ori[df_ori['DOSE_PERIOD'] > 1].copy()
+        if endpoint == 'Lactate':
+            df = df.drop(['LACT', 'pH'], axis=1)
 
-print(f"\n[Correlation dropped ({endpoint})]")
-print(info["corr_dropped"])
-print("\n[VIF dropped ({endpoint})]")
-print(info["vif_dropped"])
-print("\n[Final features ({endpoint})]")
-print(info["final_features"])
-print("\n[Final VIF ({endpoint})]")
-print(info["final_vif"])
+    # for age_subgroup in ['Pediatric','Adult','Elderly','Total_Adult']:
+        if age_subgroup=='Adult':
+            df = df[(df['AGE'] >= 19)&(df['AGE'] < 65)].copy()
+        elif age_subgroup=='Elderly':
+            df = df[(df['AGE'] >= 65)].copy()
+        elif age_subgroup=='Total_Adult':
+            df = df[(df['AGE'] >= 19)].copy()
+        elif age_subgroup=='Pediatric':
+            df = df[df['AGE'] < 19].copy()
+        else:
+            raise ValueError
+
+        res, or_table, info = fit_ev_logistic(
+            df=df,
+            out_csv=out_csv,
+            corr_threshold=0.7,     # |r| 임계값 (보통 0.8~0.95)
+            vif_threshold=10.0,     # VIF 임계값 (보통 5 또는 10)
+            enable_corr_filter=True,
+            enable_vif_filter=True,
+            verbose=True
+        )
+
+        # print(f"[Fitted with] / {endpoint} / {info['fitted_with']}")
+        # print(f"\n[Model Summary ({endpoint})]")
+        # print(res.summary())
+        print(f"\n[Odds Ratio Table ({endpoint})]")
+        sig_res_frag = or_table[(or_table['pvalue']<0.05)&(np.abs(or_table['OR']-1)>=0.2)].copy()
+        sig_res_frag['endpoint'] = endpoint
+        sig_res_frag['subgroup'] = age_subgroup
+        sig_res_frag['N'] = len(df)
+        sig_res_frag = sig_res_frag[['subgroup','endpoint','N']+list(sig_res_frag.columns)[:-3]]
+        multivar_res_df.append(sig_res_frag)
+        print(sig_res_frag)
+        # print(f"\nSaved OR table to: {out_csv}")
+
+        # print(f"\n[Correlation dropped ({endpoint})]")
+        # print(info["corr_dropped"])
+        # print(f"\n[VIF dropped ({endpoint})]")
+        # print(info["vif_dropped"])
+        # print(f"\n[Final features ({endpoint})]")
+        # print(info["final_features"])
+        # print(f"\n[Final VIF ({endpoint})]")
+        # print(info["final_vif"])
+
+# df[df['DOSE_PERIOD']!=0]
+
+multivar_res_df = pd.concat(multivar_res_df)
+print(multivar_res_df)
+multivar_res_df.to_csv(f"{output_dir}/mvlreg_output/lnz_mvlreg_significant_results.csv", index=False, encoding='utf-8-sig')
