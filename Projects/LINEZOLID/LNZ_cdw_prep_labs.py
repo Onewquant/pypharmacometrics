@@ -49,7 +49,7 @@ for pid, fdf in df.groupby('UID'): #break
 
     fdf['VALUE'] = pd.to_numeric(fdf['VALUE'], errors='coerce') # 숫자 아닌 랩은 NAN으로 변환
     fdf = fdf.drop_duplicates(['DATE','LAB'], keep='last', ignore_index=True)
-    fpv_df = fdf.pivot_table(index='DATE', columns='LAB', values='VALUE', aggfunc='min').reset_index(drop=False).fillna(method='ffill')
+    fpv_df = fdf.pivot_table(index='DATE', columns='LAB', values='VALUE', aggfunc='min').reset_index(drop=False)#.fillna(method='ffill')
     # fpv_df = fdf.pivot(index='DATETIME', columns='LAB', values='VALUE').reset_index(drop=False).fillna(method='ffill')
 
     # fpv_df = fdf.pivot_table(index='DATETIME', columns='LAB', values='VALUE', aggfunc='min').reset_index(drop=False)
@@ -80,12 +80,12 @@ for uid, uid_df in lab_result_df.groupby('UID',as_index=False): #break
     uid_fulldt_df['DATE'] = pd.date_range(start=min_lab_date,end=max_lab_date).astype(str)
     uid_fulldt_df['UID'] = uid
 
-    uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATE'], how='left').fillna(method='ffill')
+    uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATE'], how='left')#.fillna(method='ffill')
 
     if count == 0:
         header = True
     else:
         header = False
-    uid_fulldt_df.to_csv(f"{output_dir}/lnz_final_lab_df.csv", encoding='utf-8-sig', index=False, header=header, mode='a')
+    uid_fulldt_df.to_csv(f"{output_dir}/lnz_final_lab_df2.csv", encoding='utf-8-sig', index=False, header=header, mode='a')
 
     count += 1

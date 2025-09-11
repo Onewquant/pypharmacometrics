@@ -9,7 +9,8 @@ resource_dir = f'{prj_dir}/resource'
 output_dir = f"{prj_dir}/results"
 
 ptinfo_df = pd.read_csv(f"{output_dir}/lnz_final_ptinfo_df.csv")
-lab_df = pd.read_csv(f"{output_dir}/lnz_final_lab_df.csv")
+# lab_df = pd.read_csv(f"{output_dir}/lnz_final_lab_df.csv")
+lab_df = pd.read_csv(f"{output_dir}/lnz_final_lab_df2.csv")
 bodysize_df = pd.read_csv(f"{output_dir}/lnz_final_bodysize_df.csv")
 dose_df = pd.read_csv(f"{output_dir}/lnz_final_dose_df.csv")
 surv_res_df = pd.read_csv(f"{output_dir}/lnz_surv_res_df.csv")
@@ -42,10 +43,26 @@ lab_df['HCO3-'] = lab_df[['HCO3-', 'HCO3-(i-STAT)', ]].min(axis=1)
 lab_df['DBIL'] = lab_df[['Bilirubin, direct', ]].min(axis=1)
 lab_df['ESR'] = lab_df['ESR']
 
+
+
+    # uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATE'], how='left').fillna(method='ffill')
+
 # lab_covar_list = ['ALT','AST','GGT','ALB','SCR','GLU','CRP','TPRO','TBIL','LACT','PROCAL','pH','DBIL','ESR']
 lab_covar_list = ['ALT','AST','GGT','ALB','SCR','GLU','CRP','TPRO','TBIL','LACT','PROCAL','pH','DBIL','ESR','eGFR','eGFR-CKD-EPI','HCO3-']
 lab_df = lab_df[['UID', 'DATE']+lab_covar_list].copy()
+# lab_df.columns
+# 정보량 반영 (상대적인 평가로, Max 정보량 가진 column 기준으로 실질 정보의 row 수 %가 50 이상인 컬럼만 남김)
+lab_col_inclusion = (100*(~lab_df.isna()).sum()/(~lab_df.isna())['SCR'].sum()).sort_values(ascending=False)
 
+lab_covar_list = list(lab_col_inclusion[lab_col_inclusion >= 50].index)[2:] + ['LACT','pH']
+lab_df = lab_df[['UID', 'DATE']+lab_covar_list].copy()
+
+full_result_df = list()
+count = 0
+for uid, uid_df in lab_df.groupby('UID',as_index=False): #break
+    uid_df = uid_df.fillna(method='ffill')
+    full_result_df.append(uid_df)
+lab_df = pd.concat(full_result_df)
 # list(lab_df.columns)[2:]
 
 # ep_surv_df.columns
@@ -66,11 +83,11 @@ for endpoint, ep_surv_df in surv_res_df.groupby('ENDPOINT'):
 
         # patient info
         ptinfo_row = ptinfo_df[ptinfo_df['UID']==uid].iloc[0]
-        for col in ['SEX','BIRTH_DATE']:
-            if col == 'BIRTH_DATE':
-                res_dict['AGE'] = ptinfo_row[col]
-                continue
-            res_dict[col] = ptinfo_row[col]
+        for ptcol in ['SEX','BIRTH_DATE']:
+            if ptcol == 'BIRTH_DATE':
+                res_dict['AGE'] = ptinfo_row[ptcol]
+            else:
+                res_dict[ptcol] = ptinfo_row[ptcol]
 
         # lab
         uid_lab_df = lab_df[lab_df['UID']==uid].copy()
@@ -81,8 +98,8 @@ for endpoint, ep_surv_df in surv_res_df.groupby('ENDPOINT'):
             if col=='DATE':
                 res_dict[f'BL_{col}'] = bl_lab_row[col]
                 res_dict['AGE'] = int((datetime.strptime(bl_lab_row[col],'%Y-%m-%d') - datetime.strptime(res_dict['AGE'],'%Y-%m-%d')).days/365.25)
-                continue
-            res_dict[col] = bl_lab_row[col]
+            else:
+                res_dict[col] = bl_lab_row[col]
 
         # bodysize
         uid_bs_df = bodysize_df[bodysize_df['UID']==uid].copy()

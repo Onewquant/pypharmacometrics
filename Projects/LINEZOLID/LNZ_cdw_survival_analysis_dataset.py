@@ -23,6 +23,7 @@ lab_df['Hb'] = lab_df[['Hb', 'Hb (em)', ]].min(axis=1)
 # lab_df['PLT'].max()
 # lab_df['PLT'].min()
 adm_df = pd.read_excel(f"{output_dir}/merged_adm_dates.xlsx")
+# adm_df['UID'].drop_duplicates()
 
 # adm_df.columns
 no_lab_uids = list()
@@ -43,12 +44,14 @@ surv_res_df = list()
 # lab_df['WBC']
 
 
-for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
+# for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
+for endpoint_lab in ['ANC', 'Lactate']:
     # endpoint_lab = 'PLT'
     # max_time_at_risk = 365 * 99999999999
     # max_time_at_risk = 365
     # adm_df.columns
-    max_time_at_risk = 90
+    # max_time_at_risk = 90
+    max_time_at_risk = 900000
     for inx, row in adm_df.iterrows(): #break
         uid = row['UID']
         # if uid==155505674746153:
@@ -178,39 +181,102 @@ surv_res_df = pd.DataFrame(surv_res_df).sort_values(['time','event'])
 surv_res_df.to_csv(f"{output_dir}/lnz_surv_res_df.csv", encoding='utf-8-sig', index=False)
 single_survres_df = surv_res_df.copy()
 
+anc_df = single_survres_df[single_survres_df['ENDPOINT']=='ANC'].copy()
+100 * len(anc_df[anc_df['EV']==1])/len(anc_df)
+
+lact_df = single_survres_df[single_survres_df['ENDPOINT']=='Lactate'].copy()
+100 * len(lact_df[lact_df['EV']==1])/len(lact_df)
+
+# from lifelines import KaplanMeierFitter
+# import matplotlib.pyplot as plt
+#
+# kmf = KaplanMeierFitter()
+# fig, ax = plt.subplots(figsize=(10, 8))
+#
+# final_rates = []  # 최종 발생률을 저장할 리스트
+#
+# for g, gdf in surv_res_df.groupby("ENDPOINT"):
+#     kmf.fit(durations=gdf["time"], event_observed=gdf["event"], label=f"{g}")
+#
+#     # 생존 확률 S(t)
+#     sf = kmf.survival_function_[kmf.survival_function_.columns[0]]
+#     # 누적발생률 CI(t) = 1 - S(t)
+#     ci_curve = 1 - sf
+#
+#     # 신뢰구간도 변환
+#     ci_bounds = 1 - kmf.confidence_interval_
+#     lower = ci_bounds.iloc[:, 1]  # 하한
+#     upper = ci_bounds.iloc[:, 0]  # 상한
+#
+#     # 곡선 그리기
+#     ax.step(ci_curve.index, ci_curve.values, where="post", label=f"{g}")
+#     ax.fill_between(ci_curve.index, lower, upper, step="post", alpha=0.2)
+#
+#     # 👉 최종 발생률(마지막 시점의 값)
+#     final_time = ci_curve.index[-1]
+#     final_value = ci_curve.iloc[-1]
+#     final_rates.append({"ENDPOINT": g, "final_cumulative_incidence": float(final_value)})
+#
+#     # 👉 그래프 끝점에 값 표시
+#     ax.text(final_time, final_value,
+#             f"{final_value*100:.3f}%",  # % 단위로 표시
+#             ha="left", va="center", fontsize=9)
+
 
 from lifelines import KaplanMeierFitter
+import matplotlib.pyplot as plt
+import pandas as pd
 
 kmf = KaplanMeierFitter()
-
 fig, ax = plt.subplots(figsize=(10, 8))
+
+final_rates = []  # 최종 발생률과 95% CI를 저장할 리스트
 
 for g, gdf in surv_res_df.groupby("ENDPOINT"):
     kmf.fit(durations=gdf["time"], event_observed=gdf["event"], label=f"{g}")
 
-    # 생존 확률 S(t)
+    # 1. 생존 확률 S(t) 및 누적 발생률 CI(t)
     sf = kmf.survival_function_[kmf.survival_function_.columns[0]]
-    # 누적발생률 CI(t) = 1 - S(t)
     ci_curve = 1 - sf
 
-    # 신뢰구간도 변환
+    # 2. 신뢰구간도 1 - S(t)로 변환
     ci_bounds = 1 - kmf.confidence_interval_
-    lower = ci_bounds.iloc[:, 1]  # 하한
-    upper = ci_bounds.iloc[:, 0]  # 상한
+    lower_curve = ci_bounds.iloc[:, 1]  # 하한
+    upper_curve = ci_bounds.iloc[:, 0]  # 상한
 
-    # 곡선
+    # 3. 곡선과 신뢰구간 그림
     ax.step(ci_curve.index, ci_curve.values, where="post", label=f"{g}")
-    # 신뢰구간 음영
-    ax.fill_between(ci_curve.index, lower, upper, step="post", alpha=0.2)
+    ax.fill_between(ci_curve.index, lower_curve, upper_curve, step="post", alpha=0.2)
 
-# 서식
-ax.set_title(f"Cumulative Incidence (AEs) by Group (with 95% CI)")
+    # 4. 최종(마지막 시점) 누적 발생률과 95% CI 추출
+    final_time = ci_curve.index[-1]
+    final_val = float(ci_curve.iloc[-1])
+    final_low = float(lower_curve.iloc[-1])
+    final_high = float(upper_curve.iloc[-1])
 
-# ax.set_title(f"Cumulative Incidence ({endpoint_lab}) by Group (with 95% CI)\nLog-rank test (p={round(results.summary['p'].iloc[0],3)})\nContingency Table: [{table[0][0]},{table[0][1]}]/[{table[1][0]},{table[1][1]}]")
+    # 그래프 끝 지점에 값과 95% CI 표시
+    ax.text(final_time, final_val,
+            f"{final_val*100:.1f}%\n[{final_low*100:.1f}–{final_high*100:.1f}%]",
+            ha="left", va="center", fontsize=9)
+
+    # DataFrame용으로 저장
+    final_rates.append({
+        "ENDPOINT": g,
+        "final_cumulative_incidence": final_val,
+        "lower_95CI": final_low,
+        "upper_95CI": final_high
+    })
+
+
+ax.set_title("Cumulative Incidence (AEs) by Group (with 95% CI)")
 ax.set_xlabel("Time")
 ax.set_ylabel(f"Cumulative Incidence (AEs)")
-ax.set_ylim(0, 1.2)
+ax.set_ylim(0, 1.1)
 ax.grid(True, linestyle="--")
 ax.legend(title="Group")
 
 plt.savefig(f"{output_dir}/KM_plot(AEs).png")  # PNG 파일로 저장
+
+# 👉 최종 발생률을 DataFrame으로 정리
+final_df = pd.DataFrame(final_rates)
+print(final_df)
