@@ -13,6 +13,8 @@ nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
 ## 모델링 데이터셋 로딩
 
 df = pd.read_csv(f'{output_dir}/modeling_df_datacheck(for pda)/infliximab_integrated_datacheck(for pda).csv')
+# df['DATETIME'].min()
+# df['DATETIME'].max()
 id_uid_dict = {row['ID']:row['UID'] for inx, row in df[['ID','UID']].drop_duplicates(['ID']).iterrows()}
 df['TIME'] = df['TIME(DAY)'].copy()
 uniq_df = df.drop_duplicates(['UID'])[['UID','NAME','START_INDMAINT']].copy()

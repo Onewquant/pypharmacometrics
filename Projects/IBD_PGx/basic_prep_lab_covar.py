@@ -94,5 +94,6 @@ for uid, uid_df in lab_result_df.groupby('UID',as_index=False): #break
 
 full_result_df = full_result_df.reset_index(drop=True)
 # full_result_df.drop_duplicates(['UID','DATETIME'])
+# full_result_df.to_csv(f"{output_dir}/lab_df(filt).csv", encoding='utf-8-sig', index=False)
 full_result_df.to_csv(f"{output_dir}/lab_df.csv", encoding='utf-8-sig', index=False)
 

@@ -10,6 +10,7 @@ output_dir = f"{prj_dir}/results"
 # nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
 # lab_df.columns
 lab_df = pd.read_csv(f"{output_dir}/lnz_final_lab_df.csv")
+lab_df.columns
 lab_df['Lactate'] = lab_df[['Lactate (ICU용)', 'Lactate (마취과용)', 'Lactate (응급실용)', 'Lactate, Lactic acid (em)', ]].max(axis=1)
 lab_df['pH'] = lab_df[['pH', 'pH (i-STAT)']].min(axis=1)
 lab_df['ANC'] = lab_df[['ANC', 'ANC (em)']].min(axis=1)
