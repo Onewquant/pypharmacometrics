@@ -14,7 +14,7 @@ lab_df = pd.read_csv(f"{output_dir}/lnz_final_lab_df2.csv")
 bodysize_df = pd.read_csv(f"{output_dir}/lnz_final_bodysize_df.csv")
 dose_df = pd.read_csv(f"{output_dir}/lnz_final_dose_df.csv")
 surv_res_df = pd.read_csv(f"{output_dir}/lnz_surv_res_df.csv")
-
+# surv_res_df['']
 # dose_df[dose_df['UID']==155505674746153]
 
 # lab_df 처리

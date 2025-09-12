@@ -27,13 +27,17 @@ def cliffs_delta(x, y):
     delta = (gt - lt) / (m * n)
     return delta
 
+# df['SEX'].sum()
+# pd.crosstab(df['SEX'], df['EV'])
+
 group_sum_df = list()
 posthoc_df = list()
-for endpoint in ['ANC',]:
+for endpoint in ['ANC']:
 
     csv_path = f"{output_dir}/mvlreg/lnz_mvlreg_{endpoint}_df.csv"     # <-- 본인 파일 경로
     df = pd.read_csv(csv_path)
     # df['DOSE24']
+
     for col,lab_range in {"SCR":(0.8, 1.25), "TBIL":(0.8, 1.2)}.items():
         for dose_endpoint in ['DOSE_PERIOD(TOTAL)', 'CUM_DOSE', 'DOSE24']:
             group_series = list()
