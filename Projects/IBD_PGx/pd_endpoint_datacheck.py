@@ -47,6 +47,8 @@ totlab_df['PD_CRP'] = totlab_df[['CRP', 'hsCRP']].max(axis=1)
 totlab_df = totlab_df[['UID','DATETIME','PD_FCAL', 'PD_CRP']].copy()
 pd_df = totlab_df.merge(pd_df, on=['UID','DATETIME'], how='outer')
 pd_cols = [c for c in pd_df.columns if 'PD_' in c]
+score_pd_cols = pd_cols[2:]
+pd_df = pd_df.dropna(how='all', subset=pd_cols)
 
 no_maint_blpd_uids = list()
 no_maint_tgpd_uids = list()
@@ -104,6 +106,7 @@ for uid, uid_df in df.groupby('UID'): #break
         try: dose3rd_date = uid_df[uid_df['MDV']==1].iloc[2]['DATE']
         except: dose3rd_date = (datetime.strptime(min_date, '%Y-%m-%d') + timedelta(days=90)).strftime('%Y-%m-%d')
 
+
         try: dose4th_date = uid_df[uid_df['MDV']==1].iloc[3]['DATE']
         except: dose4th_date = (datetime.strptime(min_date, '%Y-%m-%d') + timedelta(days=127)).strftime('%Y-%m-%d')
 
@@ -133,15 +136,19 @@ for uid, uid_df in df.groupby('UID'): #break
 
         ## [Maint in IND 기간 처리]
         # uid_df['TIME']
-        maint_in_ind_uid_df = uid_df[uid_df['DATE'] >= dose4th_date].copy()
+        # maint_in_ind_uid_df = uid_df[uid_df['DATE'] >= dose4th_date].copy()
+        maint_in_ind_uid_df = uid_df[uid_df['DATE'] > dose3rd_date].copy()
+        # raise ValueError
 
         # Induction period만 존재하고 maintenance 기간은 존재하지 않는 경우 -> 비논리적 날짜로 설정하여 안 나오게
         if len(maint_in_ind_uid_df)==0:
             mii_min_date = maint_in_ind_uid_df['DATE'].max()
             mii_max_date = maint_in_ind_uid_df['DATE'].min()
         else:
-            mii_min_date = max(maint_in_ind_uid_df['DATE'].min(), uid_pd_df['DATETIME'].min())
-            mii_max_date = min(maint_in_ind_uid_df['DATE'].max(), uid_pd_df['DATETIME'].max())
+            # Score로 이루어진 PD가 모두 NaN 인 날짜는 제거 후 범위 설정 (대체로 CRP, FCAL은 값이 존재하므로)
+            uid_score_pd_df = uid_pd_df.dropna(how='all', subset=score_pd_cols)
+            mii_min_date = max(maint_in_ind_uid_df['DATE'].min(), uid_score_pd_df['DATETIME'].min())
+            mii_max_date = min(maint_in_ind_uid_df['DATE'].max(), uid_score_pd_df['DATETIME'].max())
         mii_pd_df = uid_pd_df[(uid_pd_df['DATETIME'] >= mii_min_date)&(uid_pd_df['DATETIME'] <= mii_max_date)].copy()
         mii_df =uid_df[(uid_df['DATE'] >= mii_min_date)&(uid_df['DATE'] <= mii_max_date)].copy()
 
@@ -185,12 +192,16 @@ for uid, uid_df in df.groupby('UID'): #break
     maint_count+=1
     print(f'[MAINT ({maint_count})] {uid}')
     res_dict['PHASE']=f'MAINT{maint_ind_type_str}'
-    min_date_af11mo = (datetime.strptime(min_date, '%Y-%m-%d') + timedelta(days=335)).strftime('%Y-%m-%d')
-    min_date_af13mo = (datetime.strptime(min_date, '%Y-%m-%d') + timedelta(days=395)).strftime('%Y-%m-%d')
+    # min_date_af11mo = (datetime.strptime(min_date, '%Y-%m-%d') + timedelta(days=335)).strftime('%Y-%m-%d')
+    # min_date_af13mo = (datetime.strptime(min_date, '%Y-%m-%d') + timedelta(days=395)).strftime('%Y-%m-%d')
+
+    min_date_af10mo = (datetime.strptime(min_date, '%Y-%m-%d') + timedelta(days=305)).strftime('%Y-%m-%d')
+    min_date_af14mo = (datetime.strptime(min_date, '%Y-%m-%d') + timedelta(days=365)).strftime('%Y-%m-%d')
 
     ## 1YR 기록하기
 
-    tg_pd_df = uid_pd_df[(uid_pd_df['DATETIME'] <= min_date_af13mo) & (uid_pd_df['DATETIME'] >= min_date_af11mo)].copy()
+    # tg_pd_df = uid_pd_df[(uid_pd_df['DATETIME'] <= min_date_af13mo) & (uid_pd_df['DATETIME'] >= min_date_af11mo)].copy()
+    tg_pd_df = uid_pd_df[(uid_pd_df['DATETIME'] <= min_date_af14mo) & (uid_pd_df['DATETIME'] >= min_date_af10mo)].copy()
 
     if len(tg_pd_df) == 0:
         no_maint_blpd_uids.append(uid)
@@ -206,6 +217,8 @@ for uid, uid_df in df.groupby('UID'): #break
     ## 1YR 기록시행
     res_dict['DS_DATE'] = min_date
     res_dict['DE_DATE'] = uid_df[(uid_df['MDV']==1)&(uid_df['DATE'] <= tgpd_date)]['DATE'].max()
+    # if type(res_dict['DE_DATE'])==float:
+    #     raise ValueError
     res_dict['TG_DATE'] = tgpd_date
     for pdc in pd_cols:
         res_dict['TG_'+pdc] = tg_pd_row[pdc]

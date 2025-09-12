@@ -8,6 +8,16 @@ prj_dir = './Projects/LINEZOLID'
 resource_dir = f'{prj_dir}/resource'
 output_dir = f"{prj_dir}/results"
 
+
+
+# dose_df['DAILY_DOSE'] = dose_df['DOSE'] * 24/dose_df['INTERVAL'].map(lambda x:float(x.replace('q','').replace('h','')))
+# dose_df['DOSAGE_REGIMEN'] = (dose_df['DOSE'].astype(str)+'_'+dose_df['INTERVAL'])
+#
+# str(list(dose_df['INTERVAL'].drop_duplicates().sort_values().reset_index(drop=True))).replace("', '",", ")
+# str(list(dose_df['DOSE'].astype(int).drop_duplicates().sort_values().reset_index(drop=True))).replace("', '",", ")
+# str(list(dose_df['DAILY_DOSE'].astype(int).drop_duplicates().sort_values().reset_index(drop=True))).replace("', '",", ")
+# dose_df['DOSAGE_REGIMEN'].drop_duplicates().reset_index(drop=True)
+
 ptinfo_df = pd.read_csv(f"{output_dir}/lnz_final_ptinfo_df.csv")
 # lab_df = pd.read_csv(f"{output_dir}/lnz_final_lab_df.csv")
 lab_df = pd.read_csv(f"{output_dir}/lnz_final_lab_df2.csv")
@@ -56,6 +66,7 @@ lab_col_inclusion = (100*(~lab_df.isna()).sum()/(~lab_df.isna())['SCR'].sum()).s
 
 lab_covar_list = list(lab_col_inclusion[lab_col_inclusion >= 50].index)[2:] + ['LACT','pH']
 lab_df = lab_df[['UID', 'DATE']+lab_covar_list].copy()
+# str(lab_covar_list).replace("', '",', ')
 
 full_result_df = list()
 count = 0

@@ -28,11 +28,14 @@ def cliffs_delta(x, y):
     return delta
 
 # df['SEX'].sum()
+# df = df[df['AGE']>=19].copy()
+# df = df[df['AGE']>=65].copy()
 # pd.crosstab(df['SEX'], df['EV'])
 
 group_sum_df = list()
 posthoc_df = list()
-for endpoint in ['ANC']:
+# for endpoint in ['ANC']:
+for endpoint in ['Lactate']:
 
     csv_path = f"{output_dir}/mvlreg/lnz_mvlreg_{endpoint}_df.csv"     # <-- 본인 파일 경로
     df = pd.read_csv(csv_path)
