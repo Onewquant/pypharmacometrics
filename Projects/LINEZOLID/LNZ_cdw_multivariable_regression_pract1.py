@@ -280,7 +280,8 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
 
     # raise ValueError
 
-    for age_subgroup in ['Adult','Elderly','Total_Adult']:
+    # for age_subgroup in ['Adult','Elderly','Total_Adult']:
+    for age_subgroup in ['Elderly','Total_Adult']:
         # df.columns
         df = df_ori[df_ori['DOSE_PERIOD'] >= 2].copy()
         df = df.drop(['DOSE_PERIOD(TOTAL)'], axis=1)
@@ -291,12 +292,14 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
             df = df.drop(['LACT', 'pH'], axis=1)
         # df.columns
     # for age_subgroup in ['Pediatric','Adult','Elderly','Total_Adult']:
+    # for age_subgroup in ['Elderly','Total_Adult']:
+
         if age_subgroup=='Adult':
             df = df[(df['AGE'] >= 19)&(df['AGE'] < 65)].copy()
-        elif age_subgroup=='Elderly':
-            df = df[(df['AGE'] >= 65)].copy()
         elif age_subgroup=='Total_Adult':
             df = df[(df['AGE'] >= 19)].copy()
+        elif age_subgroup=='Elderly':
+            df = df[(df['AGE'] >= 65)].copy()
         elif age_subgroup=='Pediatric':
             df = df[df['AGE'] < 19].copy()
         else:
@@ -317,6 +320,7 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
         # print(res.summary())
         print(f"\n[Odds Ratio Table ({endpoint})]")
         or_threshold = 0.5
+        # or_threshold = 0.0
         sig_res_frag = or_table[(or_table['pvalue']<0.05)&(np.abs(or_table['OR']-1)>=or_threshold)].copy()
         sig_res_frag['endpoint'] = endpoint
         sig_res_frag['subgroup'] = age_subgroup
@@ -344,7 +348,7 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
 multivar_res_df = pd.concat(multivar_res_df)
 multivar_res_df.to_csv(f"{output_dir}/mvlreg_output/lnz_mvlreg_significant_results({str(or_threshold)[-1]}).csv", index=False, encoding='utf-8-sig')
 print(multivar_res_df[['subgroup','endpoint','feature','N','EVPct','OR','pvalue']].reset_index(drop=True))
-
+# multivar_res_df[multivar_res_df['feature']=='ELD']
 ######################################
 
 

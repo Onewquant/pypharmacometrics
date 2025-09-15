@@ -45,8 +45,8 @@ surv_res_df = list()
 # lab_df['WBC']
 
 
-# for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
-for endpoint_lab in ['ANC', 'Lactate']:
+for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
+# for endpoint_lab in ['ANC', 'Lactate']:
     # endpoint_lab = 'PLT'
     # max_time_at_risk = 365 * 99999999999
     # max_time_at_risk = 365

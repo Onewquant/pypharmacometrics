@@ -109,6 +109,7 @@ for endpoint, ep_surv_df in surv_res_df.groupby('ENDPOINT'):
             if col=='DATE':
                 res_dict[f'BL_{col}'] = bl_lab_row[col]
                 res_dict['AGE'] = int((datetime.strptime(bl_lab_row[col],'%Y-%m-%d') - datetime.strptime(res_dict['AGE'],'%Y-%m-%d')).days/365.25)
+                # res_dict['ELD'] = 1 if res_dict['AGE']>=65 else 0
             else:
                 res_dict[col] = bl_lab_row[col]
 
