@@ -39,7 +39,7 @@ pms_hx_df['PD_PRO2'] = pms_hx_df['PMS_STLCNT'] + pms_hx_df['PMS_HEMATOCHEZIA']
 pms_hx_df['PD_STLFREQ'] = pms_hx_df['PMS_STLCNT']
 pms_hx_df['PD_ABDPAIN'] = np.nan
 pms_hx_df['PD_RECTBLD'] = pms_hx_df['PMS_HEMATOCHEZIA']
-pms_hx_df['PD_CR'] = (((pms_hx_df['PD_STLFREQ']==0)&(pms_hx_df['PD_ABDPAIN']==0))|(pms_hx_df['PD_PRO2']==0))*1
+pms_hx_df['PD_CR'] = (((pms_hx_df['PD_STLFREQ']<=1)&(pms_hx_df['PD_ABDPAIN']==0))|(pms_hx_df['PD_PRO2']==0))*1
 pms_hx_df['IBD_TYPE'] = 'UC'
 # pms_adh_df.columns
 # pd_df[pd_df['UID']=='29702679'][['DATETIME','PD_PRO2']]
@@ -117,5 +117,5 @@ for uid, uid_df in bsize_df.groupby('UID',as_index=False): #break
 
 
 pd_bsize_df = pd_df.merge(bsize_df, on=['UID','DATETIME'], how='left')
-# pd_bsize_df.to_csv(f"{output_dir}/pd_bsize_df.csv", encoding='utf-8-sig', index=False)
-pd_bsize_df.to_csv(f"{output_dir}/pd_bsize_df_ori.csv", encoding='utf-8-sig', index=False)
+pd_bsize_df.to_csv(f"{output_dir}/pd_bsize_df.csv", encoding='utf-8-sig', index=False)
+# pd_bsize_df.to_csv(f"{output_dir}/pd_bsize_df_ori.csv", encoding='utf-8-sig', index=False)

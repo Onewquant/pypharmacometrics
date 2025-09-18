@@ -74,7 +74,8 @@ dose_df['DUR'] = 1
 
 ## Dosing 패턴으로 Induction / Maintenacne 구분
 total_indmaint_df = list()
-for drug in ['infliximab', 'adalimumab', 'ustekinumab']: #break
+# for drug in ['infliximab', 'adalimumab', 'ustekinumab']: #break
+for drug in ['infliximab']: #break
     # raise ValueError
     # '36959194'
     # indmaint_df[indmaint_df['ID']==36959194]
@@ -110,7 +111,9 @@ total_indmaint_df = total_indmaint_df.merge(init_dose_dt_df, on=['ID','DRUG'], h
 total_indmaint_df['INIT_DOSE_DATE'] = total_indmaint_df['INIT_DOSE_DT'].map(lambda x:x.split('T')[0])
 # total_indmaint_df = total_indmaint_df.rename(columns={'DATETIME':'IND_START_DATE'})
 # total_indmaint_df[total_indmaint_df['DRUG']=='adalimumab']
-# sns.displot(indmaint_df['DOSING_INTERVAL'])
+# sns.displot(indmaint_df[(indmaint_df['ROUTE']=='IV')]['DOSING_INTERVAL'])
+
+# indmaint_df[(indmaint_df['DOSING_INTERVAL']<4)&(indmaint_df['DOSING_INTERVAL']=='IV')]
 # id_indmaint_df.columns
 
 ################################ Clinical Data 받은 것과 Comparison #######################
@@ -123,6 +126,7 @@ total_indmaint_df['INIT_DOSE_DATE'] = total_indmaint_df['INIT_DOSE_DT'].map(lamb
 # inf_maint_check_df = inf_maint_check_df.merge(inf_maintenance_df[['ID','NAME','DRUG_START_DATE']].rename(columns={'DRUG_START_DATE':'CLIN_IND_START_DATE'}))
 # filt_inf_maint_check_df = inf_maint_check_df[(inf_maint_check_df['CLIN_IND_START_DATE']==inf_maint_check_df['INIT_DOSE_DATE'])&(inf_maint_check_df['ROUTE']=='IV')].copy()
 # # sns.displot(filt_inf_maint_check_df['DOSING_INTERVAL'])
+
 # inf_maint_check_df['FILT'] = ((inf_maint_check_df['CLIN_IND_START_DATE']==inf_maint_check_df['INIT_DOSE_DATE'])&(inf_maint_check_df['ROUTE']=='IV'))
 # inf_maint_check_df.to_csv(f"{output_dir}/data comparison/clin_maintenance_patients_comparison.csv", index=False, encoding='utf-8-sig')
 # filt_inf_maint_check_df2 = filt_inf_maint_check_df[~(filt_inf_maint_check_df['ID'].isin(inf_induction_df['ID']))]
@@ -167,6 +171,11 @@ merged_df = merged_df[~((merged_df['DV']==48)&((merged_df['ID'].isin([21911051,]
 drug = 'infliximab'
 maint_cons_df = total_indmaint_df[(total_indmaint_df['DRUG']==drug)&(total_indmaint_df['START_INDMAINT']==0)].reset_index(drop=True)
 maint_diff_df = total_indmaint_df[(total_indmaint_df['DRUG']==drug)&(total_indmaint_df['START_INDMAINT']==1)].reset_index(drop=True)
+
+# total_indmaint_df
+
+
+
 # raise ValueError
 # maint_diff_df[maint_diff_df['ID']==36959194]
 # maint_cons_df[maint_cons_df['ID']==36959194]

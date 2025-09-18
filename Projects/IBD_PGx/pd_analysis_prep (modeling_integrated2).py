@@ -399,6 +399,16 @@ for drug in set(ind_df['DRUG']).union(set(maint_df['DRUG'])): #break
     drug_df['TIME(DAY)'] = drug_df['TIME'] / 24
     drug_df['TIME(WEEK)'] = drug_df['TIME'] / (7 * 24)
 
+    # drug_df['DT_YEAR'] = drug_df['DATETIME'].map(lambda x: int(x.split('-')[0]))
+    # drug_df['DT_MONTH'] = drug_df['DATETIME'].map(lambda x: int(x.split('-')[1]))
+    # drug_df['DT_DAY'] = drug_df['DATETIME'].map(lambda x: int(x.split('-')[2].split('T')[0]))
+    #
+    # drug_df['TIME'] =drug_df['TIME'] / 24
+    # drug_df['DUR'] = drug_df['DUR'].map(lambda x: float(x) / 24 if x != '.' else x)
+    # # drug_df['']
+    # drug_df.drop(['DATETIME','NAME','ROUTE','DRUG','TIME(DAY)','TIME(WEEK)','START_INDMAINT', 'ADDED_ADDL', 'IBD_TYPE','UID'],axis=1).to_csv(f'{output_dir}/modeling_df_covar/{drug}_integrated_presim_df_dayscale(for pda).csv', index=False, encoding='utf-8')
+    # drug_df.columns
+
     ## 저장
     if not os.path.exists(f'{output_dir}/modeling_df_datacheck(for pda)'):
         os.mkdir(f'{output_dir}/modeling_df_datacheck(for pda)')

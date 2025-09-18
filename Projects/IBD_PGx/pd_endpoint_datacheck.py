@@ -12,7 +12,7 @@ nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
 
 ## Simulation용 데이터셋 생성
 
-simulation_df = pd.read_csv(f"{output_dir}/modeling_df_covar/infliximab_integrated_presim_df_dayscale.csv")
+simulation_df = pd.read_csv(f"{output_dir}/modeling_df_covar/infliximab_integrated_presim_df_dayscale(for pda).csv")
 interval = 1
 for_sim_df = get_model_population_sim_df(df=simulation_df, interval=interval, add_on_period=0)
 for_sim_df = for_sim_df.replace(np.nan,'.')
@@ -57,6 +57,8 @@ res_df = list()
 ind_count = 0
 maint_count = 0
 for uid, uid_df in df.groupby('UID'): #break
+    # if uid==10806609:
+    #     raise ValueError
     pt_name = uid_df.iloc[0]['NAME']
     ibd_type = uid_df['IBD_TYPE'].iloc[0]
     uid_pd_df = pd_df[pd_df['UID'] == uid].copy()
@@ -197,6 +199,9 @@ for uid, uid_df in df.groupby('UID'): #break
 
     min_date_af10mo = (datetime.strptime(min_date, '%Y-%m-%d') + timedelta(days=305)).strftime('%Y-%m-%d')
     min_date_af14mo = (datetime.strptime(min_date, '%Y-%m-%d') + timedelta(days=365)).strftime('%Y-%m-%d')
+
+    # min_date_af10mo = (datetime.strptime(min_date, '%Y-%m-%d') + timedelta(days=290)).strftime('%Y-%m-%d')
+    # min_date_af14mo = (datetime.strptime(min_date, '%Y-%m-%d') + timedelta(days=380)).strftime('%Y-%m-%d')
 
     ## 1YR 기록하기
 

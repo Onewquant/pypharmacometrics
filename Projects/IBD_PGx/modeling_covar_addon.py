@@ -54,7 +54,8 @@ pd_bsize_df = pd_bsize_df.merge(pd_addon_df, on=['UID','DATETIME'], how='left')
 ## Modeling Data Loading
 for drug in ['infliximab','adalimumab']:
     for mode_str in ['integrated',]:
-        raw_modeling_df = pd.read_csv(f'{output_dir}/modeling_df_datacheck/{drug}_{mode_str}_datacheck.csv')
+        added_filename_str = '(for pda)'
+        raw_modeling_df = pd.read_csv(f'{output_dir}/modeling_df_datacheck{added_filename_str}/{drug}_{mode_str}_datacheck{added_filename_str}.csv')
         raw_modeling_df['UID']= raw_modeling_df['UID'].astype(str)
         raw_modeling_df['DATETIME'] = raw_modeling_df['DATETIME'].map(lambda x:x.split('T')[0])
 
@@ -176,7 +177,7 @@ for drug in ['infliximab','adalimumab']:
             os.mkdir(f'{output_dir}/modeling_df_covar')
 
         ## Modeling Data Check용 파일 저장
-        modeling_df[datacheck_cols].to_csv(f'{output_dir}/modeling_df_covar/{drug}_{mode_str}_datacheck(covar).csv', index=False, encoding='utf-8-sig')
+        modeling_df[datacheck_cols].to_csv(f'{output_dir}/modeling_df_covar/{drug}_{mode_str}_datacheck(covar){added_filename_str}.csv', index=False, encoding='utf-8-sig')
 
         modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','ROUTE','IBD_TYPE'] + list(modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
         # modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','ROUTE','IBD_TYPE','START_INDMAINT'] + list(modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
@@ -197,7 +198,7 @@ for drug in ['infliximab','adalimumab']:
         # pre_sim_df['DATETIME'] = pre_sim_df['DATETIME'].map(lambda x:int(x.replace('-','')))
         pre_sim_df['TIME'] = pre_sim_df['TIME'] / 24
         pre_sim_df['DUR'] = pre_sim_df['DUR'].map(lambda x: float(x) / 24 if x != '.' else x)
-        pre_sim_df.to_csv(f'{output_dir}/modeling_df_covar/{drug}_{mode_str}_presim_df_dayscale.csv', index=False, encoding='utf-8')
+        pre_sim_df.to_csv(f'{output_dir}/modeling_df_covar/{drug}_{mode_str}_presim_df_dayscale{added_filename_str}.csv', index=False, encoding='utf-8')
 
         ## 실제 NONMEM Modeling용 파일 저장
 
@@ -206,14 +207,14 @@ for drug in ['infliximab','adalimumab']:
 
         print(f"Mode: {mode_str} / {modeling_input_line}")
 
-        modeling_df.drop(columns=pd_marker_list, axis=1).to_csv(f'{output_dir}/modeling_df_covar/{drug}_{mode_str}_modeling_df.csv',index=False, encoding='utf-8-sig')
+        modeling_df.drop(columns=pd_marker_list, axis=1).to_csv(f'{output_dir}/modeling_df_covar/{drug}_{mode_str}_modeling_df{added_filename_str}.csv',index=False, encoding='utf-8-sig')
         modeling_df['TIME']= modeling_df['TIME']/24
         modeling_df['DUR'] = modeling_df['DUR'].map(lambda x: float(x)/24 if x!='.' else x)
-        modeling_df.drop(columns=pd_marker_list, axis=1).to_csv(f'{output_dir}/modeling_df_covar/{drug}_{mode_str}_modeling_df_dayscale.csv',index=False, encoding='utf-8')
-        modeling_df.drop(columns=pd_marker_list, axis=1).to_csv(f'{nonmem_dir}/{drug}_{mode_str}_modeling_df_dayscale.csv',index=False, encoding='utf-8')
+        modeling_df.drop(columns=pd_marker_list, axis=1).to_csv(f'{output_dir}/modeling_df_covar/{drug}_{mode_str}_modeling_df_dayscale{added_filename_str}.csv',index=False, encoding='utf-8')
+        modeling_df.drop(columns=pd_marker_list, axis=1).to_csv(f'{nonmem_dir}/{drug}_{mode_str}_modeling_df_dayscale{added_filename_str}.csv',index=False, encoding='utf-8')
 
         ## PD 분석용 파일 저장
-        modeling_df.to_csv(f'{output_dir}/modeling_df_covar/{drug}_{mode_str}_pdeda_df_dayscale.csv',index=False, encoding='utf-8')
+        modeling_df.to_csv(f'{output_dir}/modeling_df_covar/{drug}_{mode_str}_pdeda_df_dayscale{added_filename_str}.csv',index=False, encoding='utf-8')
 
 
 

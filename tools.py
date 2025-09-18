@@ -754,7 +754,7 @@ def add_time_after_dosing_column(df):
 
 ## Modeling에 사용된 population의 simulation data set 생성 함수
 
-def get_model_population_sim_df(df, interval=10/60, add_on_period=4*24, id_col='ID',time_col='TIME',dv_col='DV',mdv_col='MDV',cmt_col='CMT',amt_col='AMT',rate_col='RATE', tad_col='TAD'):
+def get_model_population_sim_df(df, interval=10/60, add_on_period=4*24, id_col='ID',time_col='TIME',dv_col='DV',mdv_col='MDV',cmt_col='CMT',amt_col='AMT',rate_col='RATE', tad_col='TAD', time_unit='day'):
 
     final_sim_df = list()
     loop_cnt = 0
