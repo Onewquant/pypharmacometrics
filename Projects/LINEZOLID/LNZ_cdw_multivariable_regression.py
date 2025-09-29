@@ -26,13 +26,21 @@ dose_df = pd.read_csv(f"{output_dir}/lnz_final_dose_df.csv")
 surv_res_df = pd.read_csv(f"{output_dir}/lnz_surv_res_df.csv")
 # surv_res_df['']
 # dose_df[dose_df['UID']==155505674746153]
+# lab_df['ANC']
 
 # lab_df 처리
-pd_list = ['ANC', 'ANC (em)', 'Hct', 'Hct (em)', 'Hct(i-STAT)', 'Hematocrit (ICU용)', 'Hematocrit (마취과용)', 'Hematocrit (응급실용)', 'PCT', 'PDW', 'PLT', 'PLT (em)', 'PT (%)', 'PT (INR)', 'PT (INR) (em)', 'PT (sec)', 'Plasma cell', 'Lymphocyte', 'MCH', 'MCHC', 'MCV', 'MPV', 'Metamyelocyte', 'Mixing test (PT, aPTT 제외)', 'Monocyte', 'Myelocyte', 'Normoblast', 'Other', 'Band neutrophil', 'Basophil',  'CBC (em) (differential count) RDW제외', 'Blast', 'Eosinophil', 'Eosinophil count',  '절대단구수', '절대림프구수', 'Promyelocyte', 'Prothrombin time (%) : MIX', 'Prothrombin time (INR) : MIX', 'Prothrombin time (sec) : MIX', 'RBC', 'RBC (em)', 'RDW(CV)', 'RDW(SD)', 'Reticulocyte', 'Segmented neutrophil', 'WBC', 'WBC (em)', 'WBC stick', 'WBC stick (em)', 'Hb', 'Hb (em)', 'Hb(i-STAT)', 'Hemoglobin (ICU용)', 'Hemoglobin (마취과용)', 'Hemoglobin (응급실용)', 'Immature cell', 'Joint WBC stick (em)', 'Activated PTT : MIX', 'Atypical lymphocyte',  'BE', 'BE(i-STAT)','aPTT', 'aPTT (em)',]
+raw_pd_list = ['ANC (em)', 'Hct', 'Hct (em)', 'Hct(i-STAT)', 'Hematocrit (ICU용)', 'Hematocrit (마취과용)', 'Hematocrit (응급실용)', 'PCT', 'PDW', 'PLT (em)', 'PT (%)', 'PT (INR)', 'PT (INR) (em)', 'PT (sec)', 'Plasma cell', 'Lymphocyte', 'MCH', 'MCHC', 'MCV', 'MPV', 'Metamyelocyte', 'Mixing test (PT, aPTT 제외)', 'Monocyte', 'Myelocyte', 'Normoblast', 'Other', 'Band neutrophil', 'Basophil',  'CBC (em) (differential count) RDW제외', 'Blast', 'Eosinophil', 'Eosinophil count',  '절대단구수', '절대림프구수', 'Promyelocyte', 'Prothrombin time (%) : MIX', 'Prothrombin time (INR) : MIX', 'Prothrombin time (sec) : MIX', 'RBC', 'RBC (em)', 'RDW(CV)', 'RDW(SD)', 'Reticulocyte', 'Segmented neutrophil', 'WBC (em)', 'WBC stick', 'WBC stick (em)','Hb (em)', 'Hb(i-STAT)', 'Hemoglobin (ICU용)', 'Hemoglobin (마취과용)', 'Hemoglobin (응급실용)', 'Immature cell', 'Joint WBC stick (em)', 'Activated PTT : MIX', 'Atypical lymphocyte',  'BE', 'BE(i-STAT)','aPTT', 'aPTT (em)',]
+pd_list = ['ANC','WBC',  'Hb', 'PLT', 'Lactate', 'pH']
 etc_list1 = ['Creatinine (random urine)', 'Creatinine (urine, em)', 'Creatinine Clerarance (24hrs urine, Ccr)','Creatinine (24hrs urine) (g/day)', 'Creatinine (24hrs urine) (mg/dL)','Glucose (간이혈당기용)', 'Urine creatinine (24hrs urine)' ]
 etc_list2 = ['FBS (serum)', 'Fibrinogen', 'Microalbumin (random urine)', 'Microalbumin/Creatinine ratio', 'O₂CT', 'O₂SAT', 'O₂SAT(i-STAT)', 'Potasium(i-STAT)', 'Protein (random urine)', 'Protein/Creatinine ratio',  'Sodium(i-STAT)', 'TotalCO₂(i-STAT)',  'i- Calcium (i-STAT)', 'pCO₂', 'pCO₂(i-STAT)','pO₂', 'pO₂(i-STAT)',]
 
-lab_df = lab_df.drop(pd_list+etc_list1+etc_list2,axis=1)
+lab_df['ANC'] = lab_df[['ANC', 'ANC (em)']].min(axis=1)
+lab_df['PLT'] = lab_df[['PLT', 'PLT (em)']].min(axis=1)
+lab_df['WBC'] = lab_df[['WBC', 'WBC (em)', ]].min(axis=1)
+lab_df['Hb'] = lab_df[['Hb', 'Hb (em)', ]].min(axis=1)
+
+lab_df = lab_df.drop(raw_pd_list+etc_list1+etc_list2,axis=1)
+
 lab_df['ALT'] = lab_df[['ALT(GPT) (em)','GPT (ALT)']].max(axis=1)
 lab_df['AST'] = lab_df[['AST(GOT) (em)','GOT (AST)']].max(axis=1)
 lab_df['GGT'] = lab_df[['GGT', 'GGT (em)']].max(axis=1)
@@ -42,29 +50,35 @@ lab_df['GLU'] = lab_df[['Glucose', 'Glucose (ICU용)', 'Glucose (em)', 'Glucose 
 lab_df['CRP'] = lab_df[['CRP (em)', 'CRP (hsCRP)', 'hsCRP (em)',]].max(axis=1)
 lab_df['TPRO'] = lab_df[['Protein, total', 'Protein, total (em)',]].max(axis=1)
 lab_df['TBIL'] = lab_df[['Bilirubin, total', 'Bilirubin, total  (em)', 'Bilirubin, total (NICU)',]].max(axis=1)
-lab_df['LACT'] = lab_df[['Lactate (ICU용)', 'Lactate (마취과용)', 'Lactate (응급실용)', 'Lactate, Lactic acid (em)', ]].max(axis=1)
+lab_df['Lactate'] = lab_df[['Lactate (ICU용)', 'Lactate (마취과용)', 'Lactate (응급실용)', 'Lactate, Lactic acid (em)', ]].max(axis=1)
 lab_df['PROCAL'] = lab_df[['Procalcitonin', 'Procalcitonin 정량', ]].max(axis=1)
 lab_df['eGFR'] = lab_df[['eGFR', ]].min(axis=1)
 lab_df['eGFR-CKD-EPI'] = lab_df[['eGFR-CKD-EPI']].min(axis=1)
 lab_df['eGFR-Schwartz'] = lab_df[['eGFR-Schwartz(소아)']].min(axis=1)
 lab_df['eGFR-Cockcroft-Gault'] = lab_df[['eGFR-Cockcroft-Gault']].min(axis=1)
-lab_df['pH'] = lab_df[['pH', 'pH (i-STAT)']].min(axis=1)
 lab_df['HCO3-'] = lab_df[['HCO3-', 'HCO3-(i-STAT)', ]].min(axis=1)
 lab_df['DBIL'] = lab_df[['Bilirubin, direct', ]].min(axis=1)
 lab_df['ESR'] = lab_df['ESR']
+lab_df['pH'] = lab_df[['pH', 'pH (i-STAT)']].min(axis=1)
 
 
 
-    # uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATE'], how='left').fillna(method='ffill')
+
+# list(surv_res_df['ENDPOINT'].unique())
+
+# uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATE'], how='left').fillna(method='ffill')
 
 # lab_covar_list = ['ALT','AST','GGT','ALB','SCR','GLU','CRP','TPRO','TBIL','LACT','PROCAL','pH','DBIL','ESR']
-lab_covar_list = ['ALT','AST','GGT','ALB','SCR','GLU','CRP','TPRO','TBIL','LACT','PROCAL','pH','DBIL','ESR','eGFR','eGFR-CKD-EPI','HCO3-']
-lab_df = lab_df[['UID', 'DATE']+lab_covar_list].copy()
+lab_covar_list = ['ALT','AST','GGT','ALB','SCR','GLU','CRP','TPRO','TBIL','PROCAL','DBIL','ESR','eGFR','eGFR-CKD-EPI','HCO3-']
+lab_df = lab_df[['UID', 'DATE']+lab_covar_list+pd_list].copy()
 # lab_df.columns
 # 정보량 반영 (상대적인 평가로, Max 정보량 가진 column 기준으로 실질 정보의 row 수 %가 50 이상인 컬럼만 남김)
-lab_col_inclusion = (100*(~lab_df.isna()).sum()/(~lab_df.isna())['SCR'].sum()).sort_values(ascending=False)
 
-lab_covar_list = list(lab_col_inclusion[lab_col_inclusion >= 50].index)[2:] + ['LACT','pH']
+lab_col_inclusion = (100*(~lab_df.isna()).sum()/((~lab_df.isna()).sum().iloc[2:].max())).sort_values(ascending=False)
+# lab_col_inclusion = (100*(~lab_df.isna()).sum()/(~lab_df.isna())['SCR'].sum()).sort_values(ascending=False)
+
+
+lab_covar_list = list(lab_col_inclusion[lab_col_inclusion >= 50].index)[2:] + ['Lactate','pH']
 lab_df = lab_df[['UID', 'DATE']+lab_covar_list].copy()
 # str(lab_covar_list).replace("', '",', ')
 
@@ -81,9 +95,20 @@ lab_df = pd.concat(full_result_df)
 ep_res_dict = dict()
 for endpoint, ep_surv_df in surv_res_df.groupby('ENDPOINT'):
     ep_res_df = list()
-    # if endpoint=='PLT':
-    #     raise ValueError
+
+    if endpoint=='PLT':
+        ep_lab_covar_list = lab_covar_list
+    elif endpoint=='WBC':
+        ep_lab_covar_list = lab_covar_list
+    elif endpoint=='Hb':
+        ep_lab_covar_list = lab_covar_list
+    elif endpoint=='Lactate':
+        ep_lab_covar_list = lab_covar_list
+    else:
+        ep_lab_covar_list = lab_covar_list
+
     for inx, row in ep_surv_df.iterrows():
+        # raise ValueError
         uid = row['UID']
         bl_date = row['BL_DATE']
         bl_date_bf1mo = (datetime.strptime(bl_date,'%Y-%m-%d')-timedelta(days=30)).strftime('%Y-%m-%d')
@@ -105,7 +130,7 @@ for endpoint, ep_surv_df in surv_res_df.groupby('ENDPOINT'):
         uid_bl_lab_df = uid_lab_df[(uid_lab_df['DATE'] >= bl_date_bf1mo) & (uid_lab_df['DATE'] <= bl_date)].fillna(method='ffill')
         bl_lab_row = uid_bl_lab_df.iloc[-1]
         # col='DATE'
-        for col in ['DATE']+lab_covar_list:
+        for col in ['DATE']+ep_lab_covar_list:
             if col=='DATE':
                 res_dict[f'BL_{col}'] = bl_lab_row[col]
                 res_dict['AGE'] = int((datetime.strptime(bl_lab_row[col],'%Y-%m-%d') - datetime.strptime(res_dict['AGE'],'%Y-%m-%d')).days/365.25)

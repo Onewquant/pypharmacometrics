@@ -193,7 +193,7 @@ for inx, row in pd_res_df.iterrows():
 
     pd_res_df.at[inx, 'CMAX'] = partial_conc_df['DV'].max()
 
-
+# pd_res_df.to_csv(f"{output_dir}/PKPD_EDA/PKvsPD_Corr_SIG/pkpd_analysis_df.csv", index=False, encoding='utf-8-sig')
 
 if not os.path.exists(f"{output_dir}/PKPD_EDA/PKvsPD_Corr_Subgroups2"):
     os.mkdir(f"{output_dir}/PKPD_EDA/PKvsPD_Corr_Subgroups2")

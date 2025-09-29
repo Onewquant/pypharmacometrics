@@ -137,7 +137,8 @@ def fit_ev_logistic(df,
                     enable_corr_filter: bool = True,
                     enable_vif_filter: bool = True,
                     verbose: bool = True,
-                    drop_intercept_in_output: bool = True):
+                    drop_intercept_in_output: bool = True,
+                    filename_add: str = '',):
 
 
     # csv_path=csv_path
@@ -245,7 +246,8 @@ def fit_ev_logistic(df,
 
     # 14) 결과 저장
     if out_csv:
-        or_table.to_csv(out_csv, index=False)
+        rp_str = '.csv' if filename_add=='' else f"({filename_add}).csv"
+        or_table.to_csv(out_csv.replace('.csv',rp_str), index=False)
 
     # 15) 진단 정보 리턴
     final_vif = compute_vif(add_constant(X.drop(columns=["const"]), has_constant='add')) \
@@ -273,23 +275,28 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
     # endpoint = 'Lactate'
 
     csv_path = f"{output_dir}/mvlreg/lnz_mvlreg_{endpoint}_df.csv"     # <-- 본인 파일 경로
-    out_csv  = f"{output_dir}/mvlreg_output/lnz_mvlreg_{endpoint}_res.csv"
+
+    if not os.path.exists(f'{output_dir}/mvlreg_output'):
+        os.mkdir(f'{output_dir}/mvlreg_output')
+
+    out_csv = f"{output_dir}/mvlreg_output/lnz_mvlreg_{endpoint}_res.csv"
 
     # raise ValueError
     df_ori = pd.read_csv(csv_path)
+    # df_ori.columns
 
     # raise ValueError
 
     # for age_subgroup in ['Adult','Elderly','Total_Adult']:
     for age_subgroup in ['Elderly','Total_Adult']:
         # df.columns
-        df = df_ori[df_ori['DOSE_PERIOD'] >= 2].copy()
+        df = df_ori[df_ori['DOSE_PERIOD'] >= 1].copy()
         df = df.drop(['DOSE_PERIOD(TOTAL)'], axis=1)
         # df = df.drop(['DOSE_PERIOD(TOTAL)','CUM_DOSE', 'DOSE_PERIOD', 'DOSE24', 'DOSE24PERWT'], axis=1)
         # df = df.drop(['DOSE_PERIOD(TOTAL)', 'DOSE_PERIOD', 'DOSE24',], axis=1)
 
-        if endpoint == 'Lactate':
-            df = df.drop(['LACT', 'pH'], axis=1)
+        # if endpoint == 'Lactate':
+        #     df = df.drop(['Lactate', 'pH'], axis=1)
         # df.columns
     # for age_subgroup in ['Pediatric','Adult','Elderly','Total_Adult']:
     # for age_subgroup in ['Elderly','Total_Adult']:
@@ -305,6 +312,8 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
         else:
             raise ValueError
 
+        # 데이터 Subset 저장
+
         res, or_table, info = fit_ev_logistic(
             df=df,
             out_csv=out_csv,
@@ -312,7 +321,8 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
             vif_threshold=10.0,     # VIF 임계값 (보통 5 또는 10)
             enable_corr_filter=True,
             enable_vif_filter=True,
-            verbose=True
+            verbose=True,
+            filename_add=age_subgroup,
         )
 
         # print(f"[Fitted with] / {endpoint} / {info['fitted_with']}")
@@ -328,17 +338,21 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
         sig_res_frag['EVPct'] = round(100*sum(df['EV'])/len(df),2)
         sig_res_frag = sig_res_frag[['subgroup','endpoint','N','EVPct']+list(sig_res_frag.columns)[:-4]]
         multivar_res_df.append(sig_res_frag)
+
+        if len(sig_res_frag)>0:
+            df.to_csv(f"{output_dir}/mvlreg_output/lnz_mvlreg_datasubset({age_subgroup})({endpoint}).csv", index=False, encoding='utf-8-sig')
+
         print(sig_res_frag)
         # print(f"\nSaved OR table to: {out_csv}")
 
-        # print(f"\n[Correlation dropped ({endpoint})]")
-        # print(info["corr_dropped"])
-        # print(f"\n[VIF dropped ({endpoint})]")
-        # print(info["vif_dropped"])
-        # print(f"\n[Final features ({endpoint})]")
-        # print(info["final_features"])
-        # print(f"\n[Final VIF ({endpoint})]")
-        # print(info["final_vif"])
+        print(f"\n[Correlation dropped ({endpoint})]")
+        print(info["corr_dropped"])
+        print(f"\n[VIF dropped ({endpoint})]")
+        print(info["vif_dropped"])
+        print(f"\n[Final features ({endpoint})]")
+        print(info["final_features"])
+        print(f"\n[Final VIF ({endpoint})]")
+        print(info["final_vif"])
 
 # df[df['DOSE_PERIOD']!=0]
 # multivar_res_df.columns

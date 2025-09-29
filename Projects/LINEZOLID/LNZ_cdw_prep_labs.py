@@ -26,6 +26,7 @@ for finx, f in enumerate(lab_file_list): #break
 # lab_frag_df.columns
 #
 df = pd.read_csv(f"{resource_dir}/lnz_cdw_lab_data.csv")
+# df[df['LAB']=='ANC']
 
 # Orders
 total_lab_cols = list(df['LAB'].drop_duplicates().sort_values())
@@ -80,12 +81,14 @@ for uid, uid_df in lab_result_df.groupby('UID',as_index=False): #break
     uid_fulldt_df['DATE'] = pd.date_range(start=min_lab_date,end=max_lab_date).astype(str)
     uid_fulldt_df['UID'] = uid
 
-    uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATE'], how='left')#.fillna(method='ffill')
-
     if count == 0:
         header = True
     else:
         header = False
+
+    uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATE'], how='left')#.fillna(method='ffill')
+
+    # uid_fulldt_df.to_csv(f"{output_dir}/lnz_final_lab_df.csv", encoding='utf-8-sig', index=False, header=header, mode='a')
     uid_fulldt_df.to_csv(f"{output_dir}/lnz_final_lab_df2.csv", encoding='utf-8-sig', index=False, header=header, mode='a')
 
     count += 1
