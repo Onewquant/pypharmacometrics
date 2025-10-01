@@ -251,5 +251,7 @@ configs/*.json
 *.RData
 *.Rhistory
 *.tiff
+*.gz.tbi
+
 
 # End of https://www.gitignore.io/api/python,pycharm,windows
