@@ -283,6 +283,9 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
 
     # raise ValueError
     df_ori = pd.read_csv(csv_path)
+    active_cols = [c for c in df_ori.columns if ('(TOTAL' not in c)]
+    df_ori = df_ori[active_cols].copy()
+
     # df_ori.columns
 
     # raise ValueError
@@ -291,7 +294,7 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
     for age_subgroup in ['Elderly','Total_Adult']:
         # df.columns
         df = df_ori[df_ori['DOSE_PERIOD'] >= 1].copy()
-        df = df.drop(['DOSE_PERIOD(TOTAL)'], axis=1)
+        # df = df.drop(['DOSE_PERIOD(TOTAL)'], axis=1)
         # df = df.drop(['DOSE_PERIOD(TOTAL)','CUM_DOSE', 'DOSE_PERIOD', 'DOSE24', 'DOSE24PERWT'], axis=1)
         # df = df.drop(['DOSE_PERIOD(TOTAL)', 'DOSE_PERIOD', 'DOSE24',], axis=1)
 

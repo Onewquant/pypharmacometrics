@@ -24,6 +24,8 @@ lab_df = pd.read_csv(f"{output_dir}/lnz_final_lab_df2.csv")
 bodysize_df = pd.read_csv(f"{output_dir}/lnz_final_bodysize_df.csv")
 dose_df = pd.read_csv(f"{output_dir}/lnz_final_dose_df.csv")
 surv_res_df = pd.read_csv(f"{output_dir}/b1da_lnz_surv_res_df.csv")
+dose_df['UID'].drop_duplicates()
+# surv_res_df['UID'].drop_duplicates()
 # surv_res_df['']
 # dose_df[dose_df['UID']==155505674746153]
 # lab_df['ANC']
@@ -167,13 +169,37 @@ for endpoint, ep_surv_df in surv_res_df.groupby('ENDPOINT'):
         # dose
         uid_dose_df = dose_df[dose_df['UID']==uid].copy()
         uid_cum_dose_df = uid_dose_df[(uid_dose_df['DATE'] >= bl_date) & (uid_dose_df['DATE'] <= ev_date)].copy()
-        daily_dose = (uid_cum_dose_df['DOSE'].sum())/((datetime.strptime(uid_cum_dose_df['DATE'].iloc[-1],'%Y-%m-%d') - datetime.strptime(uid_cum_dose_df['DATE'].iloc[0],'%Y-%m-%d')).days + 1)
+        # if len(uid_cum_dose_df)>1:
+        #     raise ValueError
+
+        dosing_period = ((datetime.strptime(uid_cum_dose_df['DATE'].iloc[-1], '%Y-%m-%d') - datetime.strptime(uid_cum_dose_df['DATE'].iloc[0], '%Y-%m-%d')).days + 1)
+        daily_dose = (uid_cum_dose_df['DOSE'].sum()) / dosing_period
+        active_dosing_days = len(uid_cum_dose_df['DATE'].unique())
+        active_daily_dose = (uid_cum_dose_df['DOSE'].sum()) / active_dosing_days
+
+
+        total_dosing_period = ((datetime.strptime(uid_dose_df['DATE'].iloc[-1],'%Y-%m-%d') - datetime.strptime(uid_dose_df['DATE'].iloc[0],'%Y-%m-%d')).days + 1)
+        total_daily_dose = (uid_dose_df['DOSE'].sum())/total_dosing_period
+
+        total_active_dosing_days = len(uid_dose_df['DATE'].unique())
+        total_active_daily_dose = (uid_dose_df['DOSE'].sum()) / total_active_dosing_days
+
+
         res_dict['CUM_DOSE'] = (uid_cum_dose_df['DOSE'].sum())
-        res_dict['DOSE_PERIOD'] = ((datetime.strptime(uid_cum_dose_df['DATE'].iloc[-1],'%Y-%m-%d') - datetime.strptime(uid_cum_dose_df['DATE'].iloc[0],'%Y-%m-%d')).days + 1)
-        res_dict['DOSE_PERIOD(TOTAL)'] = ((datetime.strptime(uid_dose_df['DATE'].iloc[-1],'%Y-%m-%d') - datetime.strptime(uid_dose_df['DATE'].iloc[0],'%Y-%m-%d')).days + 1)
+        res_dict['CUM_DOSE(TOTAL)'] = (uid_dose_df['DOSE'].sum())
+        res_dict['DOSE_PERIOD'] = dosing_period
+        res_dict['DOSE_PERIOD(ACTIVE)'] = active_dosing_days
+        res_dict['DOSE_PERIOD(TOTAL)'] = total_dosing_period
         res_dict['DOSE24'] = daily_dose
+        res_dict['DOSE24(ACTIVE)'] = active_daily_dose
+        res_dict['DOSE24(TOTAL_ACTIVE)'] = total_active_daily_dose
+        res_dict['DOSE24(TOTAL_PERIOD)'] = total_daily_dose
         res_dict['DOSE24PERWT'] = (daily_dose / res_dict['WT'])
+        res_dict['DOSE24PERWT(ACTIVE)'] = (active_daily_dose / res_dict['WT'])
+        res_dict['DOSE24PERWT(TOTAL_ACTIVE)'] = (total_active_daily_dose / res_dict['WT'])
+        res_dict['DOSE24PERWT(TOTAL_PERIOD)'] = (total_daily_dose / res_dict['WT'])
         res_dict['DOSE_INTERVAL'] = uid_cum_dose_df['INTERVAL'].map(lambda x:float(x.replace('q','').replace('h',''))).mean()
+        res_dict['DOSE_INTERVAL(TOTAL)'] = uid_dose_df['INTERVAL'].map(lambda x:float(x.replace('q','').replace('h',''))).mean()
         # raise ValueError
         res_dict['EV'] = ev
         ep_res_df.append(res_dict)

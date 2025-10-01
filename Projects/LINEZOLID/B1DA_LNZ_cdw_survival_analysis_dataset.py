@@ -10,7 +10,7 @@ output_dir = f"{prj_dir}/results"
 # nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
 # lab_df.columns
 lab_df = pd.read_csv(f"{output_dir}/lnz_final_lab_df.csv")
-lab_df.columns
+# lab_df.columns
 lab_df['Lactate'] = lab_df[['Lactate (ICU용)', 'Lactate (마취과용)', 'Lactate (응급실용)', 'Lactate, Lactic acid (em)', ]].max(axis=1)
 lab_df['pH'] = lab_df[['pH', 'pH (i-STAT)']].min(axis=1)
 lab_df['ANC'] = lab_df[['ANC', 'ANC (em)']].min(axis=1)
@@ -29,15 +29,16 @@ adm_df = pd.read_excel(f"{output_dir}/merged_adm_dates.xlsx")
 # adm_df.columns
 no_lab_uids = list()
 
-no_sbase_lab_uids = list()
+no_sbase_lab_uids = dict()
+no_sadm_lab_uids = dict()
+# yes_sbase_lab_uids = list()
 no_ibase_lab_uids = list()
-yes_sbase_lab_uids = list()
-yes_ibase_lab_uids = list()
 
-no_sadm_lab_uids = list()
-yes_sadm_lab_uids = list()
-no_iadm_lab_uids = list()
-yes_iadm_lab_uids = list()
+
+# yes_sadm_lab_uids = list()
+# no_iadm_lab_uids = list()
+
+not_normal_base_lab_uids = dict()
 # len(yes_sbase_lab_uids)
 surv_res_df = list()
 
@@ -53,6 +54,9 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
     # adm_df.columns
     # max_time_at_risk = 90
     max_time_at_risk = 900000
+    not_normal_base_lab_uids[endpoint_lab] = list()
+    no_sbase_lab_uids[endpoint_lab] = list()
+    no_sadm_lab_uids[endpoint_lab] = list()
     for inx, row in adm_df.iterrows(): #break
         uid = row['UID']
         # if uid==155505674746153:
@@ -82,17 +86,19 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
         uid_sadm_lab_df = uid_lab_df[(uid_lab_df['DATE'] >= row['MIN_SINGLE_DATE'])&(uid_lab_df['DATE'] <= row['MAX_SINGLE_DATE'])].sort_values(['DATE'])
         if len(uid_sbase_lab_df)==0:
             print(f"({inx}) {uid} / {endpoint_lab} / No sbase lab value")
-            no_sbase_lab_uids.append(uid)
+            no_sbase_lab_uids[endpoint_lab].append(uid)
             continue
         else:
-            yes_sbase_lab_uids.append(uid)
+            # yes_sbase_lab_uids.append(uid)
+            pass
 
         if len(uid_sadm_lab_df)==0:
             print(f"({inx}) {uid} / {endpoint_lab} / No sadm lab value")
-            no_sadm_lab_uids.append(uid)
+            no_sadm_lab_uids[endpoint_lab].append(uid)
             continue
         else:
-            yes_sadm_lab_uids.append(uid)
+            # yes_sadm_lab_uids.append(uid)
+            pass
 
         # raise ValueError
         if endpoint_lab == 'PLT':
@@ -102,8 +108,10 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
                 sbl_row = sbl_rows.iloc[-1]
                 # Baseline에서 Cr이 이미 높아지는 경우 제외
                 if (uid_sbase_lab_df[uid_sbase_lab_df['DATE'] > sbl_row['DATE']][endpoint_lab] < 150).sum() > 0:
+                    not_normal_base_lab_uids[endpoint_lab].append(uid)
                     continue
             except:
+                not_normal_base_lab_uids[endpoint_lab].append(uid)
                 continue
             tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df[endpoint_lab] < 150)].copy()
         elif endpoint_lab == 'ANC':
@@ -113,8 +121,10 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
                 sbl_row = sbl_rows.iloc[-1]
                 # Baseline에서 Cr이 이미 높아지는 경우 제외
                 if (uid_sbase_lab_df[uid_sbase_lab_df['DATE'] > sbl_row['DATE']][endpoint_lab] < 1500).sum() > 0:
+                    not_normal_base_lab_uids[endpoint_lab].append(uid)
                     continue
             except:
+                not_normal_base_lab_uids[endpoint_lab].append(uid)
                 continue
             tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df[endpoint_lab] < 1500)].copy()
         elif endpoint_lab == 'Hb':
@@ -124,8 +134,10 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
                 sbl_row = sbl_rows.iloc[-1]
                 # Baseline에서 Cr이 이미 높아지는 경우 제외
                 if (uid_sbase_lab_df[uid_sbase_lab_df['DATE'] > sbl_row['DATE']][endpoint_lab] < 8).sum() > 0:
+                    not_normal_base_lab_uids[endpoint_lab].append(uid)
                     continue
             except:
+                not_normal_base_lab_uids[endpoint_lab].append(uid)
                 continue
             tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df[endpoint_lab] < 8)].copy()
         elif endpoint_lab == 'WBC':
@@ -135,8 +147,10 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
                 sbl_row = sbl_rows.iloc[-1]
                 # Baseline에서 Cr이 이미 높아지는 경우 제외
                 if (uid_sbase_lab_df[uid_sbase_lab_df['DATE'] > sbl_row['DATE']][endpoint_lab] < 4).sum() > 0:
+                    not_normal_base_lab_uids[endpoint_lab].append(uid)
                     continue
             except:
+                not_normal_base_lab_uids[endpoint_lab].append(uid)
                 continue
             tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df[endpoint_lab] < 4)].copy()
         elif endpoint_lab == 'Lactate':
@@ -149,11 +163,14 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
                 # Baseline에서 Cr이 이미 높아지는 경우 제외
                 uid_sbase_check_df = uid_sbase_lab_df[uid_sbase_lab_df['DATE'] > sbl_row['DATE']].copy()
                 if ((uid_sbase_check_df[endpoint_lab] >= 4)&(uid_sbase_check_df['pH'] < 7.35)).sum() > 0:
+                    not_normal_base_lab_uids[endpoint_lab].append(uid)
                     continue
             except:
+                not_normal_base_lab_uids[endpoint_lab].append(uid)
                 continue
             tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df[endpoint_lab] >= 4)&(uid_sadm_lab_df['pH'] < 7.35)].copy()
-
+        else:
+            raise ValueError
 
         single_res_dict = {'UID':uid,
                            'ENDPOINT':endpoint_lab,
@@ -180,6 +197,42 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
 
 surv_res_df = pd.DataFrame(surv_res_df).sort_values(['time','event'])
 surv_res_df.to_csv(f"{output_dir}/b1da_lnz_surv_res_df.csv", encoding='utf-8-sig', index=False)
+
+# surv_res_df['UID'].drop_duplicates()
+###################################
+
+print(f"# Total Linezolid-Administrated: {len(adm_df['UID'].drop_duplicates())}")
+
+for inx, endpoint_lab in enumerate(['PLT', 'ANC', 'Hb','WBC','Lactate']):
+    if inx == 0:
+        no_sbase_lab_value_set = set(no_sbase_lab_uids[endpoint_lab])
+        no_sadm_lab_value_set = set(no_sadm_lab_uids[endpoint_lab])
+    else:
+        no_sbase_lab_value_set = no_sbase_lab_value_set.intersection(set(no_sbase_lab_uids[endpoint_lab]))
+        no_sadm_lab_value_set = no_sadm_lab_value_set.intersection(set(no_sadm_lab_uids[endpoint_lab]))
+no_either_lab_value_set = no_sbase_lab_value_set.union(no_sadm_lab_value_set)
+
+print(f"  (No lab value for baseline or adm period: -{len(no_either_lab_value_set)})")
+# print(f"(No lab value for baseline or adm period: -{len((set(no_ibase_lab_uids)))})")
+# not_normal_integ_set = set()
+for inx, endpoint_lab in enumerate(['PLT', 'ANC', 'Hb','WBC','Lactate']):
+    if inx==0:
+        not_normal_integ_set = set(not_normal_base_lab_uids[endpoint_lab])
+    else:
+        not_normal_integ_set = not_normal_integ_set.intersection(set(not_normal_base_lab_uids[endpoint_lab]))
+print(f"  (Not normal value in baseline period: -{len(not_normal_integ_set)})")
+
+# for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
+#     print(f"Not normal baseline value ({endpoint_lab}): {len(not_normal_base_lab_uids[endpoint_lab])}")
+
+print(f"# Survival Analysis: {len(surv_res_df['UID'].drop_duplicates())}")
+# for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
+#     print(f"Survival Analysis ({endpoint_lab}): {len(surv_res_df[surv_res_df['ENDPOINT']==endpoint_lab])}")
+
+
+###################################
+
+
 single_survres_df = surv_res_df.copy()
 
 anc_df = single_survres_df[single_survres_df['ENDPOINT']=='ANC'].copy()
@@ -276,7 +329,7 @@ ax.set_ylim(0, 1.1)
 ax.grid(True, linestyle="--")
 ax.legend(title="Group")
 
-plt.savefig(f"{output_dir}/KM_plot(AEs).png")  # PNG 파일로 저장
+plt.savefig(f"{output_dir}/B1DA_KM_plot(AEs).png")  # PNG 파일로 저장
 
 # 👉 최종 발생률을 DataFrame으로 정리
 final_df = pd.DataFrame(final_rates)
