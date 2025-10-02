@@ -16,6 +16,7 @@ if not os.path.exists(output_dir):
 
 pid_df = pd.read_csv(f"{resource_dir}/AMK_REQ_DATA/df_11007_재식별.csv")
 pid_df = pid_df.rename(columns={'Deidentification_ID':'UID','환자번호':'REQ_ID'}).drop(['Column1', 'Column2'],axis=1)
+# pid_df[pid_df['UID']==11367967]
 
 # vs_df.columns
 vs_df = pd.read_csv(f"{resource_dir}/AMK_REQ_DATA/dt_11007_간호기록_321688.csv")

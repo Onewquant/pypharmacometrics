@@ -93,7 +93,9 @@ demo_df['SEX'] = demo_df['SEX'].map({'남':'M','여':'F'})
 mindt_df = covar_modeling_df.groupby('UID', as_index=False)['DATETIME'].min()
 mindt_df['MIN_DATE'] = mindt_df['DATETIME'].map(lambda x:x.split('T')[0])
 mindt_df = mindt_df[['UID','MIN_DATE']].copy()
+# mindt_df[mindt_df['UID']=='11356291']
 
+# vs_df_ori = pd.read_csv(f"{output_dir}/final_req_vs_data.csv",encoding='utf-8-sig')
 vs_df = pd.read_csv(f"{output_dir}/final_req_vs_data.csv",encoding='utf-8-sig')
 vs_df['UID'] = vs_df['UID'].astype(str)
 vs_df = vs_df.merge(mindt_df, on=['UID'], how='left')
@@ -101,10 +103,12 @@ vs_df = vs_df.dropna(subset=['MIN_DATE'])
 vs_df = vs_df.drop_duplicates(['UID','DATETIME','VS'])
 # pd.pivot_table(vs_df, values='VALUE', index=['UID','DATETIME','MIN_DATE'], aggfunc=["mean", "max", "min"])
 vs_df['VALUE'] = vs_df['VALUE'].map(lambda x:float(re.findall(r'\d+[\.]?\d*',str(x))[0]) if len(re.findall(r'\d+[\.]?\d*',str(x)))!=0 else np.nan)
+# vs_df[vs_df['UID']=='11356291']
+# vs_df_ori[(vs_df_ori['UID']==29009921)&(vs_df_ori['VS']=='WT')]
 
 ## BMI 너무 크거나 작은 값 -> 제거
-max_bmi = 200
-min_bmi = 20/4
+max_bmi = 50
+min_bmi = 10
 vs_df = vs_df[~((vs_df['VS']=='BMI')&((vs_df['VALUE']>=max_bmi)| (vs_df['VALUE']<=min_bmi)))].reset_index(drop=True)
 
 
@@ -144,13 +148,15 @@ for inx in vs_df[(vs_df['VALUE'] >= 30) & (vs_df['VALUE'] < 100) & (vs_df['VS']=
 
 vs_df = vs_df.drop_duplicates(['UID','DATETIME','VS'], ignore_index=True)
 # vs_df_ori = pd.read_csv(f"{output_dir}/final_req_vs_data.csv",encoding='utf-8-sig')
-# vs_df_ori[(vs_df_ori['UID']==25302572)&(vs_df_ori['VS']=='HT')]
+# vs_df_ori[(vs_df_ori['UID']==11437323)&(vs_df_ori['VS']=='WT')]
 
 vs_df = vs_df.pivot(index=['UID','DATETIME','MIN_DATE'], columns='VS', values='VALUE').reset_index(drop=False)
 vs_df.columns.name = None
 vs_df = vs_df.sort_values(['UID','DATETIME'])
 
 for fill_col in ['HT','BMI','WT']: # 순서 바꾸면 안 됨! (키가 가장 보존적 var)
+
+    # fill_col = 'WT'
 
     new_vs_df = list()
     for uid, uid_vs_df in vs_df.groupby('UID'):
@@ -170,15 +176,26 @@ for fill_col in ['HT','BMI','WT']: # 순서 바꾸면 안 됨! (키가 가장 �
             raise ValueError
         vs_df.at[inx, na_colname] = row[na_colname]
 
-vs_df = vs_df[(~vs_df[['BMI','HT','WT']].isna()*1).sum(axis=1)==3].copy()
+    # if fill_col=='WT':
+    #     raise ValueError
+
+# vs_df[vs_df['UID']=='11356291']
+vs_df = vs_df[(~vs_df[['BMI','HT','WT']].isna()*1).sum(axis=1)>0].copy()
 # vs_df = vs_df[vs_df['DATETIME'] <= vs_df['MIN_DATE']].copy()
 recent_vs_df = vs_df[vs_df['DATETIME'] <= vs_df['MIN_DATE']].drop_duplicates(['UID'], keep='last', ignore_index=True)
 recent_vs_df = recent_vs_df.drop(['DATETIME','BMI'],axis=1)[['UID','MIN_DATE','HT','WT']].copy()
+# recent_vs_df[recent_vs_df['UID']=='11356291']
+# recent_vs_df = vs_df[vs_df['DATETIME'] <= vs_df['MIN_DATE']].drop_duplicates(['UID'], keep='last', ignore_index=True)
+
+after_vs_df = vs_df[vs_df['DATETIME'] > vs_df['MIN_DATE']].drop_duplicates(['UID'], keep='first', ignore_index=True)
+after_vs_df = after_vs_df.drop(['DATETIME','BMI'],axis=1)[['UID','MIN_DATE','HT','WT']].copy()
 # demo_df.merge()
 
+nearest_vs_df = pd.concat([recent_vs_df, after_vs_df]).drop_duplicates(['UID'], keep='first')
+# nearest_vs_df[nearest_vs_df['UID']=='11356291']
+# nearest_vs_df[(nearest_vs_df['WT']>100)]
 
-
-
+# ptinfo_df[ptinfo_df['UID']=='11356291']
 ptinfo_df = pd.read_csv(f"{output_dir}/patient_info.csv",encoding='utf-8-sig')
 # demo_df['AGE'] = demo_df['AGE'].map(lambda x: float(x.replace('개월',''))/12 if '개월' in x else float(x.replace('세','')))
 ptinfo_df = ptinfo_df.rename(columns={'ID':'UID'})
@@ -188,10 +205,14 @@ ptinfo_df['HT'] = ptinfo_df['HT'].replace('44.5/45',np.nan).replace('R)600',np.n
 ptinfo_df['WT'] = ptinfo_df['WT'].replace('71.4(+0.8)',72.2).astype(float)
 ptinfo_df = ptinfo_df.merge(mindt_df, on='UID',how='left')
 ptinfo_df = ptinfo_df[['UID','MIN_DATE','HT','WT']].copy()
-supplement_ptinfo_df = ptinfo_df[ptinfo_df['UID'].isin(list(set(ptinfo_df['UID'])-set(recent_vs_df['UID'])))].copy()
+supplement_ptinfo_df = ptinfo_df[ptinfo_df['UID'].isin(list(set(ptinfo_df['UID']).difference(set(nearest_vs_df['UID']))))].copy()
+# supplement_ptinfo_df[supplement_ptinfo_df['UID']=='11356291']
+# nearest_vs_df.drop_duplicates(['UID'], keep='first')
+# supplement_ptinfo_df['HT']
 
-integ_vs_df = pd.concat([recent_vs_df, supplement_ptinfo_df]).dropna(subset=['MIN_DATE'])
+integ_vs_df = pd.concat([nearest_vs_df, supplement_ptinfo_df]).dropna(subset=['MIN_DATE'])
 integ_vs_df = integ_vs_df.fillna(integ_vs_df.median(numeric_only=True))
+# integ_vs_df[integ_vs_df['UID']=='11356291']
 
 demo_df = integ_vs_df.merge(demo_df, on='UID',how='left')
 demo_df['AGE'] = ((pd.to_datetime(demo_df['MIN_DATE'])-pd.to_datetime(demo_df['BIRTH_DATE'])).dt.total_seconds()/(365.25*86400)).map(int)
@@ -281,7 +302,7 @@ covar_modeling_df = covar_modeling_df.drop(keep_ori_covar_cols, axis=1)
 modeling_cols = ['ID','NAME','TIME','TAD','DV','MDV','CMT','AMT','RATE','UID','LLOQ','BLQ'] + list(covar_modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
 
 # modeling_df['AGE'] = modeling_df.apply(lambda x: int((datetime.strptime(x['DATETIME'],'%Y-%m-%d') - datetime.strptime(x['AGE'],'%Y-%m-%d')).days/365.25), axis=1)
-covar_modeling_df['SEX'] = covar_modeling_df['SEX'].map({'M':1,'F':2})
+covar_modeling_df['SEX'] = covar_modeling_df['SEX'].map({'M':0,'F':1})
 
 # ## 최근 투약 기준 시간으로 TAD 설정
 # covar_modeling_df['TAD'] = np.nan
@@ -370,7 +391,7 @@ to_be_del = [
              {'ID':1630,'TIME':212.7833333,'DV':0.3},
 
              # CWRE > 15
-             {'ID': 353, 'TIME': 120, 'DV': 17.11},
+             # {'ID': 353, 'TIME': 120, 'DV': 17.11},
              ]
 
 to_be_del_inx = list()
