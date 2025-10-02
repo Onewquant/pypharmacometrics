@@ -53,7 +53,7 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
     # max_time_at_risk = 365
     # adm_df.columns
     # max_time_at_risk = 90
-    max_time_at_risk = 900000
+    max_time_at_risk = 365
     not_normal_base_lab_uids[endpoint_lab] = list()
     no_sbase_lab_uids[endpoint_lab] = list()
     no_sadm_lab_uids[endpoint_lab] = list()
@@ -282,7 +282,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 kmf = KaplanMeierFitter()
-fig, ax = plt.subplots(figsize=(10, 8))
+fig, ax = plt.subplots(figsize=(15, 12))
 
 final_rates = []  # 최종 발생률과 95% CI를 저장할 리스트
 
@@ -310,8 +310,8 @@ for g, gdf in surv_res_df.groupby("ENDPOINT"):
 
     # 그래프 끝 지점에 값과 95% CI 표시
     ax.text(final_time, final_val,
-            f"{final_val*100:.1f}%\n[{final_low*100:.1f}–{final_high*100:.1f}%]",
-            ha="left", va="center", fontsize=9)
+            f"  {final_val*100:.1f}%\n  [{final_low*100:.1f}–{final_high*100:.1f}%]",
+            ha="left", va="center", fontsize=12)
 
     # DataFrame용으로 저장
     final_rates.append({
@@ -322,14 +322,16 @@ for g, gdf in surv_res_df.groupby("ENDPOINT"):
     })
 
 
-ax.set_title("Cumulative Incidence (AEs) by Group (with 95% CI)")
-ax.set_xlabel("Time")
-ax.set_ylabel(f"Cumulative Incidence (AEs)")
+ax.set_title("Cumulative Incidence (ADRs) by Group (with 95% CI)",fontsize=14)
+ax.set_xlabel("Time (Days)",fontsize=14)
+ax.set_ylabel(f"Cumulative Incidence (ADRs)",fontsize=14)
 ax.set_ylim(0, 1.1)
+ax.set_xlim(0, 400)
 ax.grid(True, linestyle="--")
-ax.legend(title="Group")
+ax.legend(title="Group", title_fontsize=12, fontsize=12)
 
-plt.savefig(f"{output_dir}/B1DA_KM_plot(AEs).png")  # PNG 파일로 저장
+plt.tight_layout()
+plt.savefig(f"{output_dir}/B1DA_KM_plot(ADRs).png")  # PNG 파일로 저장
 
 # 👉 최종 발생률을 DataFrame으로 정리
 final_df = pd.DataFrame(final_rates)
