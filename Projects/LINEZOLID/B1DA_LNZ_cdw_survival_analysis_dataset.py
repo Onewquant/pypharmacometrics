@@ -201,7 +201,7 @@ surv_res_df.to_csv(f"{output_dir}/b1da_lnz_surv_res_df.csv", encoding='utf-8-sig
 # surv_res_df['UID'].drop_duplicates()
 ###################################
 
-print(f"# Total Linezolid-Administrated: {len(adm_df['UID'].drop_duplicates())}")
+print(f"# [Total Linezolid-Administrated]: {len(adm_df['UID'].drop_duplicates())}")
 
 for inx, endpoint_lab in enumerate(['PLT', 'ANC', 'Hb','WBC','Lactate']):
     if inx == 0:
@@ -225,9 +225,9 @@ print(f"  (Not normal value in baseline period: -{len(not_normal_integ_set)})")
 # for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
 #     print(f"Not normal baseline value ({endpoint_lab}): {len(not_normal_base_lab_uids[endpoint_lab])}")
 
-print(f"# Survival Analysis: {len(surv_res_df['UID'].drop_duplicates())}")
-# for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
-#     print(f"Survival Analysis ({endpoint_lab}): {len(surv_res_df[surv_res_df['ENDPOINT']==endpoint_lab])}")
+print(f"# [Survival Analysis]: {len(surv_res_df['UID'].drop_duplicates())}")
+for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
+    print(f"  SA_Subgroup ({endpoint_lab}): {len(surv_res_df[surv_res_df['ENDPOINT']==endpoint_lab]['UID'].drop_duplicates())}")
 
 
 ###################################
