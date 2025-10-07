@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import glob
+import os
 from scipy.stats import mannwhitneyu, fisher_exact
 
 
@@ -10,7 +11,8 @@ from scipy.stats import mannwhitneyu, fisher_exact
 
 output_dir = 'C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/LINEZOLID/results'
 
-subgroup_files = glob.glob(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_datasubset(*)(*).csv")
+# subgroup_files = glob.glob(f"{output_dir}/b1da/mvlreg_output/datasubset/b1da_lnz_mvlreg_datasubset(*)(*).csv")
+subgroup_files = glob.glob(f"{output_dir}/b1da/mvlreg_output/datasubset/b1da_lnz_mvlreg_datasubset(Total_Adult)(Lactate).csv")
 for file_path in subgroup_files:
     # raise ValueError
     subset_group = file_path.split(')(')[0].split('(')[-1]
@@ -60,5 +62,7 @@ for file_path in subgroup_files:
 
     # 3️⃣ 결과 테이블 생성
     demographic_table = pd.DataFrame(rows).sort_values('p_value').reset_index(drop=True)
-    demographic_table.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_subgrpanalysis({subset_group})({pd_endpoint}).csv", index=False, encoding='utf-8-sig')
+    if not os.path.exists(f'{output_dir}/b1da/mvlreg_output/subgroup_analysist'):
+        os.mkdir(f'{output_dir}/b1da/mvlreg_output/subgroup_analysis')
+    demographic_table.to_csv(f"{output_dir}/b1da/mvlreg_output/subgroup_analysis/b1da_lnz_subgrpanalysis({subset_group})({pd_endpoint}).csv", index=False, encoding='utf-8-sig')
     print(demographic_table)

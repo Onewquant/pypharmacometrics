@@ -15,6 +15,7 @@ import statsmodels.api as sm
 from statsmodels.tools import add_constant
 from statsmodels.tools.sm_exceptions import PerfectSeparationError
 from statsmodels.stats.outliers_influence import variance_inflation_factor
+from statsmodels.stats.multitest import multipletests
 import os
 
 
@@ -223,6 +224,12 @@ def fit_ev_logistic(df,
         model = sm.GLM(y, X, family=sm.families.Binomial())
         res = model.fit()
         fitted_with = "GLM Binomial (fallback)"
+    # except (PerfectSeparationError, np.linalg.LinAlgError):
+    #     # print('test2')
+    #     model = sm.Logit(y, X)
+    #     res = model.fit_regularized(alpha=1.0)
+    #     fitted_with = "L2 regularization (fallback)"
+
     except Exception as e:
         raise
 
@@ -233,16 +240,67 @@ def fit_ev_logistic(df,
     or_table = pd.DataFrame({
         "feature": params.index,
         "beta": params.values,
-        "OR": np.exp(params.values),
-        "CI2.5%": np.exp(conf["2.5%"].values),
-        "CI97.5%": np.exp(conf["97.5%"].values),
+        "aOR": np.exp(params.values),
+        "aOR CI2.5%": np.exp(conf["2.5%"].values),
+        "aOR CI97.5%": np.exp(conf["97.5%"].values),
         "pvalue": res.pvalues.values,
     })
+
+    # 14) 다중비교 보정: Benjamini–Hochberg FDR
+    _, p_adj, _, _ = multipletests(or_table["pvalue"].values, method="fdr_bh")
+    or_table["pvalue_adj"] = p_adj
+
+    # 14) 다중비교 보정: Bonferroni
+    # _, p_adj, _, _ = multipletests(or_table["pvalue"].values, method="bonferroni")
+    # or_table["pvalue_adj"] = p_adj
+
+
+    # 15) Univariable Logistic Regression 추가
+
+    uni_results = []
+
+    for col in X.columns:
+        if col == "const":
+            continue
+        try:
+            Xi = sm.add_constant(X[[col]], has_constant="add")
+            model_uni = sm.Logit(y, Xi)
+            res_uni = model_uni.fit(disp=False, maxiter=200)
+            params_uni = res_uni.params
+            conf_uni = res_uni.conf_int(alpha=0.05)
+            conf_uni.columns = ["2.5%", "97.5%"]
+
+            uni_results.append({
+                "feature": col,
+                "uni_beta": params_uni[col],
+                "uni_OR": np.exp(params_uni[col]),
+                "uni_CI2.5%": np.exp(conf_uni.loc[col, "2.5%"]),
+                "uni_CI97.5%": np.exp(conf_uni.loc[col, "97.5%"]),
+                "uni_pvalue": res_uni.pvalues[col],
+            })
+        except (PerfectSeparationError, np.linalg.LinAlgError):
+            uni_results.append({
+                "feature": col,
+                "uni_beta": np.nan,
+                "uni_OR": np.nan,
+                "uni_CI2.5%": np.nan,
+                "uni_CI97.5%": np.nan,
+                "uni_pvalue": np.nan,
+            })
+
+    uni_table = pd.DataFrame(uni_results)
+
+    # -------------------------------
+    # 15) 다변량 + 단변량 병합
+    # -------------------------------
+    or_table = or_table.merge(uni_table, on="feature", how="left")
+
 
     if drop_intercept_in_output and "const" in or_table["feature"].values:
         or_table = or_table[or_table["feature"] != "const"].copy()
 
-    or_table = or_table.sort_values("pvalue").reset_index(drop=True)
+    # or_table = or_table.sort_values("pvalue").reset_index(drop=True)
+    or_table = or_table.sort_values("pvalue_adj").reset_index(drop=True)
 
     # 14) 결과 저장
     if out_csv:
@@ -265,7 +323,9 @@ def fit_ev_logistic(df,
 
 # 사용 예시: 경로만 바꿔서 실행하세요.
 output_dir = 'C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/LINEZOLID/results'
+multivar_totres_df = list()
 multivar_res_df = list()
+orthreshold_dict = {True: 0.5, False: 0.33}
 for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
 # for endpoint in ['ANC', ]:
     # endpoint = 'PLT'
@@ -317,6 +377,9 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
 
         # 데이터 Subset 저장
 
+        # if endpoint=='lactate':
+        #     raise ValueError
+
         res, or_table, info = fit_ev_logistic(
             df=df,
             out_csv=out_csv,
@@ -332,18 +395,26 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
         # print(f"\n[Model Summary ({endpoint})]")
         # print(res.summary())
         print(f"\n[Odds Ratio Table ({endpoint})]")
-        or_threshold = 0.5
+        # or_threshold = 0.5
         # or_threshold = 0.0
-        sig_res_frag = or_table[(or_table['pvalue']<0.05)&(np.abs(or_table['OR']-1)>=or_threshold)].copy()
-        sig_res_frag['endpoint'] = endpoint
-        sig_res_frag['subgroup'] = age_subgroup
-        sig_res_frag['N'] = len(df)
-        sig_res_frag['EVPct'] = round(100*sum(df['EV'])/len(df),2)
-        sig_res_frag = sig_res_frag[['subgroup','endpoint','N','EVPct']+list(sig_res_frag.columns)[:-4]]
-        multivar_res_df.append(sig_res_frag)
+        or_table['aOR threshold'] = (or_table['aOR'] >= 1).map(orthreshold_dict)
+        or_table['endpoint'] = endpoint
+        or_table['subgroup'] = age_subgroup
+        or_table['N'] = len(df)
+        or_table['EVN'] = int(sum(df['EV']))
+        or_table['EVPct'] = round(100*sum(df['EV'])/len(df),2)
+        pv_cond = (or_table['pvalue_adj'] < 0.05)
+        or_cond = ((np.abs(or_table['aOR']-1) >= or_table['aOR threshold']))
+        # sig_res_frag = or_table[(or_table['pvalue'] < 0.05) & (np.abs(or_table['OR'] - 1) >= or_threshold)].copy()
+        sig_res_frag = or_table[pv_cond&or_cond].copy()
 
-        if len(sig_res_frag)>0:
-            df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_datasubset({age_subgroup})({endpoint}).csv", index=False, encoding='utf-8-sig')
+        multivar_totres_df.append(or_table.copy())
+
+        # sig_res_frag = sig_res_frag[['subgroup','endpoint','N','EVN','EVPct']+list(sig_res_frag.columns)[:-4]]
+        # multivar_res_df.append(sig_res_frag.copy())
+        if not os.path.exists(f'{output_dir}/b1da/mvlreg_output/datasubset'):
+            os.mkdir(f'{output_dir}/b1da/mvlreg_output/datasubset')
+        df.to_csv(f"{output_dir}/b1da/mvlreg_output/datasubset/b1da_lnz_mvlreg_datasubset({age_subgroup})({endpoint}).csv", index=False, encoding='utf-8-sig')
 
         print(sig_res_frag)
         # print(f"\nSaved OR table to: {out_csv}")
@@ -354,18 +425,50 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
         print(info["vif_dropped"])
         print(f"\n[Final features ({endpoint})]")
         print(info["final_features"])
-        print(f"\n[Final VIF ({endpoint})]")
-        print(info["final_vif"])
+        # print(f"\n[Final VIF ({endpoint})]")
+        # print(info["final_vif"])
 
 # df[df['DOSE_PERIOD']!=0]
 # multivar_res_df.columns
 # df[(df['EV']==1)]['DOSE_PERIOD'].mean()
 # df[(df['EV']==0)]['DOSE_PERIOD'].mean()
+multivar_totres_df = pd.concat(multivar_totres_df)
+# multivar_totres_df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_total_results({str(or_threshold)[-1]}).csv", index=False, encoding='utf-8-sig')
+multivar_totres_df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_total_results.csv", index=False, encoding='utf-8-sig')
 
-multivar_res_df = pd.concat(multivar_res_df)
-multivar_res_df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_significant_results({str(or_threshold)[-1]}).csv", index=False, encoding='utf-8-sig')
-print(multivar_res_df[['subgroup','endpoint','feature','N','EVPct','OR','pvalue']].reset_index(drop=True))
-# multivar_res_df[multivar_res_df['feature']=='ELD']
+sg_cond = (multivar_totres_df['subgroup'] == 'Total_Adult')
+uor_cond = (np.abs(multivar_totres_df['uni_OR']-1) >= ((multivar_totres_df['uni_OR']>=1).map(orthreshold_dict)))
+upv_cond = (multivar_totres_df['uni_pvalue'] < 0.05)
+aor_cond = (np.abs(multivar_totres_df['aOR']-1) >= ((multivar_totres_df['aOR']>=1).map(orthreshold_dict)))
+apv_cond = (multivar_totres_df['pvalue_adj'] < 0.05)
+
+# multivar_totres_df.columns
+
+sig_dig = 3
+
+multivar_totres_df['EV_Count (%)'] = multivar_totres_df.apply(lambda x:f"{round(x['EVN'],sig_dig)} ({round(x['EVPct'],sig_dig)})",axis=1)
+
+multivar_totres_df['OR (95% CI)'] = multivar_totres_df.apply(lambda x:f"{round(x['uni_OR'],sig_dig)} ({round(x['uni_CI2.5%'],sig_dig)}-{round(x['uni_CI97.5%'],sig_dig)})",axis=1)
+multivar_totres_df['pval'] = multivar_totres_df['uni_pvalue'].map(lambda x:round(x,sig_dig))
+
+multivar_totres_df['aOR (95% CI)'] = multivar_totres_df.apply(lambda x:f"{round(x['aOR'],sig_dig)} ({round(x['aOR CI2.5%'],sig_dig)}-{round(x['aOR CI97.5%'],sig_dig)})",axis=1)
+multivar_totres_df['pval (adj)'] = multivar_totres_df['pvalue_adj'].map(lambda x:round(x,sig_dig))
+
+# multivar_totres_df[(multivar_totres_df['subgroup']=='Total_Adult')&(multivar_totres_df['endpoint']=='ANC')&(multivar_totres_df['feature']=='SEX')][['OR (95% CI)','pval','aOR (95% CI)','pval (adj)']]
+# multivar_totres_df[upv_cond&uor_cond]
+# multivar_totres_df['pval']
+uni_res_df = multivar_totres_df[upv_cond&uor_cond].sort_values(['subgroup','endpoint','aOR'],ascending=[False,True,False])[['subgroup','endpoint','feature','EV_Count (%)','OR (95% CI)','pval','aOR (95% CI)','pval (adj)']].reset_index(drop=True)
+multi_res_df = multivar_totres_df[apv_cond&aor_cond].sort_values(['subgroup','endpoint','aOR'],ascending=[False,True,False])[['subgroup','endpoint','feature','EV_Count (%)','OR (95% CI)','pval','aOR (95% CI)','pval (adj)']].reset_index(drop=True)
+tot_res_df = multivar_totres_df.sort_values(['subgroup','endpoint','aOR'],ascending=[False,True,False])[['subgroup','endpoint','feature','EV_Count (%)','OR (95% CI)','pval','aOR (95% CI)','pval (adj)']].reset_index(drop=True)
+tot_res_df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_totres_table.csv", index=False, encoding='utf-8-sig')
+
+# multivar_totres_df[pv_cond&sg_cond].sort_values(['subgroup','endpoint','OR'],ascending=[False,True,False])[['subgroup','endpoint','feature','n (%)','OR (95% CI)','pval','aOR (95% CI)','pval (adj)']]
+# multivar_totres_df.sort_values(['subgroup','endpoint','OR'],ascending=[False,True,False])[['endpoint','feature','n (%)','OR (95% CI)','pval','aOR (95% CI)','pval (adj)']]
+
+# or_table[or_table['feature']=='CUM_DOSE']
+# multivar_res_df = pd.concat(multivar_res_df)
+# multivar_res_df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_significant_results({str(or_threshold)[-1]}).csv", index=False, encoding='utf-8-sig')
+# print(multivar_res_df[['subgroup','endpoint','feature','N','EVN','EVPct','OR','pvalue','pvalue_adj']].reset_index(drop=True))
 ######################################
 
 

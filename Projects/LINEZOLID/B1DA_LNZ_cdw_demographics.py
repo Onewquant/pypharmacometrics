@@ -7,7 +7,7 @@ surv_res_df = pd.read_csv(f"{output_dir}/b1da_lnz_surv_res_df.csv")
 
 multivar_res_df = list()
 
-demo_cols = ['SUBTOTAL_N','EV = 1','SEX = 1','AGE','HT','WT','BMI']
+demo_cols = ['SUBTOTAL_N','EV = 1','SEX = 1','ELD = 1','AGE','HT','WT','BMI']
 total_dose_cols = ['CUM_DOSE(TOTAL)','DOSE_PERIOD(TOTAL)','DOSE24(TOTAL_ACTIVE)','DOSE24(TOTAL_PERIOD)','DOSE24PERWT(TOTAL_ACTIVE)','DOSE24PERWT(TOTAL_PERIOD)','DOSE_INTERVAL(TOTAL)']
 ev_dose_cols = ['CUM_DOSE', 'DOSE_PERIOD','DOSE_PERIOD(ACTIVE)', 'DOSE24','DOSE24(ACTIVE)', 'DOSE24PERWT','DOSE24PERWT(ACTIVE)', 'DOSE_INTERVAL']
 
@@ -58,10 +58,11 @@ for inx, endpoint in enumerate(['TOTAL','PLT', 'Hb', 'WBC', 'ANC', 'Lactate']):
 
     # 제외할 컬럼과 변수 유형 지정
     exclude_cols = ["UID", "BL_DATE", "ENDPOINT"]
-    categorical_cols = ["EV", "SEX"]       # 범주형
+    categorical_cols = ["EV", "SEX", "ELD"]       # 범주형
     positive_levels: Dict[str, Any] = {    # N(%)로 표시할 수준
         "EV": 1,
-        "SEX": 1
+        "SEX": 1,
+        "ELD": 1
         # "SEX": 'F'
     }
 
