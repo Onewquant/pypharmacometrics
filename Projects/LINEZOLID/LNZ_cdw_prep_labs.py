@@ -5,7 +5,7 @@ from scipy.stats import spearmanr
 
 
 prj_name = 'LINEZOLID'
-prj_dir = './Projects/LINEZOLID'
+prj_dir = 'C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/LINEZOLID'
 resource_dir = f'{prj_dir}/resource'
 output_dir = f"{prj_dir}/results"
 # nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
@@ -16,6 +16,8 @@ for finx, f in enumerate(lab_file_list): #break
 
     lab_frag_df = pd.read_csv(f, encoding='utf-8-sig')
     lab_frag_df = lab_frag_df.rename(columns={'환자번호':'UID','검사 접수일자':'DATE','검사 접수일시':'DATETIME', '검사명':'LAB', '항목별 검사결과':'VALUE', '채혈일시':'SAMPLING_DT', '검사 오더일자':'ORD_DATE','검사 시행일자':'PRAC_DATE','검사 결과보고일자':'REP_DATE','검사 코드':'LAB_CODE'})
+
+    lab_frag_df = lab_frag_df[['UID','DATE','DATETIME','ORD_DATE','SAMPLING_DT','PRAC_DATE','REP_DATE','LAB_CODE','LAB','VALUE']].copy()
     lab_frag_df = lab_frag_df.dropna(subset=['VALUE'])
     lab_frag_df['UID'] = lab_frag_df['UID'].map(lambda x:x.split('-')[0])
     lab_frag_df['DATE'] = lab_frag_df.apply(lambda x: x['DATE'] if str(x['SAMPLING_DT'])=='nan' else x['SAMPLING_DT'].split(' ')[0], axis=1)

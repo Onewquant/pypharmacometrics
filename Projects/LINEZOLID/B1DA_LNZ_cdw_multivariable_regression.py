@@ -19,8 +19,8 @@ output_dir = f"{prj_dir}/results"
 # dose_df['DOSAGE_REGIMEN'].drop_duplicates().reset_index(drop=True)
 
 ptinfo_df = pd.read_csv(f"{output_dir}/lnz_final_ptinfo_df.csv")
-# lab_df = pd.read_csv(f"{output_dir}/lnz_final_lab_df.csv")
-lab_df = pd.read_csv(f"{output_dir}/lnz_final_lab_df2.csv")
+lab_df = pd.read_csv(f"{output_dir}/lnz_final_lab_df.csv")
+# lab_df = pd.read_csv(f"{output_dir}/lnz_final_lab_df2.csv")
 bodysize_df = pd.read_csv(f"{output_dir}/lnz_final_bodysize_df.csv")
 dose_df = pd.read_csv(f"{output_dir}/lnz_final_dose_df.csv")
 surv_res_df = pd.read_csv(f"{output_dir}/b1da_lnz_surv_res_df.csv")

@@ -14,6 +14,7 @@ output_dir = f"{prj_dir}/results"
 raw_df = pd.read_csv(f"{resource_dir}/lnz_cdw_dose_data.csv")
 # df.columns
 raw_df = raw_df.rename(columns={'환자번호':'UID','수행시간':'ACTING','약품 오더일자':'DATE', '[실처방] 용법':'REGIMEN','[실처방] 처방일수':'DAYS', '[함량단위환산] 1일 처방량':'DAILY_DOSE','[실처방] 1회 처방량':'DOSE', '[실처방] 투약위치':'PLACE',"[실처방] 경로":'ROUTE','약품명(성분명)':'DRUG','[실처방] 처방비고':'ETC_INFO'})
+raw_df = raw_df[~raw_df['약품명(일반명)'].isna()].copy()
 raw_df['DOSE'] = raw_df.apply(lambda x:float(re.findall(r'\d+[\.]?\d*',x['DOSE'])[0]) if ('mg' in x['DOSE']) else (float(re.findall(r'\d+[\.]?\d*',x['DOSE'])[0]) * float(re.findall(r'\d+[\.]?\d*',x['약품명(일반명)'])[0])), axis=1)
 raw_df['DOSE'] = raw_df['DOSE'].astype(str)
 

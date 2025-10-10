@@ -9,14 +9,23 @@ resource_dir = f'{prj_dir}/resource'
 output_dir = f"{prj_dir}/results"
 # nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
 # lab_df.columns
+lactate_cols = ['Lactate (ICU용)', 'Lactate (마취과용)', 'Lactate (응급실용)', 'Lactate, Lactic acid (em)', ]
+pH_cols = ['pH', 'pH (i-STAT)']
+anc_cols = ['ANC', 'ANC (em)']
+plt_cols = ['PLT', 'PLT (em)']
+wbc_cols = ['WBC', 'WBC (em)', ]
+hb_cols = ['Hb', 'Hb (em)', ]
+total_cols = lactate_cols+pH_cols+anc_cols+plt_cols+wbc_cols+hb_cols
+
+
 lab_df = pd.read_csv(f"{output_dir}/lnz_final_lab_df.csv")
 # lab_df.columns
-lab_df['Lactate'] = lab_df[['Lactate (ICU용)', 'Lactate (마취과용)', 'Lactate (응급실용)', 'Lactate, Lactic acid (em)', ]].max(axis=1)
-lab_df['pH'] = lab_df[['pH', 'pH (i-STAT)']].min(axis=1)
-lab_df['ANC'] = lab_df[['ANC', 'ANC (em)']].min(axis=1)
-lab_df['PLT'] = lab_df[['PLT', 'PLT (em)']].min(axis=1)
-lab_df['WBC'] = lab_df[['WBC', 'WBC (em)', ]].min(axis=1)
-lab_df['Hb'] = lab_df[['Hb', 'Hb (em)', ]].min(axis=1)
+lab_df['Lactate'] = lab_df[lactate_cols].max(axis=1)
+lab_df['pH'] = lab_df[pH_cols].min(axis=1)
+lab_df['ANC'] = lab_df[anc_cols].min(axis=1)
+lab_df['PLT'] = lab_df[plt_cols].min(axis=1)
+lab_df['WBC'] = lab_df[wbc_cols].min(axis=1)
+lab_df['Hb'] = lab_df[hb_cols].min(axis=1)
 # lab_df['LACT']
 
 # lab_df.columns
