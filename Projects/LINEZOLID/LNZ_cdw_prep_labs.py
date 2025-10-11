@@ -90,7 +90,7 @@ for uid, uid_df in lab_result_df.groupby('UID',as_index=False): #break
 
     uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATE'], how='left')#.fillna(method='ffill')
 
-    # uid_fulldt_df.to_csv(f"{output_dir}/lnz_final_lab_df.csv", encoding='utf-8-sig', index=False, header=header, mode='a')
-    uid_fulldt_df.to_csv(f"{output_dir}/lnz_final_lab_df2.csv", encoding='utf-8-sig', index=False, header=header, mode='a')
+    uid_fulldt_df.to_csv(f"{output_dir}/lnz_final_lab_df.csv", encoding='utf-8-sig', index=False, header=header, mode='a')
+    # uid_fulldt_df.to_csv(f"{output_dir}/lnz_final_lab_df2.csv", encoding='utf-8-sig', index=False, header=header, mode='a')
 
     count += 1

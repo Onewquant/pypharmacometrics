@@ -164,20 +164,20 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
             tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df[endpoint_lab] < 4)].copy()
         elif endpoint_lab == 'Lactate':
             # lactate_cond =
-            sbl_rows = uid_sbase_lab_df[(~uid_sbase_lab_df[endpoint_lab].isna()) & (uid_sbase_lab_df[endpoint_lab] < 4) & (~uid_sbase_lab_df['pH'].isna()) & (uid_sbase_lab_df['pH'] >= 7.35)]
+            sbl_rows = uid_sbase_lab_df[(~uid_sbase_lab_df[endpoint_lab].isna()) & (uid_sbase_lab_df[endpoint_lab] < 5) & (~uid_sbase_lab_df['pH'].isna()) & (uid_sbase_lab_df['pH'] >= 7.35)]
 
             # sbl_row = sbl_rows.iloc[-1]
             try:
                 sbl_row = sbl_rows.iloc[-1]
                 # Baseline에서 Cr이 이미 높아지는 경우 제외
                 uid_sbase_check_df = uid_sbase_lab_df[uid_sbase_lab_df['DATE'] > sbl_row['DATE']].copy()
-                if ((uid_sbase_check_df[endpoint_lab] >= 4)&(uid_sbase_check_df['pH'] < 7.35)).sum() > 0:
+                if ((uid_sbase_check_df[endpoint_lab] >= 5)&(uid_sbase_check_df['pH'] < 7.35)).sum() > 0:
                     not_normal_base_lab_uids[endpoint_lab].append(uid)
                     continue
             except:
                 not_normal_base_lab_uids[endpoint_lab].append(uid)
                 continue
-            tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df[endpoint_lab] >= 4)&(uid_sadm_lab_df['pH'] < 7.35)].copy()
+            tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df[endpoint_lab] >= 5)&(uid_sadm_lab_df['pH'] < 7.35)].copy()
         else:
             raise ValueError
 
@@ -241,57 +241,17 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
 
 ###################################
 
+surv_res_df = pd.read_csv(f"{output_dir}/b1da_lnz_surv_res_df.csv")
 
-single_survres_df = surv_res_df.copy()
 
-anc_df = single_survres_df[single_survres_df['ENDPOINT']=='ANC'].copy()
-100 * len(anc_df[anc_df['EV']==1])/len(anc_df)
-
-lact_df = single_survres_df[single_survres_df['ENDPOINT']=='Lactate'].copy()
-100 * len(lact_df[lact_df['EV']==1])/len(lact_df)
-
-# from lifelines import KaplanMeierFitter
-# import matplotlib.pyplot as plt
-#
-# kmf = KaplanMeierFitter()
-# fig, ax = plt.subplots(figsize=(10, 8))
-#
-# final_rates = []  # 최종 발생률을 저장할 리스트
-#
-# for g, gdf in surv_res_df.groupby("ENDPOINT"):
-#     kmf.fit(durations=gdf["time"], event_observed=gdf["event"], label=f"{g}")
-#
-#     # 생존 확률 S(t)
-#     sf = kmf.survival_function_[kmf.survival_function_.columns[0]]
-#     # 누적발생률 CI(t) = 1 - S(t)
-#     ci_curve = 1 - sf
-#
-#     # 신뢰구간도 변환
-#     ci_bounds = 1 - kmf.confidence_interval_
-#     lower = ci_bounds.iloc[:, 1]  # 하한
-#     upper = ci_bounds.iloc[:, 0]  # 상한
-#
-#     # 곡선 그리기
-#     ax.step(ci_curve.index, ci_curve.values, where="post", label=f"{g}")
-#     ax.fill_between(ci_curve.index, lower, upper, step="post", alpha=0.2)
-#
-#     # 👉 최종 발생률(마지막 시점의 값)
-#     final_time = ci_curve.index[-1]
-#     final_value = ci_curve.iloc[-1]
-#     final_rates.append({"ENDPOINT": g, "final_cumulative_incidence": float(final_value)})
-#
-#     # 👉 그래프 끝점에 값 표시
-#     ax.text(final_time, final_value,
-#             f"{final_value*100:.3f}%",  # % 단위로 표시
-#             ha="left", va="center", fontsize=9)
-
+surv_res_df['ENDPOINT'] = surv_res_df['ENDPOINT'].map({'ANC':'Neutropenia','Hb':'Anemia','Lactate':'Lactic acidosis','PLT':'Thrombocytopenia','WBC':'Leukopenia'})
 
 from lifelines import KaplanMeierFitter
 import matplotlib.pyplot as plt
 import pandas as pd
 
 kmf = KaplanMeierFitter()
-fig, ax = plt.subplots(figsize=(15, 12))
+fig, ax = plt.subplots(figsize=(16, 12))
 
 final_rates = []  # 최종 발생률과 95% CI를 저장할 리스트
 
@@ -318,9 +278,25 @@ for g, gdf in surv_res_df.groupby("ENDPOINT"):
     final_high = float(upper_curve.iloc[-1])
 
     # 그래프 끝 지점에 값과 95% CI 표시
+    add_prev_newlines = ''
+    add_post_newlines = ''
+    test_vertical_pos = 'center'
+    if (g=='Anemia'):
+        add_prev_newlines = '\n'
+    elif (g=='lactatea'):
+        # test_vertical_pos = 'upper'
+        add_prev_newlines = '\n\n\n\n\n\n\n\n\n\n'
+    elif (g=='Neutropenia'):
+        add_post_newlines = '\n\n\n'
+    elif (g=='Leukopenia'):
+        add_post_newlines = '\n'
+    else:
+        pass
+
+
     ax.text(final_time, final_val,
-            f"  {final_val*100:.1f}%\n  [{final_low*100:.1f}–{final_high*100:.1f}%]",
-            ha="left", va="center", fontsize=12)
+            f"{add_prev_newlines}  {final_val*100:.1f}%\n  [{final_low*100:.1f}–{final_high*100:.1f}%]{add_post_newlines}",
+            ha="left", va=test_vertical_pos, fontsize=12)
 
     # DataFrame용으로 저장
     final_rates.append({

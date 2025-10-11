@@ -36,11 +36,16 @@ pd_list = ['ANC','WBC',  'Hb', 'PLT', 'Lactate', 'pH']
 etc_list1 = ['Creatinine (random urine)', 'Creatinine (urine, em)', 'Creatinine Clerarance (24hrs urine, Ccr)','Creatinine (24hrs urine) (g/day)', 'Creatinine (24hrs urine) (mg/dL)','Glucose (간이혈당기용)', 'Urine creatinine (24hrs urine)' ]
 etc_list2 = ['FBS (serum)', 'Fibrinogen', 'Microalbumin (random urine)', 'Microalbumin/Creatinine ratio', 'O₂CT', 'O₂SAT', 'O₂SAT(i-STAT)', 'Potasium(i-STAT)', 'Protein (random urine)', 'Protein/Creatinine ratio',  'Sodium(i-STAT)', 'TotalCO₂(i-STAT)',  'i- Calcium (i-STAT)', 'pCO₂', 'pCO₂(i-STAT)','pO₂', 'pO₂(i-STAT)',]
 
+raw_pd_list = ['ANC (em)', 'Hct', 'Hct (em)', 'Hct(i-STAT)', 'Hematocrit (ICU용)', 'Hematocrit (마취과용)', 'Hematocrit (응급실용)', 'PCT', 'PDW', 'PLT (em)', 'PT (%)', 'PT (INR)', 'PT (sec)', 'Plasma cell', 'Lymphocyte', 'MCH', 'MCHC', 'MCV', 'MPV', 'Metamyelocyte', 'Mixing test (PT, aPTT 제외)', 'Monocyte', 'Myelocyte', 'Normoblast', 'Other', 'Band neutrophil', 'Basophil',  'CBC (em) (differential count) RDW제외', 'Blast', 'Eosinophil', 'Eosinophil count',  '절대단구수', '절대림프구수', 'Promyelocyte', 'Prothrombin time (%) : MIX', 'Prothrombin time (INR) : MIX', 'Prothrombin time (sec) : MIX', 'RBC', 'RBC (em)', 'RDW(CV)', 'RDW(SD)', 'Reticulocyte', 'Segmented neutrophil', 'WBC (em)', 'Hb (em)', 'Hb(i-STAT)', 'Hemoglobin (ICU용)', 'Hemoglobin (마취과용)', 'Hemoglobin (응급실용)', 'Immature cell', 'Activated PTT : MIX', 'Atypical lymphocyte',  'BE', 'BE(i-STAT)','aPTT', 'aPTT (em)',]
+etc_list1 = []
+etc_list2 = ['Fibrinogen', 'O₂CT', 'O₂SAT', 'O₂SAT(i-STAT)', 'Potasium(i-STAT)',  'Sodium(i-STAT)', 'TotalCO₂(i-STAT)', 'i- Calcium (i-STAT)', 'pCO₂', 'pCO₂(i-STAT)','pO₂', 'pO₂(i-STAT)',]
+
 lab_df['ANC'] = lab_df[['ANC', 'ANC (em)']].min(axis=1)
 lab_df['PLT'] = lab_df[['PLT', 'PLT (em)']].min(axis=1)
 lab_df['WBC'] = lab_df[['WBC', 'WBC (em)', ]].min(axis=1)
 lab_df['Hb'] = lab_df[['Hb', 'Hb (em)', ]].min(axis=1)
 
+lab_df.drop(raw_pd_list,axis=1)
 lab_df = lab_df.drop(raw_pd_list+etc_list1+etc_list2,axis=1)
 
 lab_df['ALT'] = lab_df[['ALT(GPT) (em)','GPT (ALT)']].max(axis=1)
