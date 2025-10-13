@@ -90,9 +90,10 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
         # raise ValueError
 
         sbase_min_lab_date = (datetime.strptime(row['MIN_SINGLE_DATE'], '%Y-%m-%d') - timedelta(days=30)).strftime('%Y-%m-%d')
+        # sadm_post_lab_date = row['MAX_SINGLE_DATE']
+        sadm_post_lab_date = (datetime.strptime(row['MAX_SINGLE_DATE'], '%Y-%m-%d') + timedelta(days=5)).strftime('%Y-%m-%d')
         uid_sbase_lab_df = uid_lab_df[(uid_lab_df['DATE'] < row['MIN_SINGLE_DATE'])&(uid_lab_df['DATE'] >= sbase_min_lab_date)].sort_values(['DATE'])
-        # uid_sbase_lab_df = uid_lab_df[uid_lab_df['DATE'] < row['MIN_SINGLE_DATE']].sort_values(['DATE'])
-        uid_sadm_lab_df = uid_lab_df[(uid_lab_df['DATE'] >= row['MIN_SINGLE_DATE'])&(uid_lab_df['DATE'] <= row['MAX_SINGLE_DATE'])].sort_values(['DATE'])
+        uid_sadm_lab_df = uid_lab_df[(uid_lab_df['DATE'] >= row['MIN_SINGLE_DATE'])&(uid_lab_df['DATE'] <= sadm_post_lab_date)].sort_values(['DATE'])
         if len(uid_sbase_lab_df)==0:
             print(f"({inx}) {uid} / {endpoint_lab} / No sbase lab value")
             no_sbase_lab_uids[endpoint_lab].append(uid)

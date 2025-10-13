@@ -205,10 +205,12 @@ mdf = lnz_df.copy()
 mdf = mdf[~mdf['LNZ_DATES'].isna()].reset_index(drop=True)
 # mdf['UID'].drop_duplicates()
 mres_df = list()
+extra_df = list()
 np_intsec_adm = list()
 no_intsec_adm_count = 0
 no_single_adm = list()
 no_single_adm_count = 0
+diff_max = 0
 for inx, row in mdf.iterrows(): #break
     # if row['UID']==155505674746153:
     #     raise ValueError
@@ -218,19 +220,28 @@ for inx, row in mdf.iterrows(): #break
     min_lnz_date = min(row['LNZ_DATES'])
 
     single_drug_dates_diff = pd.to_datetime(single_drug_dates).diff().dt.days.fillna(1)
+    diff_max = max(max(single_drug_dates_diff),diff_max)
+    # if diff_max==2093.0:
+    #     raise ValueError
     # single_drug_dates.index <
     swo_inx = single_drug_dates_diff[single_drug_dates_diff >= 5].index.min()
     if np.isnan(swo_inx):
+        extra_drug_dates = list()
         pass
     else:
         # raise ValueError
-        single_drug_dates = single_drug_dates[single_drug_dates.index < swo_inx].copy()
+        extra_drug_dates = list(single_drug_dates[single_drug_dates_diff.index >= swo_inx].copy())
+        single_drug_dates = single_drug_dates[single_drug_dates_diff.index < swo_inx].copy()
 
     # wo_inx = single_drug_dates.loc[single_drug_dates['DATE_DIFF'] >= 5].index.min()
     mres_dict = {'UID':row['UID'],'SINGLE_DRUG':single_drug,'SINGLE_DAYS':len(single_drug_dates),"MIN_SINGLE_DATE":min(single_drug_dates),"MAX_SINGLE_DATE":max(single_drug_dates),'SINGLE_DATES':list(single_drug_dates),}
+    extra_df.append({'UID': row['UID'], 'EXTRA_DATES': extra_drug_dates})
     mres_df.append(mres_dict)
 
 mres_df = pd.DataFrame(mres_df)
+extra_df = pd.DataFrame(extra_df)
+# extra_df[extra_df['EXTRA_DATES'].map(len)>0]
+# extra_df[extra_df['UID']==148485123464195]
 
 # mres_df['SINGLE_DAYS'].mean()
 # mres_df['INTSEC_DAYS'].mean()

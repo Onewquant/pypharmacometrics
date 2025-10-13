@@ -69,8 +69,6 @@ lab_df['ESR'] = lab_df['ESR']
 lab_df['pH'] = lab_df[['pH', 'pH (i-STAT)']].min(axis=1)
 
 
-
-
 # list(surv_res_df['ENDPOINT'].unique())
 
 # uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATE'], how='left').fillna(method='ffill')
