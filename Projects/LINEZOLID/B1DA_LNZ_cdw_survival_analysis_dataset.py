@@ -278,19 +278,41 @@ for g, gdf in surv_res_df.groupby("ENDPOINT"):
     final_low = float(lower_curve.iloc[-1])
     final_high = float(upper_curve.iloc[-1])
 
+    # # 그래프 끝 지점에 값과 95% CI 표시
+    # add_prev_newlines = ''
+    # add_post_newlines = ''
+    # test_vertical_pos = 'center'
+    # if (g=='Anemia'):
+    #     add_prev_newlines = '\n'
+    # elif (g=='lactatea'):
+    #     # test_vertical_pos = 'upper'
+    #     add_prev_newlines = '\n\n\n\n\n\n\n\n\n\n'
+    # elif (g=='Neutropenia'):
+    #     add_post_newlines = '\n\n\n'
+    # elif (g=='Leukopenia'):
+    #     add_post_newlines = '\n'
+    # else:
+    #     pass
+
     # 그래프 끝 지점에 값과 95% CI 표시
     add_prev_newlines = ''
     add_post_newlines = ''
     test_vertical_pos = 'center'
     if (g=='Anemia'):
-        add_prev_newlines = '\n'
+        add_post_newlines = '\n'
+        pass
+    elif (g=='Thrombocytopenia'):
+        add_post_newlines = '\n'
+        pass
     elif (g=='lactatea'):
         # test_vertical_pos = 'upper'
-        add_prev_newlines = '\n\n\n\n\n\n\n\n\n\n'
+        # add_prev_newlines = '\n\n\n\n\n\n\n\n\n\n'
+        pass
     elif (g=='Neutropenia'):
-        add_post_newlines = '\n\n\n'
+        # add_post_newlines = '\n\n\n'
+        pass
     elif (g=='Leukopenia'):
-        add_post_newlines = '\n'
+        add_prev_newlines = '\n\n'
     else:
         pass
 

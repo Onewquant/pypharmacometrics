@@ -119,6 +119,7 @@ for endpoint, ep_surv_df in surv_res_df.groupby('ENDPOINT'):
         bl_date_bf1mo = (datetime.strptime(bl_date,'%Y-%m-%d')-timedelta(days=30)).strftime('%Y-%m-%d')
         ev_date = row['EV_DATE']
         ev = row['EV']
+        last_dose_date = row['LAST_ADM_DATE']
 
         res_dict = {'UID':uid}
 
@@ -170,7 +171,8 @@ for endpoint, ep_surv_df in surv_res_df.groupby('ENDPOINT'):
             res_dict[col] = bl_bs_row[col]
 
         # dose
-        uid_dose_df = dose_df[dose_df['UID']==uid].copy()
+        uid_dose_df = dose_df[(dose_df['UID']==uid)].copy()
+        uid_dose_df = uid_dose_df[(uid_dose_df['DATE'] >= bl_date) & (uid_dose_df['DATE'] <= last_dose_date)].copy()
         uid_cum_dose_df = uid_dose_df[(uid_dose_df['DATE'] >= bl_date) & (uid_dose_df['DATE'] <= ev_date)].copy()
         # if len(uid_cum_dose_df)>1:
         #     raise ValueError

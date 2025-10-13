@@ -62,7 +62,7 @@ for file_path in subgroup_files:
 
     # 3️⃣ 결과 테이블 생성
     demographic_table = pd.DataFrame(rows).sort_values('p_value').reset_index(drop=True)
-    if not os.path.exists(f'{output_dir}/b1da/mvlreg_output/subgroup_analysist'):
+    if not os.path.exists(f'{output_dir}/b1da/mvlreg_output/subgroup_analysis'):
         os.mkdir(f'{output_dir}/b1da/mvlreg_output/subgroup_analysis')
     demographic_table.to_csv(f"{output_dir}/b1da/mvlreg_output/subgroup_analysis/b1da_lnz_subgrpanalysis({subset_group})({pd_endpoint}).csv", index=False, encoding='utf-8-sig')
     print(demographic_table)
