@@ -98,7 +98,7 @@ for inx, endpoint in enumerate(['TOTAL','PLT', 'Hb', 'WBC', 'ANC', 'Lactate']):
         else:
             rows.append({
                 "Variable": c, "Type": "Continuous",
-                "Summary": f"{s.mean():.2f} ({s.std(ddof=1):.2f})",
+                "Summary": f"{s.mean():.1f} ({s.std(ddof=1):.1f})",
                 "N (non-missing)": int(s.shape[0])
             })
 
