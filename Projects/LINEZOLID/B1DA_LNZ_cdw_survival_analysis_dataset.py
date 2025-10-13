@@ -7,6 +7,8 @@ prj_name = 'LNZ'
 prj_dir = './Projects/LINEZOLID'
 resource_dir = f'{prj_dir}/resource'
 output_dir = f"{prj_dir}/results"
+if not os.path.exists(f'{output_dir}/b1da'):
+    os.mkdir(f'{output_dir}/b1da')
 # nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
 # lab_df.columns
 lactate_cols = ['Lactate (ICU용)', 'Lactate (마취과용)', 'Lactate (응급실용)', 'Lactate, Lactic acid (em)', ]
@@ -206,11 +208,12 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
 
 
 surv_res_df = pd.DataFrame(surv_res_df).sort_values(['time','event'])
-surv_res_df.to_csv(f"{output_dir}/b1da_lnz_surv_res_df.csv", encoding='utf-8-sig', index=False)
+surv_res_df.to_csv(f"{output_dir}/b1da/b1da_lnz_surv_res_df.csv", encoding='utf-8-sig', index=False)
 
 # surv_res_df['UID'].drop_duplicates()
 ###################################
-
+eligibility_df = list()
+eligibility_df.append({'List':'Total Linezolid-Administrated','Number':f"{len(adm_df['UID'].drop_duplicates())}"})
 print(f"# [Total Linezolid-Administrated]: {len(adm_df['UID'].drop_duplicates())}")
 
 for inx, endpoint_lab in enumerate(['PLT', 'ANC', 'Hb','WBC','Lactate']):
@@ -222,6 +225,7 @@ for inx, endpoint_lab in enumerate(['PLT', 'ANC', 'Hb','WBC','Lactate']):
         no_sadm_lab_value_set = no_sadm_lab_value_set.intersection(set(no_sadm_lab_uids[endpoint_lab]))
 no_either_lab_value_set = no_sbase_lab_value_set.union(no_sadm_lab_value_set)
 
+eligibility_df.append({'List':'(No lab value for baseline or adm period)','Number':f"-{len(no_either_lab_value_set)}"})
 print(f"  (No lab value for baseline or adm period: -{len(no_either_lab_value_set)})")
 # print(f"(No lab value for baseline or adm period: -{len((set(no_ibase_lab_uids)))})")
 # not_normal_integ_set = set()
@@ -230,19 +234,25 @@ for inx, endpoint_lab in enumerate(['PLT', 'ANC', 'Hb','WBC','Lactate']):
         not_normal_integ_set = set(not_normal_base_lab_uids[endpoint_lab])
     else:
         not_normal_integ_set = not_normal_integ_set.intersection(set(not_normal_base_lab_uids[endpoint_lab]))
+
+
+eligibility_df.append({'List':'(Not normal value in baseline period)','Number':f"-{len(not_normal_integ_set)}"})
 print(f"  (Not normal value in baseline period: -{len(not_normal_integ_set)})")
 
 # for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
 #     print(f"Not normal baseline value ({endpoint_lab}): {len(not_normal_base_lab_uids[endpoint_lab])}")
 
+eligibility_df.append({'List':'Survival Analysis','Number':f"{len(surv_res_df['UID'].drop_duplicates())}"})
 print(f"# [Survival Analysis]: {len(surv_res_df['UID'].drop_duplicates())}")
 for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
+    eligibility_df.append({'List': f' SA_Subgroup ({endpoint_lab})', 'Number': f"{len(surv_res_df[surv_res_df['ENDPOINT']==endpoint_lab]['UID'].drop_duplicates())}"})
     print(f"  SA_Subgroup ({endpoint_lab}): {len(surv_res_df[surv_res_df['ENDPOINT']==endpoint_lab]['UID'].drop_duplicates())}")
 
-
+eligibility_df = pd.DataFrame(eligibility_df)
+eligibility_df.to_csv(f"{output_dir}/b1da/b1da_lnz_eligibility_criteria_df.csv", encoding='utf-8-sig', index=False)
 ###################################
 
-surv_res_df = pd.read_csv(f"{output_dir}/b1da_lnz_surv_res_df.csv")
+surv_res_df = pd.read_csv(f"{output_dir}/b1da/b1da_lnz_surv_res_df.csv")
 
 
 surv_res_df['ENDPOINT'] = surv_res_df['ENDPOINT'].map({'ANC':'Neutropenia','Hb':'Anemia','Lactate':'Lactic acidosis','PLT':'Thrombocytopenia','WBC':'Leukopenia'})
@@ -271,6 +281,11 @@ for g, gdf in surv_res_df.groupby("ENDPOINT"):
     # 3. 곡선과 신뢰구간 그림
     ax.step(ci_curve.index, ci_curve.values, where="post", label=f"{g}")
     ax.fill_between(ci_curve.index, lower_curve, upper_curve, step="post", alpha=0.2)
+
+    # Crude 발생률
+    crude_subtotal_n = len(gdf)
+    crude_event_n = len(gdf[gdf['EV']==1])
+    crude_incidence = crude_event_n/crude_subtotal_n
 
     # 4. 최종(마지막 시점) 누적 발생률과 95% CI 추출
     final_time = ci_curve.index[-1]
@@ -324,6 +339,9 @@ for g, gdf in surv_res_df.groupby("ENDPOINT"):
     # DataFrame용으로 저장
     final_rates.append({
         "ENDPOINT": g,
+        "crude_incidence": crude_incidence,
+        "crude_subtotal_n": crude_subtotal_n,
+        "crude_event_n": crude_event_n,
         "final_cumulative_incidence": final_val,
         "lower_95CI": final_low,
         "upper_95CI": final_high
@@ -339,8 +357,15 @@ ax.grid(True, linestyle="--")
 ax.legend(title="Group", title_fontsize=12, fontsize=12)
 
 plt.tight_layout()
-plt.savefig(f"{output_dir}/B1DA_KM_plot(ADRs).png")  # PNG 파일로 저장
+plt.savefig(f"{output_dir}/b1da/B1DA_KM_plot(ADRs).png")  # PNG 파일로 저장
 
 # 👉 최종 발생률을 DataFrame으로 정리
 final_df = pd.DataFrame(final_rates)
-print(final_df)
+incidence_res_df = final_df.copy()
+# incidence_res_df.columns
+incidence_res_df['incidence (crude analysis)'] = incidence_res_df.apply(lambda x:f"{round(x['crude_incidence']*100,1)} ({x['crude_event_n']}/{x['crude_subtotal_n']})",axis=1)
+incidence_res_df['cumulative incidence (KM analysis)'] = incidence_res_df.apply(lambda x:f"{round(x['final_cumulative_incidence']*100,1)} ({round(x['lower_95CI']*100,1)}-{round(x['upper_95CI']*100,1)})",axis=1)
+incidence_res_df = incidence_res_df[['ENDPOINT', 'incidence (crude analysis)', 'cumulative incidence (KM analysis)']].copy()
+incidence_res_df = incidence_res_df.sort_values(['cumulative incidence (KM analysis)'], ascending=False)
+incidence_res_df.to_csv(f"{output_dir}/b1da/b1da_lnz_incidence_table.csv", encoding='utf-8-sig', index=False)
+# print(incidence_res_df)

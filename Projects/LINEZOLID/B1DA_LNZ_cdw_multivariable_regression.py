@@ -23,7 +23,7 @@ lab_df = pd.read_csv(f"{output_dir}/lnz_final_lab_df.csv")
 # lab_df = pd.read_csv(f"{output_dir}/lnz_final_lab_df2.csv")
 bodysize_df = pd.read_csv(f"{output_dir}/lnz_final_bodysize_df.csv")
 dose_df = pd.read_csv(f"{output_dir}/lnz_final_dose_df.csv")
-surv_res_df = pd.read_csv(f"{output_dir}/b1da_lnz_surv_res_df.csv")
+surv_res_df = pd.read_csv(f"{output_dir}/b1da/b1da_lnz_surv_res_df.csv")
 dose_df['UID'].drop_duplicates()
 # surv_res_df['UID'].drop_duplicates()
 # surv_res_df['']
@@ -221,8 +221,8 @@ for endpoint in surv_res_df['ENDPOINT'].unique():
     # endpoint = 'ANC'
 
     epreg_df = ep_res_dict[endpoint].copy()
-    if not os.path.exists(f'{output_dir}/b1da'):
-        os.mkdir(f'{output_dir}/b1da')
+    # if not os.path.exists(f'{output_dir}/b1da'):
+    #     os.mkdir(f'{output_dir}/b1da')
     if not os.path.exists(f'{output_dir}/b1da/datacheck'):
         os.mkdir(f'{output_dir}/b1da/datacheck')
     epreg_df.to_csv(f"{output_dir}/b1da/datacheck/b1da_lnz_datacheck_{endpoint}_df.csv", encoding='utf-8-sig', index=False)
