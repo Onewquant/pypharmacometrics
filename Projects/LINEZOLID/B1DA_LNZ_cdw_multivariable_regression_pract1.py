@@ -225,6 +225,10 @@ def fit_ev_logistic(df,
     #     res = model.fit()
     #     fitted_with = "GLM Binomial (fallback)"
 
+    # 추가처리
+    # if 'CUM_DOSE' in X.columns:
+    #     X['CUM_DOSE'] = X['CUM_DOSE']/600
+
     model = sm.Logit(y, X)
     res = model.fit(disp=False, maxiter=200)
     fitted_with = "Logit"

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from scipy.stats import spearmanr
 
 prj_name = 'LNZ'
-prj_dir = './Projects/LINEZOLID'
+prj_dir = 'C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/LINEZOLID'
 resource_dir = f'{prj_dir}/resource'
 output_dir = f"{prj_dir}/results"
 if not os.path.exists(f'{output_dir}/b1da'):
@@ -20,9 +20,10 @@ hb_cols = ['Hb', 'Hb (em)', ]
 total_cols = lactate_cols+pH_cols+anc_cols+plt_cols+wbc_cols+hb_cols
 
 
-lab_df = pd.read_csv(f"{output_dir}/lnz_final_lab_df.csv")
+lab_df = pd.read_csv(f"{output_dir}/lnz_final_lab_df.csv")[['UID','DATE']+total_cols]
 # lab_df.columns
 lab_df['Lactate'] = lab_df[lactate_cols].max(axis=1)
+lab_df = lab_df.drop(columns=lactate_cols, axis=1)
 lab_df['pH'] = lab_df[pH_cols].min(axis=1)
 lab_df['ANC'] = lab_df[anc_cols].min(axis=1)
 lab_df['PLT'] = lab_df[plt_cols].min(axis=1)
@@ -56,6 +57,7 @@ surv_res_df = list()
 # lab_df.columns
 # lab_df['WBC']
 
+max_time_at_risk = 365
 
 for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
 # for endpoint_lab in ['ANC', 'Lactate']:
@@ -64,7 +66,6 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
     # max_time_at_risk = 365
     # adm_df.columns
     # max_time_at_risk = 90
-    max_time_at_risk = 365
     not_normal_base_lab_uids[endpoint_lab] = list()
     no_sbase_lab_uids[endpoint_lab] = list()
     no_sadm_lab_uids[endpoint_lab] = list()
@@ -208,7 +209,7 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
 
 
 surv_res_df = pd.DataFrame(surv_res_df).sort_values(['time','event'])
-surv_res_df.to_csv(f"{output_dir}/b1da/b1da_lnz_surv_res_df.csv", encoding='utf-8-sig', index=False)
+surv_res_df.to_csv(f"{output_dir}/b1da/b1da_lnz_surv_res_df({max_time_at_risk}).csv", encoding='utf-8-sig', index=False)
 
 # surv_res_df['UID'].drop_duplicates()
 ###################################
@@ -249,10 +250,10 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
     print(f"  SA_Subgroup ({endpoint_lab}): {len(surv_res_df[surv_res_df['ENDPOINT']==endpoint_lab]['UID'].drop_duplicates())}")
 
 eligibility_df = pd.DataFrame(eligibility_df)
-eligibility_df.to_csv(f"{output_dir}/b1da/b1da_lnz_eligibility_criteria_df.csv", encoding='utf-8-sig', index=False)
+eligibility_df.to_csv(f"{output_dir}/b1da/b1da_lnz_eligibility_criteria_df({max_time_at_risk}).csv", encoding='utf-8-sig', index=False)
 ###################################
 
-surv_res_df = pd.read_csv(f"{output_dir}/b1da/b1da_lnz_surv_res_df.csv")
+surv_res_df = pd.read_csv(f"{output_dir}/b1da/b1da_lnz_surv_res_df({max_time_at_risk}).csv")
 
 
 surv_res_df['ENDPOINT'] = surv_res_df['ENDPOINT'].map({'ANC':'Neutropenia','Hb':'Anemia','Lactate':'Lactic acidosis','PLT':'Thrombocytopenia','WBC':'Leukopenia'})
@@ -357,7 +358,7 @@ ax.grid(True, linestyle="--")
 ax.legend(title="Group", title_fontsize=12, fontsize=12)
 
 plt.tight_layout()
-plt.savefig(f"{output_dir}/b1da/B1DA_KM_plot(ADRs).png")  # PNG 파일로 저장
+plt.savefig(f"{output_dir}/b1da/B1DA_KM_plot(ADRs)({max_time_at_risk}).png")  # PNG 파일로 저장
 
 # 👉 최종 발생률을 DataFrame으로 정리
 final_df = pd.DataFrame(final_rates)
@@ -367,5 +368,5 @@ incidence_res_df['incidence (crude analysis)'] = incidence_res_df.apply(lambda x
 incidence_res_df['cumulative incidence (KM analysis)'] = incidence_res_df.apply(lambda x:f"{round(x['final_cumulative_incidence']*100,1)} ({round(x['lower_95CI']*100,1)}-{round(x['upper_95CI']*100,1)})",axis=1)
 incidence_res_df = incidence_res_df[['ENDPOINT', 'incidence (crude analysis)', 'cumulative incidence (KM analysis)']].copy()
 incidence_res_df = incidence_res_df.sort_values(['cumulative incidence (KM analysis)'], ascending=False)
-incidence_res_df.to_csv(f"{output_dir}/b1da/b1da_lnz_incidence_table.csv", encoding='utf-8-sig', index=False)
+incidence_res_df.to_csv(f"{output_dir}/b1da/b1da_lnz_incidence_table({max_time_at_risk}).csv", encoding='utf-8-sig', index=False)
 # print(incidence_res_df)
