@@ -57,7 +57,7 @@ surv_res_df = list()
 # lab_df.columns
 # lab_df['WBC']
 
-max_time_at_risk = 365
+max_time_at_risk = 60
 
 for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
 # for endpoint_lab in ['ANC', 'Lactate']:
@@ -266,7 +266,6 @@ kmf = KaplanMeierFitter()
 basic_size=13.5
 fig, ax = plt.subplots(figsize=(basic_size+3.5 if max_time_at_risk > 190 else basic_size, 12))
 
-
 final_rates = []  # 최종 발생률과 95% CI를 저장할 리스트
 
 for g, gdf in surv_res_df.groupby("ENDPOINT"):
@@ -316,21 +315,22 @@ for g, gdf in surv_res_df.groupby("ENDPOINT"):
     add_prev_newlines = ''
     add_post_newlines = ''
     test_vertical_pos = 'center'
+
     if (g=='Anemia'):
-        add_post_newlines = '\n'
+        add_prev_newlines = '\n'
         pass
     elif (g=='Thrombocytopenia'):
         add_post_newlines = '\n'
         pass
     elif (g=='Lactic acidosis'):
-        # test_vertical_pos = 'upper'
-        # add_prev_newlines = '\n\n\n\n\n\n\n\n\n\n'
+        add_prev_newlines = '\n'
         pass
     elif (g=='Neutropenia'):
-        # add_post_newlines = '\n\n\n'
+        add_post_newlines = '\n'
         pass
     elif (g=='Leukopenia'):
-        add_prev_newlines = '\n\n'
+        add_prev_newlines = ''
+        pass
     else:
         pass
 

@@ -263,7 +263,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 kmf = KaplanMeierFitter()
-fig, ax = plt.subplots(figsize=(16, 12))
+basic_size=13.5
+fig, ax = plt.subplots(figsize=(basic_size+3.5 if max_time_at_risk > 190 else basic_size, 12))
 
 final_rates = []  # 최종 발생률과 95% CI를 저장할 리스트
 
@@ -314,21 +315,22 @@ for g, gdf in surv_res_df.groupby("ENDPOINT"):
     add_prev_newlines = ''
     add_post_newlines = ''
     test_vertical_pos = 'center'
+
     if (g=='Anemia'):
-        add_post_newlines = '\n'
+        add_prev_newlines = '\n'
         pass
     elif (g=='Thrombocytopenia'):
         add_post_newlines = '\n'
         pass
-    elif (g=='lactatea'):
-        # test_vertical_pos = 'upper'
-        # add_prev_newlines = '\n\n\n\n\n\n\n\n\n\n'
+    elif (g=='Lactic acidosis'):
+        add_prev_newlines = '\n'
         pass
     elif (g=='Neutropenia'):
-        # add_post_newlines = '\n\n\n'
+        add_post_newlines = '\n'
         pass
     elif (g=='Leukopenia'):
-        add_prev_newlines = '\n\n'
+        add_prev_newlines = ''
+        pass
     else:
         pass
 
@@ -353,7 +355,7 @@ ax.set_title("Cumulative Incidence (ADRs) by Group (with 95% CI)",fontsize=14)
 ax.set_xlabel("Time (Days)",fontsize=14)
 ax.set_ylabel(f"Cumulative Incidence (ADRs)",fontsize=14)
 ax.set_ylim(0, 1.1)
-ax.set_xlim(0, 400)
+ax.set_xlim(0, int(400/(int(365/max_time_at_risk))))
 ax.grid(True, linestyle="--")
 ax.legend(title="Group", title_fontsize=12, fontsize=12)
 
