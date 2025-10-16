@@ -131,77 +131,83 @@ def drop_by_vif(X: pd.DataFrame, threshold: float = 10.0, max_iter: int = 50):
             break
     return X_work, dropped
 
-def fit_ev_logistic(df,
-                    out_csv: str = None,
-                    corr_threshold: float = 0.9,
-                    vif_threshold: float = 10.0,
-                    enable_corr_filter: bool = True,
-                    enable_vif_filter: bool = True,
-                    verbose: bool = True,
-                    drop_intercept_in_output: bool = True,
-                    filename_add: str = '',):
 
 
-    # csv_path=csv_path
-    # out_csv=out_csv
-    # corr_threshold=0.7     # |r| 임계값 (보통 0.8~0.95)
-    # vif_threshold=10.0     # VIF 임계값 (보통 5 또는 10)
-    # enable_corr_filter=True
-    # enable_vif_filter=True
-    # verbose=True
+# 사용 예시: 경로만 바꿔서 실행하세요.
+output_dir = 'C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/LINEZOLID/results'
+multivar_totres_df = list()
+multivar_res_df = list()
+orthreshold_dict = {True: 0.5, False: 0.33}
+for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
 
-    # 1) 데이터 로드
+    csv_path = f"{output_dir}/b1da/mvlreg/b1da_lnz_mvlreg_{endpoint}_df.csv"     # <-- 본인 파일 경로
 
-    if "EV" not in df.columns:
-        raise ValueError("데이터에 'EV' 컬럼이 필요합니다.")
+    if not os.path.exists(f'{output_dir}/b1da/mvlreg_output_glm'):
+        os.mkdir(f'{output_dir}/b1da/mvlreg_output_glm')
 
-    # 2) 타깃 y 준비(이진화)
+    out_csv = f"{output_dir}/b1da/mvlreg_output_glm/b1da_lnz_mvlreg_{endpoint}_res.csv"
+
+    # raise ValueError
+    df_ori = pd.read_csv(csv_path)
+    active_cols = [c for c in df_ori.columns if ('(TOTAL' not in c)]
+    df_ori = df_ori[active_cols].copy()
+
+    age_subgroup = 'Total_Adult'
+    df = df_ori[df_ori['DOSE_PERIOD'] >= 1].copy()
+    if age_subgroup=='Adult':
+        df = df[(df['AGE'] >= 19)&(df['AGE'] < 65)].copy()
+    elif age_subgroup=='Total_Adult':
+        df = df[(df['AGE'] >= 19)].copy()
+    elif age_subgroup=='Elderly':
+        df = df[(df['AGE'] >= 65)].copy()
+    elif age_subgroup=='Pediatric':
+        df = df[df['AGE'] < 19].copy()
+    else:
+        raise ValueError
+
+
+
+
+    # res, or_table, info = fit_ev_logistic(
+    corr_threshold=0.8     # |r| 임계값 (보통 0.8~0.95)
+    vif_threshold=10.0     # VIF 임계값 (보통 5 또는 10)
+    enable_corr_filter=True
+    enable_vif_filter=True
+    verbose=True
+    filename_add=age_subgroup
+
+    # 1) 타깃 y 준비(이진화)
     y = _to_binary_series(df["EV"])
 
-    # 3) 설명변수 X = EV 제외 전부
+    # 2) 설명변수 X = EV 제외 전부
     X = df.drop(columns=["EV"]).copy()
 
-    # 4) 숫자/범주 분리
+    # 3) 숫자/범주 분리
     num_cols = X.select_dtypes(include=[np.number]).columns.tolist()
 
-    # 5) 숫자 컬럼 정리: inf -> NaN -> median 대치
+    # 4) 숫자 컬럼 정리: inf -> NaN -> median 대치
     if num_cols:
         X[num_cols] = X[num_cols].replace([np.inf, -np.inf], np.nan)
         X[num_cols] = X[num_cols].fillna(X[num_cols].median())
 
-
-    # cat_cols = [c for c in X.columns if c not in num_cols]
-    # # 6) 범주 컬럼 정리: mode 대치 -> 원-핫 인코딩
-    # if cat_cols:
-    #     for c in cat_cols:
-    #         mode_val = X[c].mode(dropna=True)
-    #         fill_val = mode_val.iloc[0] if len(mode_val) else "MISSING"
-    #         X[c] = X[c].fillna(fill_val).astype(str)
-    #     X = pd.get_dummies(X, columns=cat_cols, drop_first=True)
-
-    if X.shape[1] == 0:
-        raise ValueError("EV 외 설명변수가 없습니다.")
-
-    # 7) 0-분산(상수) 컬럼 제거
+    # 5) 0-분산(상수) 컬럼 제거
     zero_var_cols = [c for c in X.columns if X[c].nunique(dropna=False) <= 1]
     if zero_var_cols:
         if verbose:
-            # print(f"[Zero-variance drop] {zero_var_cols}")
             pass
         X = X.drop(columns=zero_var_cols)
 
-    # 8) [추가] 상관계수 기반 컬럼 제거
+    # 6) [추가] 상관계수 기반 컬럼 제거
     corr_dropped = []
     if enable_corr_filter and X.shape[1] > 1:
         X, corr_dropped = drop_by_correlation(X, threshold=corr_threshold)
         if verbose and corr_dropped:
-            # print(f"[Correlation filter |r|>{corr_threshold}] dropped: {corr_dropped}")
             pass
 
-    # 9) 상수항 추가
+    # 7) 상수항 추가
     X = add_constant(X, has_constant='add')
 
-    # 10) [추가] VIF 기반 반복 제거 (상수항 제외)
+    # 8) [추가] VIF 기반 반복 제거 (상수항 제외)
     vif_dropped = []
     if enable_vif_filter and X.shape[1] > 2:  # const + >=2 features
         X, vif_dropped = drop_by_vif(X, threshold=vif_threshold, max_iter=100)
@@ -213,230 +219,37 @@ def fit_ev_logistic(df,
     X = X.astype(float)
     y = y.astype(int)
 
-    # 12) 적합 (Logit → 문제시 GLM Binomial 폴백)
-    # try:
-    #     # print('test1')
-    #     model = sm.Logit(y, X)
-    #     res = model.fit(disp=False, maxiter=200)
-    #     fitted_with = "Logit"
-    # except (PerfectSeparationError, np.linalg.LinAlgError):
-    #     # print('test2')
-    #     model = sm.GLM(y, X, family=sm.families.Binomial())
-    #     res = model.fit()
-    #     fitted_with = "GLM Binomial (fallback)"
+    X = X.rename(columns={'const': 'PID'})
+    X = X.reset_index(drop=True)
+    X['PID'] = X.index
+    X = add_constant(X, has_constant='add')
+    X = X.rename(columns={'const':'y'})
+    X['y'] = y
+    X = add_constant(X, has_constant='add')
+    X = X.rename(columns={'const': 'ENDPOINT'})
+    X['ENDPOINT'] = endpoint
+    if not os.path.exists(f'{output_dir}/b1da/mvlreg_output_glm/r'):
+        os.mkdir(f'{output_dir}/b1da/mvlreg_output_glm/r')
+    X.to_csv(f"{output_dir}/b1da/mvlreg_output_glm/r/b1da_lnz_mvlreg_datasubset({endpoint}).csv", index=False, encoding='utf-8-sig')
 
-    model = sm.Logit(y, X)
-    res = model.fit(disp=False, maxiter=200)
-    fitted_with = "Logit"
-
-    # model = sm.GLM(y, X, family=sm.families.Binomial())
-    # res = model.fit()
-    # fitted_with = "GLM Binomial (fallback)"
+    raise ValueError
 
 
-    # except (PerfectSeparationError, np.linalg.LinAlgError):
-    #     # print('test2')
-    #     model = sm.Logit(y, X)
-    #     res = model.fit(disp=False, maxiter=200)
-    #     fitted_with = "Logit"
+    if not os.path.exists(f'{output_dir}/b1da/mvlreg_output/datasubset'):
+        os.mkdir(f'{output_dir}/b1da/mvlreg_output/datasubset')
+    df.to_csv(f"{output_dir}/b1da/mvlreg_output/datasubset/b1da_lnz_mvlreg_datasubset({age_subgroup})({endpoint}).csv", index=False, encoding='utf-8-sig')
 
-    # except Exception as e:
-    #     raise
+    print(sig_res_frag)
+    # print(f"\nSaved OR table to: {out_csv}")
 
-    # 13) OR 테이블 구성
-    params = res.params
-    conf = res.conf_int()
-    conf.columns = ["2.5%", "97.5%"]
-    or_table = pd.DataFrame({
-        "feature": params.index,
-        "beta": params.values,
-        "aOR": np.exp(params.values),
-        "aOR CI2.5%": np.exp(conf["2.5%"].values),
-        "aOR CI97.5%": np.exp(conf["97.5%"].values),
-        "pvalue": res.pvalues.values,
-    })
-
-    # 14) 다중비교 보정: Benjamini–Hochberg FDR
-    _, p_adj, _, _ = multipletests(or_table["pvalue"].values, method="fdr_bh")
-    or_table["pvalue_adj"] = p_adj
-
-    # 14) 다중비교 보정: Bonferroni
-    # _, p_adj, _, _ = multipletests(or_table["pvalue"].values, method="bonferroni")
-    # or_table["pvalue_adj"] = p_adj
-
-
-    # 15) Univariable Logistic Regression 추가
-
-    uni_results = []
-
-    for col in X.columns:
-        if col == "const":
-            continue
-        try:
-            Xi = sm.add_constant(X[[col]], has_constant="add")
-            model_uni = sm.Logit(y, Xi)
-            res_uni = model_uni.fit(disp=False, maxiter=200)
-            params_uni = res_uni.params
-            conf_uni = res_uni.conf_int(alpha=0.05)
-            conf_uni.columns = ["2.5%", "97.5%"]
-
-            uni_results.append({
-                "feature": col,
-                "uni_beta": params_uni[col],
-                "uni_OR": np.exp(params_uni[col]),
-                "uni_CI2.5%": np.exp(conf_uni.loc[col, "2.5%"]),
-                "uni_CI97.5%": np.exp(conf_uni.loc[col, "97.5%"]),
-                "uni_pvalue": res_uni.pvalues[col],
-            })
-        except (PerfectSeparationError, np.linalg.LinAlgError):
-            uni_results.append({
-                "feature": col,
-                "uni_beta": np.nan,
-                "uni_OR": np.nan,
-                "uni_CI2.5%": np.nan,
-                "uni_CI97.5%": np.nan,
-                "uni_pvalue": np.nan,
-            })
-
-    uni_table = pd.DataFrame(uni_results)
-
-    # -------------------------------
-    # 15) 다변량 + 단변량 병합
-    # -------------------------------
-    or_table = or_table.merge(uni_table, on="feature", how="left")
-
-
-    if drop_intercept_in_output and "const" in or_table["feature"].values:
-        or_table = or_table[or_table["feature"] != "const"].copy()
-
-    # or_table = or_table.sort_values("pvalue").reset_index(drop=True)
-    or_table = or_table.sort_values("pvalue_adj").reset_index(drop=True)
-
-    # 14) 결과 저장
-    if out_csv:
-        rp_str = '.csv' if filename_add=='' else f"({filename_add}).csv"
-        or_table.to_csv(out_csv.replace('.csv',rp_str), index=False)
-
-    # 15) 진단 정보 리턴
-    final_vif = compute_vif(add_constant(X.drop(columns=["const"]), has_constant='add')) \
-                if "const" in X.columns else compute_vif(X)
-
-    info = {
-        "fitted_with": fitted_with,
-        "corr_dropped": corr_dropped,
-        "vif_dropped": vif_dropped,
-        "final_features": [c for c in X.columns if c != "const"],
-        "final_vif": final_vif.sort_values("VIF", ascending=False).reset_index(drop=True)
-    }
-    return res, or_table, info
-
-
-# 사용 예시: 경로만 바꿔서 실행하세요.
-output_dir = 'C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/LINEZOLID/results'
-multivar_totres_df = list()
-multivar_res_df = list()
-orthreshold_dict = {True: 0.5, False: 0.33}
-for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
-# for endpoint in ['ANC', ]:
-    # endpoint = 'PLT'
-    # endpoint = 'Hb'
-    # endpoint = 'WBC'
-    # endpoint = 'ANC'
-    # endpoint = 'Lactate'
-
-    csv_path = f"{output_dir}/b1da/mvlreg/b1da_lnz_mvlreg_{endpoint}_df.csv"     # <-- 본인 파일 경로
-
-    if not os.path.exists(f'{output_dir}/b1da/mvlreg_output'):
-        os.mkdir(f'{output_dir}/b1da/mvlreg_output')
-
-    out_csv = f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_{endpoint}_res.csv"
-
-    # raise ValueError
-    df_ori = pd.read_csv(csv_path)
-    active_cols = [c for c in df_ori.columns if ('(TOTAL' not in c)]
-    df_ori = df_ori[active_cols].copy()
-
-    # df_ori.columns
-
-    # raise ValueError
-
-    # for age_subgroup in ['Adult','Elderly','Total_Adult']:
-    for age_subgroup in ['Elderly','Total_Adult']:
-        # df.columns
-        df = df_ori[df_ori['DOSE_PERIOD'] >= 1].copy()
-        # df = df.drop(['DOSE_PERIOD(TOTAL)'], axis=1)
-        # df = df.drop(['DOSE_PERIOD(TOTAL)','CUM_DOSE', 'DOSE_PERIOD', 'DOSE24', 'DOSE24PERWT'], axis=1)
-        # df = df.drop(['DOSE_PERIOD(TOTAL)', 'DOSE_PERIOD', 'DOSE24',], axis=1)
-
-        # if endpoint == 'Lactate':
-        #     df = df.drop(['Lactate', 'pH'], axis=1)
-        # df.columns
-    # for age_subgroup in ['Pediatric','Adult','Elderly','Total_Adult']:
-    # for age_subgroup in ['Elderly','Total_Adult']:
-
-        if age_subgroup=='Adult':
-            df = df[(df['AGE'] >= 19)&(df['AGE'] < 65)].copy()
-        elif age_subgroup=='Total_Adult':
-            df = df[(df['AGE'] >= 19)].copy()
-        elif age_subgroup=='Elderly':
-            df = df[(df['AGE'] >= 65)].copy()
-        elif age_subgroup=='Pediatric':
-            df = df[df['AGE'] < 19].copy()
-        else:
-            raise ValueError
-
-        # 데이터 Subset 저장
-
-        # if endpoint=='lactate':
-        #     raise ValueError
-
-        res, or_table, info = fit_ev_logistic(
-            df=df,
-            out_csv=out_csv,
-            corr_threshold=0.8,     # |r| 임계값 (보통 0.8~0.95)
-            vif_threshold=10.0,     # VIF 임계값 (보통 5 또는 10)
-            enable_corr_filter=True,
-            enable_vif_filter=True,
-            verbose=True,
-            filename_add=age_subgroup,
-        )
-
-        # print(f"[Fitted with] / {endpoint} / {info['fitted_with']}")
-        # print(f"\n[Model Summary ({endpoint})]")
-        # print(res.summary())
-        print(f"\n[Odds Ratio Table ({endpoint})]")
-        # or_threshold = 0.5
-        # or_threshold = 0.0
-        or_table['aOR threshold'] = (or_table['aOR'] >= 1).map(orthreshold_dict)
-        or_table['endpoint'] = endpoint
-        or_table['subgroup'] = age_subgroup
-        or_table['N'] = len(df)
-        or_table['EVN'] = int(sum(df['EV']))
-        or_table['EVPct'] = round(100*sum(df['EV'])/len(df),2)
-        pv_cond = (or_table['pvalue_adj'] < 0.05)
-        or_cond = ((np.abs(or_table['aOR']-1) >= or_table['aOR threshold']))
-        # sig_res_frag = or_table[(or_table['pvalue'] < 0.05) & (np.abs(or_table['OR'] - 1) >= or_threshold)].copy()
-        sig_res_frag = or_table[pv_cond&or_cond].copy()
-
-        multivar_totres_df.append(or_table.copy())
-
-        # sig_res_frag = sig_res_frag[['subgroup','endpoint','N','EVN','EVPct']+list(sig_res_frag.columns)[:-4]]
-        # multivar_res_df.append(sig_res_frag.copy())
-        if not os.path.exists(f'{output_dir}/b1da/mvlreg_output/datasubset'):
-            os.mkdir(f'{output_dir}/b1da/mvlreg_output/datasubset')
-        df.to_csv(f"{output_dir}/b1da/mvlreg_output/datasubset/b1da_lnz_mvlreg_datasubset({age_subgroup})({endpoint}).csv", index=False, encoding='utf-8-sig')
-
-        print(sig_res_frag)
-        # print(f"\nSaved OR table to: {out_csv}")
-
-        print(f"\n[Correlation dropped ({endpoint})]")
-        print(info["corr_dropped"])
-        print(f"\n[VIF dropped ({endpoint})]")
-        print(info["vif_dropped"])
-        print(f"\n[Final features ({endpoint})]")
-        print(info["final_features"])
-        # print(f"\n[Final VIF ({endpoint})]")
-        # print(info["final_vif"])
+    print(f"\n[Correlation dropped ({endpoint})]")
+    print(info["corr_dropped"])
+    print(f"\n[VIF dropped ({endpoint})]")
+    print(info["vif_dropped"])
+    print(f"\n[Final features ({endpoint})]")
+    print(info["final_features"])
+    # print(f"\n[Final VIF ({endpoint})]")
+    # print(info["final_vif"])
 
 # df[df['DOSE_PERIOD']!=0]
 # multivar_res_df.columns
