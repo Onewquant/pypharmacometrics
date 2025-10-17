@@ -17,14 +17,16 @@ output_dir = f"{prj_dir}/results"
 # str(list(dose_df['DOSE'].astype(int).drop_duplicates().sort_values().reset_index(drop=True))).replace("', '",", ")
 # str(list(dose_df['DAILY_DOSE'].astype(int).drop_duplicates().sort_values().reset_index(drop=True))).replace("', '",", ")
 # dose_df['DOSAGE_REGIMEN'].drop_duplicates().reset_index(drop=True)
+surv_res_df = pd.read_csv(f"{output_dir}/b1da/b1da_lnz_surv_res_df(365).csv")
 
 ptinfo_df = pd.read_csv(f"{output_dir}/lnz_final_ptinfo_df.csv")
 lab_df = pd.read_csv(f"{output_dir}/lnz_final_lab_df.csv")
-# lab_df = pd.read_csv(f"{output_dir}/lnz_final_lab_df2.csv")
+transfusion_df = pd.read_csv(f"{output_dir}/lnz_final_transfusion_df.csv")
+comed_df = pd.read_csv(f"{output_dir}/lnz_final_comed_df.csv")
 bodysize_df = pd.read_csv(f"{output_dir}/lnz_final_bodysize_df.csv")
 dose_df = pd.read_csv(f"{output_dir}/lnz_final_dose_df.csv")
-surv_res_df = pd.read_csv(f"{output_dir}/b1da/b1da_lnz_surv_res_df.csv")
-dose_df['UID'].drop_duplicates()
+
+# dose_df['UID'].drop_duplicates()
 # surv_res_df['UID'].drop_duplicates()
 # surv_res_df['']
 # dose_df[dose_df['UID']==155505674746153]
@@ -95,7 +97,10 @@ for uid, uid_df in lab_df.groupby('UID',as_index=False): #break
 lab_df = pd.concat(full_result_df)
 # list(lab_df.columns)[2:]
 
-# ep_surv_df.columns
+# Comed 처리
+
+
+# surv_res_df.columns
 # surv_res_df['ENDPOINT'].unique()
 ep_res_dict = dict()
 for endpoint, ep_surv_df in surv_res_df.groupby('ENDPOINT'):
@@ -119,6 +124,7 @@ for endpoint, ep_surv_df in surv_res_df.groupby('ENDPOINT'):
         bl_date_bf1mo = (datetime.strptime(bl_date,'%Y-%m-%d')-timedelta(days=30)).strftime('%Y-%m-%d')
         ev_date = row['EV_DATE']
         ev = row['EV']
+        first_dose_date = row['FIRST_ADM_DATE']
         last_dose_date = row['LAST_ADM_DATE']
 
         res_dict = {'UID':uid}
@@ -130,6 +136,28 @@ for endpoint, ep_surv_df in surv_res_df.groupby('ENDPOINT'):
                 res_dict['AGE'] = ptinfo_row[ptcol]
             else:
                 res_dict[ptcol] = ptinfo_row[ptcol]
+
+        # concomitant medication
+        # raise ValueError
+        uid_comed_dict = {cm:0 for cm in (comed_df['DRUG'].unique())}
+        uid_comed_df = comed_df[comed_df['UID'] == uid].copy()
+        for cm_inx, cm_row in uid_comed_df.iterrows(): #break
+            cmdate_ser = pd.Series(cm_row['DATE_LIST'].replace("('",'').replace("')",'').split("', '"))
+            cm_at_risk = cmdate_ser[(cmdate_ser >= first_dose_date)&(cmdate_ser <= ev_date)].copy()
+            if len(cm_at_risk)==0:
+                uid_comed_dict[cm_row['DRUG']]=1
+        res_dict.update(uid_comed_dict)
+
+        # transfusion
+        uniq_tf_type = transfusion_df['TF_TYPE'].unique()
+        uid_tf_dict = {tf: 0 for tf in (uniq_tf_type)}
+        uid_tf_df = transfusion_df[transfusion_df['UID'] == uid].copy()
+        for tf_type in uniq_tf_type:
+            uid_tf_type_df = uid_tf_df[uid_tf_df['TF_TYPE']==tf_type].copy()
+            tf_at_risk = uid_tf_type_df[(uid_tf_type_df['DATE'] >= first_dose_date)&(uid_tf_type_df['DATE'] <= ev_date)].copy()
+            if len(tf_at_risk)==0:
+                uid_tf_dict[tf_type]=1
+        res_dict.update(uid_tf_dict)
 
         # lab
         uid_lab_df = lab_df[lab_df['UID']==uid].copy()

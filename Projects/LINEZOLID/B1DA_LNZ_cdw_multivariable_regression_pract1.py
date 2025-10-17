@@ -214,24 +214,24 @@ def fit_ev_logistic(df,
     y = y.astype(int)
 
     # 12) 적합 (Logit → 문제시 GLM Binomial 폴백)
-    # try:
-    #     # print('test1')
-    #     model = sm.Logit(y, X)
-    #     res = model.fit(disp=False, maxiter=200)
-    #     fitted_with = "Logit"
-    # except (PerfectSeparationError, np.linalg.LinAlgError):
-    #     # print('test2')
-    #     model = sm.GLM(y, X, family=sm.families.Binomial())
-    #     res = model.fit()
-    #     fitted_with = "GLM Binomial (fallback)"
+    try:
+        # print('test1')
+        model = sm.Logit(y, X)
+        res = model.fit(disp=False, maxiter=200)
+        fitted_with = "Logit"
+    except (PerfectSeparationError, np.linalg.LinAlgError):
+        # print('test2')
+        model = sm.GLM(y, X, family=sm.families.Binomial())
+        res = model.fit()
+        fitted_with = "GLM Binomial (fallback)"
 
     # 추가처리
     # if 'CUM_DOSE' in X.columns:
     #     X['CUM_DOSE'] = X['CUM_DOSE']/600
 
-    model = sm.Logit(y, X)
-    res = model.fit(disp=False, maxiter=200)
-    fitted_with = "Logit"
+    # model = sm.Logit(y, X)
+    # res = model.fit(disp=False, maxiter=200)
+    # fitted_with = "Logit"
 
     # model = sm.GLM(y, X, family=sm.families.Binomial())
     # res = model.fit()
@@ -475,6 +475,8 @@ uni_res_df = multivar_totres_df[upv_cond&uor_cond].sort_values(['subgroup','endp
 multi_res_df = multivar_totres_df[apv_cond&aor_cond].sort_values(['subgroup','endpoint','aOR'],ascending=[False,True,False])[['subgroup','endpoint','feature','EV_Count (%)','OR (95% CI)','pval','aOR (95% CI)','pval (adj)']].reset_index(drop=True)
 uni_res_df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_univar_res_table.csv", index=False, encoding='utf-8-sig')
 multi_res_df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_multivar_res_table.csv", index=False, encoding='utf-8-sig')
+
+# uni_res_df[uni_res_df['subgroup']=='Total_Adult'][['endpoint','feature','OR (95% CI)','pval']]
 
 tot_res_df = multivar_totres_df.sort_values(['subgroup','endpoint','aOR'],ascending=[False,True,False])[['subgroup','endpoint','feature','EV_Count (%)','OR (95% CI)','pval','aOR (95% CI)','pval (adj)']].reset_index(drop=True)
 tot_res_df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_total_res_table.csv", index=False, encoding='utf-8-sig')
