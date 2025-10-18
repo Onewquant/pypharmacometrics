@@ -3,13 +3,19 @@ import numpy as np
 from typing import Dict, Any
 
 output_dir = 'C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/LINEZOLID/results'
-surv_res_df = pd.read_csv(f"{output_dir}/b1da_lnz_surv_res_df.csv")
+comed_df = pd.read_csv(f"{output_dir}/lnz_final_comed_df.csv")
+transfusion_df = pd.read_csv(f"{output_dir}/lnz_final_transfusion_df.csv")
+surv_res_df = pd.read_csv(f"{output_dir}/b1da/b1da_lnz_surv_res_df(365).csv")
 
 multivar_res_df = list()
 
 demo_cols = ['SUBTOTAL_N','EV = 1','SEX = 1','ELD = 1','AGE','HT','WT','BMI']
 total_dose_cols = ['CUM_DOSE(TOTAL)','DOSE_PERIOD(TOTAL)','DOSE24(TOTAL_ACTIVE)','DOSE24(TOTAL_PERIOD)','DOSE24PERWT(TOTAL_ACTIVE)','DOSE24PERWT(TOTAL_PERIOD)','DOSE_INTERVAL(TOTAL)']
 ev_dose_cols = ['CUM_DOSE', 'DOSE_PERIOD','DOSE_PERIOD(ACTIVE)', 'DOSE24','DOSE24(ACTIVE)', 'DOSE24PERWT','DOSE24PERWT(ACTIVE)', 'DOSE_INTERVAL']
+
+comed_cols = list(comed_df['DRUG'].drop_duplicates())
+transfusion_cols = list(transfusion_df['TF_TYPE'].drop_duplicates())
+
 
 total_df = list()
 for inx, endpoint in enumerate(['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']):
@@ -58,7 +64,7 @@ for inx, endpoint in enumerate(['TOTAL','PLT', 'Hb', 'WBC', 'ANC', 'Lactate']):
 
     # 제외할 컬럼과 변수 유형 지정
     exclude_cols = ["UID", "BL_DATE", "ENDPOINT"]
-    categorical_cols = ["EV", "SEX", "ELD"]       # 범주형
+    categorical_cols = ["EV", "SEX", "ELD"] + comed_cols + transfusion_cols      # 범주형
     positive_levels: Dict[str, Any] = {    # N(%)로 표시할 수준
         "EV": 1,
         "SEX": 1,
@@ -109,7 +115,7 @@ for inx, endpoint in enumerate(['TOTAL','PLT', 'Hb', 'WBC', 'ANC', 'Lactate']):
         n_pos = int((s == level).sum())
         pct_pos = (n_pos / N_total * 100.0) if N_total > 0 else np.nan
         rows.append({
-            "Variable": f"{c} = {level}", "Type": "Categorical",
+            "Variable": f"{c} = {level}" if c not in (comed_cols+transfusion_cols) else c, "Type": "Categorical",
             "Summary": f"{n_pos} ({pct_pos:.1f}%)",
             "N (non-missing)": int(s.notna().sum())
         })
@@ -133,8 +139,8 @@ for inx, endpoint in enumerate(['TOTAL','PLT', 'Hb', 'WBC', 'ANC', 'Lactate']):
 #
 # print(demo_table)
 # 파일로 저장 (원하면)
-rest_cols = list(set(demo_table_df['Variable'].unique()) - set(demo_cols) - set(total_dose_cols) - set(ev_dose_cols))
+rest_cols = list(set(demo_table_df['Variable'].unique()) - set(demo_cols) - set(total_dose_cols) - set(ev_dose_cols) - set(comed_cols) - set(transfusion_cols))
 rest_cols.sort()
-demo_table_df = demo_table_df.set_index("Variable").loc[demo_cols+rest_cols+total_dose_cols+ev_dose_cols].reset_index(drop=False)
+demo_table_df = demo_table_df.set_index("Variable").loc[demo_cols+rest_cols+total_dose_cols+ev_dose_cols+comed_cols+transfusion_cols].reset_index(drop=False)
 demo_table_df.to_csv(f"{output_dir}/B1DA/b1da_lnz_demographic_df.csv", index=False)
 

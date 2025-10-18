@@ -195,6 +195,8 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
                            f'BL_{endpoint_lab}': sbl_row[endpoint_lab],
                            'EV_DATE': uid_sadm_lab_df['DATE'].iloc[-1] if len(tar_rows)==0 else tar_rows['DATE'].iloc[0],
                            f'EV_{endpoint_lab}': np.nan if len(tar_rows)==0 else tar_rows[endpoint_lab].iloc[0],
+                           'ADD_BL_VAL(pH)': sbl_row['pH'] if endpoint_lab=='Lactate' else np.nan,
+                           'ADD_EV_VAL(pH)': np.nan if (len(tar_rows)==0) or (endpoint_lab!='Lactate') else tar_rows['pH'].iloc[0],
                            }
 
         single_res_dict['time'] = (datetime.strptime(single_res_dict['EV_DATE'],'%Y-%m-%d')-datetime.strptime(uid_sadm_lab_df['DATE'].iloc[0],'%Y-%m-%d')).total_seconds()/86400
