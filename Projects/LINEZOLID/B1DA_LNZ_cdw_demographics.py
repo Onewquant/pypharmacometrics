@@ -90,7 +90,7 @@ for inx, endpoint in enumerate(['TOTAL','PLT', 'Hb', 'WBC', 'ANC', 'Lactate']):
     N_total = len(work)
     rows.append({
                     "Variable": 'SUBTOTAL_N', "Type": "-",
-                    "Summary": f"{N_total} ({round(100*N_total/len(total_df),1)}%)", "N (non-missing)": N_total
+                    "Summary": f"{N_total} ({round(100*N_total/len(total_df),1)})", "N (non-missing)": N_total
                 })
 
     # 연속형: mean (SD), non-missing N
@@ -115,8 +115,9 @@ for inx, endpoint in enumerate(['TOTAL','PLT', 'Hb', 'WBC', 'ANC', 'Lactate']):
         n_pos = int((s == level).sum())
         pct_pos = (n_pos / N_total * 100.0) if N_total > 0 else np.nan
         rows.append({
-            "Variable": f"{c} = {level}" if c not in (comed_cols+transfusion_cols) else c, "Type": "Categorical",
-            "Summary": f"{n_pos} ({pct_pos:.1f}%)",
+            "Variable": f"{c} = {level}" if c not in (comed_cols+transfusion_cols) else c,
+            "Type": "Categorical",
+            "Summary": f"{n_pos} ({pct_pos:.1f})",
             "N (non-missing)": int(s.notna().sum())
         })
 

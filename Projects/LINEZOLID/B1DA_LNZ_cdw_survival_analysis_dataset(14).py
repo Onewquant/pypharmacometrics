@@ -57,7 +57,7 @@ surv_res_df = list()
 # lab_df.columns
 # lab_df['WBC']
 
-max_time_at_risk = 90
+max_time_at_risk = 14
 
 for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
 # for endpoint_lab in ['ANC', 'Lactate']:
@@ -252,6 +252,7 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
     print(f"  SA_Subgroup ({endpoint_lab}): {len(surv_res_df[surv_res_df['ENDPOINT']==endpoint_lab]['UID'].drop_duplicates())}")
 
 eligibility_df = pd.DataFrame(eligibility_df)
+
 if not os.path.exists(f'{output_dir}/b1da/eligibility_output'):
     os.mkdir(f'{output_dir}/b1da/eligibility_output')
 eligibility_df.to_csv(f"{output_dir}/b1da/eligibility_output/b1da_lnz_eligibility_criteria_df({max_time_at_risk}).csv", encoding='utf-8-sig', index=False)

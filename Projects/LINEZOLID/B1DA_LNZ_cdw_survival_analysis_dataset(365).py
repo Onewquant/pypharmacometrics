@@ -252,7 +252,9 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
     print(f"  SA_Subgroup ({endpoint_lab}): {len(surv_res_df[surv_res_df['ENDPOINT']==endpoint_lab]['UID'].drop_duplicates())}")
 
 eligibility_df = pd.DataFrame(eligibility_df)
-eligibility_df.to_csv(f"{output_dir}/b1da/b1da_lnz_eligibility_criteria_df({max_time_at_risk}).csv", encoding='utf-8-sig', index=False)
+if not os.path.exists(f'{output_dir}/b1da/eligibility_output'):
+    os.mkdir(f'{output_dir}/b1da/eligibility_output')
+eligibility_df.to_csv(f"{output_dir}/b1da/eligibility_output/b1da_lnz_eligibility_criteria_df({max_time_at_risk}).csv", encoding='utf-8-sig', index=False)
 ###################################
 
 surv_res_df = pd.read_csv(f"{output_dir}/b1da/b1da_lnz_surv_res_df({max_time_at_risk}).csv")
@@ -289,7 +291,7 @@ for g, gdf in surv_res_df.groupby("ENDPOINT"):
 
     # Crude 발생률
     crude_subtotal_n = len(gdf)
-    crude_event_n = len(gdf[gdf['EV']==1])
+    crude_event_n = len(gdf[gdf['event']==1])
     crude_incidence = crude_event_n/crude_subtotal_n
 
     # 4. 최종(마지막 시점) 누적 발생률과 95% CI 추출
@@ -372,5 +374,7 @@ incidence_res_df['incidence (crude analysis)'] = incidence_res_df.apply(lambda x
 incidence_res_df['cumulative incidence (KM analysis)'] = incidence_res_df.apply(lambda x:f"{round(x['final_cumulative_incidence']*100,1)} ({round(x['lower_95CI']*100,1)}-{round(x['upper_95CI']*100,1)})",axis=1)
 incidence_res_df = incidence_res_df[['ENDPOINT', 'incidence (crude analysis)', 'cumulative incidence (KM analysis)']].copy()
 incidence_res_df = incidence_res_df.sort_values(['cumulative incidence (KM analysis)'], ascending=False)
-incidence_res_df.to_csv(f"{output_dir}/b1da/b1da_lnz_incidence_table({max_time_at_risk}).csv", encoding='utf-8-sig', index=False)
+if not os.path.exists(f'{output_dir}/b1da/incidence_output'):
+    os.mkdir(f'{output_dir}/b1da/incidence_output')
+incidence_res_df.to_csv(f"{output_dir}/b1da/incidence_output/b1da_lnz_incidence_table({max_time_at_risk}).csv", encoding='utf-8-sig', index=False)
 # print(incidence_res_df)
