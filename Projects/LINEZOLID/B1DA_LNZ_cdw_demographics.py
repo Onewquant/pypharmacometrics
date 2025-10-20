@@ -61,6 +61,7 @@ for inx, endpoint in enumerate(['TOTAL','PLT', 'Hb', 'WBC', 'ANC', 'Lactate']):
         df['SEX'] = df['SEX'].map({'남':0,'여':1})
     # total_df.append(df.copy())
     # df_ori.columns
+    df = df[df['AGE']>=19].copy()
 
     # 제외할 컬럼과 변수 유형 지정
     exclude_cols = ["UID", "BL_DATE", "ENDPOINT"]

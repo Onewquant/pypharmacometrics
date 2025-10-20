@@ -48,6 +48,7 @@ def drop_by_correlation(X: pd.DataFrame, threshold: float = 0.9):
     corr = X.corr().abs()
     # 상삼각만 사용하여 중복 제거
     upper = corr.where(np.triu(np.ones(corr.shape), k=1).astype(bool))
+    # upper = corr.where(np.tril(np.ones(corr.shape), k=-1).astype(bool))
     to_drop = set()
 
     # 반복적으로 탐색하면서 가장 '연결성 높은' 변수 제거
@@ -182,6 +183,8 @@ def fit_ev_logistic(df,
     if X.shape[1] == 0:
         raise ValueError("EV 외 설명변수가 없습니다.")
 
+
+
     # 7) 0-분산(상수) 컬럼 제거
     zero_var_cols = [c for c in X.columns if X[c].nunique(dropna=False) <= 1]
     if zero_var_cols:
@@ -201,6 +204,12 @@ def fit_ev_logistic(df,
     # 9) 상수항 추가
     X = add_constant(X, has_constant='add')
 
+    # 10) 반드시 포함/제거될 항 강제 지정
+    must_inclusive_cols = []
+    must_drop_cols = []
+
+    X_mincls_df = X[must_inclusive_cols].copy()
+
     # 10) [추가] VIF 기반 반복 제거 (상수항 제외)
     vif_dropped = []
     if enable_vif_filter and X.shape[1] > 2:  # const + >=2 features
@@ -208,6 +217,15 @@ def fit_ev_logistic(df,
         if verbose and vif_dropped:
             # print(f"[VIF filter > {vif_threshold}] dropped: {vif_dropped}")
             pass
+
+    if len(must_inclusive_cols) > 0:
+        for mincls_col in must_inclusive_cols:
+            if mincls_col in X.columns:
+                continue
+            else:
+                X[mincls_col]=X_mincls_df[mincls_col].copy()
+    if len(must_drop_cols)>0:
+        X = X.drop(must_drop_cols,axis=1)
 
     # 11) 형식 정리
     X = X.astype(float)

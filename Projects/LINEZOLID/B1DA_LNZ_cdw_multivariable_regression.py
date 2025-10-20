@@ -167,7 +167,7 @@ for endpoint, ep_surv_df in surv_res_df.groupby('ENDPOINT'):
         for col in ['DATE']+ep_lab_covar_list:
             if col=='DATE':
                 res_dict[f'BL_{col}'] = bl_lab_row[col]
-                res_dict['AGE'] = int((datetime.strptime(bl_lab_row[col],'%Y-%m-%d') - datetime.strptime(res_dict['AGE'],'%Y-%m-%d')).days/365.25)
+                res_dict['AGE'] = int((datetime.strptime(first_dose_date,'%Y-%m-%d') - datetime.strptime(res_dict['AGE'],'%Y-%m-%d')).days/365.25)
                 res_dict['ELD'] = 1 if res_dict['AGE']>=65 else 0
             else:
                 res_dict[col] = bl_lab_row[col]
@@ -249,6 +249,9 @@ for endpoint in surv_res_df['ENDPOINT'].unique():
     # endpoint = 'ANC'
 
     epreg_df = ep_res_dict[endpoint].copy()
+
+    # epreg_df = epreg_df[epreg_df['AGE'] >= 19].copy()
+
     # if not os.path.exists(f'{output_dir}/b1da'):
     #     os.mkdir(f'{output_dir}/b1da')
     if not os.path.exists(f'{output_dir}/b1da/datacheck'):

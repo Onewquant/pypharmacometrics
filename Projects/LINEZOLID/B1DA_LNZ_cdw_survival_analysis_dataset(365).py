@@ -29,14 +29,21 @@ lab_df['ANC'] = lab_df[anc_cols].min(axis=1)
 lab_df['PLT'] = lab_df[plt_cols].min(axis=1)
 lab_df['WBC'] = lab_df[wbc_cols].min(axis=1)
 lab_df['Hb'] = lab_df[hb_cols].min(axis=1)
-# lab_df['LACT']
 
-# lab_df.columns
-# lab_df[['UID', 'DATE', 'ANC', 'Atypical lymphocyte', 'Band neutrophil', 'Basophil', 'Blast', 'Eosinophil', 'Hb', 'Hct', 'Immature cell', 'Lymphocyte', 'MCH', 'MCHC', 'MCV', 'MPV', 'Metamyelocyte', 'Monocyte', 'Myelocyte', 'Normoblast', 'Other', 'PCT', 'PDW', 'PLT', 'Plasma cell', 'Promyelocyte', 'RBC', 'RDW(CV)', 'RDW(SD)', 'Segmented neutrophil', 'WBC', '절대단구수', '절대림프구수']].isna().sum().sort_values()
-# lab_df['PLT'].max()
-# lab_df['PLT'].min()
+# AGE df
+ptinfo_df = pd.read_csv(f"{output_dir}/lnz_final_ptinfo_df.csv")
+dose_df = pd.read_csv(f"{output_dir}/lnz_final_dose_df.csv")
+first_dose_df = dose_df.groupby('UID',as_index=False)['DATE'].first()
+age_df = ptinfo_df[['UID','BIRTH_DATE']].copy()
+age_df = age_df.merge(first_dose_df, on=['UID'], how='left')
+# age_df[age_df['DATE'].isna()]
+age_df['AGE'] = age_df.apply(lambda x:float((datetime.strptime(x['DATE'],'%Y-%m-%d') - datetime.strptime(x['BIRTH_DATE'],'%Y-%m-%d')).days/365.25 if type(x['DATE'])==str else np.nan), axis=1)
+age_df = age_df[['UID','AGE']].copy()
+
+
 adm_df = pd.read_excel(f"{output_dir}/merged_adm_dates.xlsx")
-# adm_df['UID'].drop_duplicates()
+adm_df = adm_df.merge(age_df, on=['UID'], how='left')
+adm_df = adm_df[adm_df['AGE']>=19].copy()
 
 # adm_df.columns
 no_lab_uids = list()

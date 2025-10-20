@@ -74,7 +74,7 @@ for file_path in subgroup_files:
         # print(demographic_table)
 
     ###################################################
-    # Subgroup간 Covariates 값 비교
+    # (Event 발생 그룹 vs 미발생 그룹) 에서의 WT
     ###################################################
 
     # 색상 설정 (고급스러운 tone)
@@ -85,6 +85,7 @@ for file_path in subgroup_files:
         data=df,
         x='EV',
         y='DOSE24PERWT(ACTIVE)',
+        # y='WT',
         palette=colors,
         width=0.5,
         showfliers=False
@@ -152,7 +153,6 @@ for file_path in subgroup_files:
     ###################################################
     # Subgroup간 Covariates 값 비교
     ###################################################
-
 
     # SEX subgroup별로 나누기
     df_0 = df[df['SEX'] == 0].copy()
