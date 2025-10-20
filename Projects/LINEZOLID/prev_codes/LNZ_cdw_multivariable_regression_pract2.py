@@ -9,7 +9,7 @@ from scipy.stats import kruskal
 import scikit_posthocs as sp
 
 
-output_dir = 'C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/LINEZOLID/results'
+output_dir = '/Projects/LINEZOLID/results'
 
 def cliffs_delta(x, y):
     """

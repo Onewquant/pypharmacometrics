@@ -264,7 +264,7 @@ def fit_ev_logistic(df,
 
 
 # 사용 예시: 경로만 바꿔서 실행하세요.
-output_dir = 'C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/LINEZOLID/results'
+output_dir = '/Projects/LINEZOLID/results'
 multivar_res_df = list()
 for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
 # for endpoint in ['ANC', ]:

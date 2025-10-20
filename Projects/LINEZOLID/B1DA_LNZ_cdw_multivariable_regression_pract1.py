@@ -473,6 +473,20 @@ multivar_totres_df['pval (adj)'] = multivar_totres_df['pvalue_adj'].map(lambda x
 # multivar_totres_df['pval']
 uni_res_df = multivar_totres_df[upv_cond&uor_cond].sort_values(['subgroup','endpoint','aOR'],ascending=[False,True,False])[['subgroup','endpoint','feature','EV_Count (%)','OR (95% CI)','pval','aOR (95% CI)','pval (adj)']].reset_index(drop=True)
 multi_res_df = multivar_totres_df[apv_cond&aor_cond].sort_values(['subgroup','endpoint','aOR'],ascending=[False,True,False])[['subgroup','endpoint','feature','EV_Count (%)','OR (95% CI)','pval','aOR (95% CI)','pval (adj)']].reset_index(drop=True)
+# uni_res_df = uni_res_df.sort_values([''])
+uni_res_df['pval_sig'] = (uni_res_df['pval (adj)'] < 0.05).map({True:' **',False:''})
+uni_res_df['pval (adj)'] = uni_res_df['pval (adj)'].replace(0,'<0.001').map(str) + uni_res_df['pval_sig']
+uni_res_df['pval'] = uni_res_df['pval'].replace(0,'<0.001').map(str)
+uni_res_df = uni_res_df.drop(['pval_sig'],axis=1)
+
+
+multi_res_df['pval_sig'] = (multi_res_df['pval (adj)'] < 0.05).map({True:' **',False:''})
+multi_res_df['pval (adj)'] = multi_res_df['pval (adj)'].replace(0,'<0.001').map(str) + multi_res_df['pval_sig']
+multi_res_df['pval'] = multi_res_df['pval'].replace(0,'<0.001').map(str)
+multi_res_df = multi_res_df.drop(['pval_sig'],axis=1)
+# multi_res_df['pval'] = multi_res_df['pval'].replace(0,'<0.001')
+# multi_res_df['pval (adj)'] = multi_res_df['pval (adj)'].replace(0,'<0.001')
+
 uni_res_df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_univar_res_table.csv", index=False, encoding='utf-8-sig')
 multi_res_df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_multivar_res_table.csv", index=False, encoding='utf-8-sig')
 

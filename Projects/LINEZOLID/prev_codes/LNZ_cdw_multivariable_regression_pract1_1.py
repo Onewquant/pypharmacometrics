@@ -8,7 +8,7 @@ from scipy.stats import mannwhitneyu, fisher_exact
 
 # 데이터 로드
 
-output_dir = 'C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/LINEZOLID/results'
+output_dir = '/Projects/LINEZOLID/results'
 
 subgroup_files = glob.glob(f"{output_dir}/mvlreg_output/lnz_mvlreg_datasubset(*)(*).csv")
 for file_path in subgroup_files:
