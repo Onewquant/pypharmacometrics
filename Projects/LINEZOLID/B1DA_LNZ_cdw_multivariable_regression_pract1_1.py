@@ -12,7 +12,7 @@ import seaborn as sns
 output_dir = 'C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/LINEZOLID/results'
 
 subgroup_files = glob.glob(f"{output_dir}/b1da/mvlreg_output/datasubset/b1da_lnz_mvlreg_datasubset(Total_Adult)(Lactate).csv")
-for file_path in subgroup_files:
+for file_path in subgroup_files: #break
     # raise ValueError
     subset_group = file_path.split(')(')[0].split('(')[-1]
     pd_endpoint = file_path.split(')(')[-1].split(')')[0]
@@ -40,9 +40,9 @@ for file_path in subgroup_files:
             pval = mannwhitneyu(g0, g1, alternative='two-sided')[1] if len(g0) and len(g1) else np.nan
             rows.append({
                 'Covar': col,
-                f'{group_col} = 0': f"{g0.mean():.2f} ({g0.std():.2f})",
-                f'{group_col} = 1': f"{g1.mean():.2f} ({g1.std():.2f})",
-                'p_value': round(pval,4)
+                f'{group_col} = 0': f"{g0.mean():.1f} ({g0.std():.1f})",
+                f'{group_col} = 1': f"{g1.mean():.1f} ({g1.std():.1f})",
+                'p_value': round(pval,3)
             })
 
         # 2️⃣ EV 컬럼: N (%)와 Fisher의 정확 검정
@@ -61,16 +61,18 @@ for file_path in subgroup_files:
                 'Covar': binary_col,
                 f'{group_col} = 0': f"{g0_ev1} ({g0_ev1 / g0_total * 100:.1f})",
                 f'{group_col} = 1': f"{g1_ev1} ({g1_ev1 / g1_total * 100:.1f})",
-                'p_value': round(pval_ev,4)
+                'p_value': round(pval_ev,3)
             })
 
         # raise ValueError
 
         # 3️⃣ 결과 테이블 생성
         demographic_table = pd.DataFrame(rows).sort_values('p_value').reset_index(drop=True)
+        demographic_table_saving = demographic_table.copy()
+        demographic_table_saving['p_value'] = demographic_table_saving['p_value'].replace(0,'<0.001')
         if not os.path.exists(f'{output_dir}/b1da/mvlreg_output/subgroup_analysis'):
             os.mkdir(f'{output_dir}/b1da/mvlreg_output/subgroup_analysis')
-        demographic_table.to_csv(f"{output_dir}/b1da/mvlreg_output/subgroup_analysis/b1da_lnz_subgrpa({subset_group})({pd_endpoint})_({group_col} subgroup).csv", index=False, encoding='utf-8-sig')
+        demographic_table_saving.to_csv(f"{output_dir}/b1da/mvlreg_output/subgroup_analysis/b1da_lnz_subgrpa({subset_group})({pd_endpoint})_({group_col} subgroup).csv", index=False, encoding='utf-8-sig')
         # print(demographic_table)
 
     ###################################################
@@ -80,25 +82,32 @@ for file_path in subgroup_files:
     # 색상 설정 (고급스러운 tone)
     colors = ['#1f77b4', '#ff7f0e']  # EV=0 → blue, EV=1 → orange
 
-    plt.figure(figsize=(6, 5))
-    sns.boxplot(
-        data=df,
-        x='EV',
-        y='DOSE24PERWT(ACTIVE)',
-        # y='WT',
-        palette=colors,
-        width=0.5,
-        showfliers=False
-    )
+    for y2type, unit_str in {'WT':'(kg)','DOSE24PERWT':'(mg/kg/day)'}.items():
 
-    # 스타일링
-    plt.xticks([0, 1], ['EV = 0', 'EV = 1'])
-    plt.xlabel('Event group')
-    plt.ylabel('DOSE24PERWT (mg/kg/day)')
-    plt.title('Comparison of DOSE24PERWT by Event Occurrence')
-    plt.grid(alpha=0.2)
-    plt.tight_layout()
-    plt.show()
+        plt.figure(figsize=(6, 5))
+        sns.boxplot(
+            data=df,
+            x='EV',
+            y=y2type,
+            # y='WT',
+            palette=colors,
+            width=0.5,
+            showfliers=False
+        )
+
+        # 스타일링
+        plt.xticks([0, 1], ['EV = 0', 'EV = 1'])
+        plt.xlabel('Event group')
+        plt.ylabel(f'{y2type} {unit_str}')
+        plt.title(f'Comparison of {y2type} by Event Occurrence')
+        plt.grid(alpha=0.2)
+        plt.tight_layout()
+
+        plt.savefig(f"{output_dir}/b1da/mvlreg_output/subgroup_analysis/EV_to_{y2type}_boxplot({pd_endpoint}).png")  # PNG 파일로 저장
+
+        plt.cla()
+        plt.clf()
+        plt.close()
 
     ###################################################
     # Subgroup간 Covariates 값 비교
@@ -109,11 +118,11 @@ for file_path in subgroup_files:
 
     # 2️⃣ SEX별, 체중구간별 Event 발생률 계산
     rate_df = (
-        df.groupby(['SEX', 'WT_BIN'])['EV']
-            .agg(['sum', 'count'])
-            .reset_index()
+        df.groupby(['SEX', 'WT_BIN'])['EV'].agg(['sum', 'count']).reset_index()
     )
-    rate_df['EV_rate'] = rate_df['sum'] / rate_df['count']
+
+    rate_df['EV_count'] = rate_df['sum']
+    rate_df['EV_rate'] = rate_df['sum']/rate_df['count']
 
     # 3️⃣ 색상 정의 (고급스러운 톤)
     colors = {
@@ -121,37 +130,43 @@ for file_path in subgroup_files:
         1: '#ff7f0e'  # muted orange
     }
 
-    # 4️⃣ subplot 설정
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5), sharey=True)
+    for ytype in ['EV_count','EV_rate']:
+        # 4️⃣ subplot 설정
+        fig, axes = plt.subplots(1, 2, figsize=(12, 5), sharey=True)
 
-    for i, sex in enumerate([0, 1]):
-        subset = rate_df[rate_df['SEX'] == sex]
+        for i, sex in enumerate([0, 1]):
+            subset = rate_df[rate_df['SEX'] == sex]
 
-        axes[i].bar(
-            subset['WT_BIN'].astype(str),
-            subset['EV_rate'],
-            color=colors[sex],
-            alpha=0.8,
-            width=0.7
-        )
+            axes[i].bar(
+                subset['WT_BIN'].astype(str),
+                subset[ytype],
+                color=colors[sex],
+                alpha=0.8,
+                width=0.7
+            )
 
-        # dashed line y=0, y=1
-        axes[i].axhline(0, color='gray', linestyle='--', linewidth=1)
-        axes[i].axhline(1, color='gray', linestyle='--', linewidth=1)
+            # dashed line y=0, y=1
+            axes[i].axhline(0, color='gray', linestyle='--', linewidth=1)
+            axes[i].axhline(1, color='gray', linestyle='--', linewidth=1)
 
-        axes[i].set_ylim(0, 0.5)
-        axes[i].set_xlabel('Weight category (kg)')
-        axes[i].set_ylabel('Event rate (EV=1 ratio)' if i == 0 else '')
-        axes[i].set_title(f'SEX = {sex} ({"Male" if sex == 0 else "Female"})')
-        axes[i].tick_params(axis='x', rotation=45)
-        axes[i].grid(alpha=0.2)
+            ylimval = rate_df[ytype].max() * 1.1
+            axes[i].set_ylim(0, ylimval)
+            axes[i].set_xlabel('Weight category (kg)')
+            axes[i].set_ylabel(f'{ytype.replace("_"," ")} (EV=1 ratio)' if i == 0 else '')
+            axes[i].set_title(f'SEX = {sex} ({"Male" if sex == 0 else "Female"})')
+            axes[i].tick_params(axis='x', rotation=45)
+            axes[i].grid(alpha=0.2)
 
-    plt.tight_layout()
-    plt.show()
+        plt.tight_layout()
+        # plt.tight_layout()
+        plt.savefig(f"{output_dir}/b1da/mvlreg_output/subgroup_analysis/SubGrp(SEX)_WTbin_to_{ytype.replace('_','')}_plot({pd_endpoint}).png")  # PNG 파일로 저장
 
+        plt.cla()
+        plt.clf()
+        plt.close()
 
     ###################################################
-    # Subgroup간 Covariates 값 비교
+    # SEX subgroup 내에서 WT vs EV
     ###################################################
 
     # SEX subgroup별로 나누기
@@ -190,7 +205,12 @@ for file_path in subgroup_files:
 
     # 전체 스타일 정리
     plt.tight_layout()
-    plt.show()
+    # plt.tight_layout()
+    plt.savefig(f"{output_dir}/b1da/mvlreg_output/subgroup_analysis/SubGrp(SEX)_WT_to_EV_plot({pd_endpoint}).png")  # PNG 파일로 저장
 
-    for sgval, sg_df in df.groupby('SEX'):
-        df['WT'].max()
+    plt.cla()
+    plt.clf()
+    plt.close()
+
+    # for sgval, sg_df in df.groupby('SEX'):
+    #     df['WT'].max()

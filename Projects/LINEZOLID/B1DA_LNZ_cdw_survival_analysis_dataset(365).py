@@ -197,6 +197,7 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
                            'DRUG':row['SINGLE_DRUG'],
                            'FIRST_ADM_DATE':uid_sadm_lab_df['DATE'].iloc[0],
                            'LAST_ADM_DATE':uid_sadm_lab_df['DATE'].iloc[-1],
+                           'CS': 1 if len(tar_rows)==0 else 0,
                            'EV': 0 if len(tar_rows)==0 else 1,
                            'BL_DATE':sbl_row['DATE'],
                            f'BL_{endpoint_lab}': sbl_row[endpoint_lab],
@@ -372,6 +373,10 @@ ax.legend(title="Group", title_fontsize=12, fontsize=12)
 
 plt.tight_layout()
 plt.savefig(f"{output_dir}/b1da/B1DA_KM_plot(ADRs)({max_time_at_risk}).png")  # PNG 파일로 저장
+
+plt.cla()
+plt.clf()
+plt.close()
 
 # 👉 최종 발생률을 DataFrame으로 정리
 final_df = pd.DataFrame(final_rates)
