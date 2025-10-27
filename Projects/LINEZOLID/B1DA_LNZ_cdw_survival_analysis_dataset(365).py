@@ -197,7 +197,7 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
                            'DRUG':row['SINGLE_DRUG'],
                            'FIRST_ADM_DATE':uid_sadm_lab_df['DATE'].iloc[0],
                            'LAST_ADM_DATE':uid_sadm_lab_df['DATE'].iloc[-1],
-                           'CS': 1 if len(tar_rows)==0 else 0,
+                           # 'CS': 1 if len(tar_rows)==0 else 0,
                            'EV': 0 if len(tar_rows)==0 else 1,
                            'BL_DATE':sbl_row['DATE'],
                            f'BL_{endpoint_lab}': sbl_row[endpoint_lab],
