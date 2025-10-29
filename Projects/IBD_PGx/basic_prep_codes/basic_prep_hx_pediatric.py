@@ -5,7 +5,7 @@ from pynca.tools import *
 # result_type = 'R'
 
 prj_name = 'IBD_PGX'
-prj_dir = 'C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/IBD_PGx'
+prj_dir = '/Projects/IBD_PGx'
 resource_dir = f'{prj_dir}/resource'
 output_dir = f"{prj_dir}/results"
 if not os.path.exists(output_dir):

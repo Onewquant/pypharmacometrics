@@ -1,8 +1,8 @@
 from tools import *
 from pynca.tools import *
 
-prj_dir = 'C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/IBD_PGx'
-outcome_dir = f"C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/IBD_PGx/results"
+prj_dir = '/Projects/IBD_PGx'
+outcome_dir = f"/Projects/IBD_PGx/results"
 
 info_df = pd.read_csv(f"{prj_dir}/resource/anti_TNFa_patients.csv").sort_values(['EMR ID'])
 info_df = info_df.rename(columns={'EMR ID':'ID','name':'NAME'})[['ID','NAME']].copy()

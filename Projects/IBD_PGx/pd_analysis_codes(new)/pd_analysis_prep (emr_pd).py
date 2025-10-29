@@ -13,8 +13,8 @@ output_dir = f"{prj_dir}/results"
 # rdf['CREATININE'].median()
 
 # demo2_df = pd.read_csv(f"{resource_dir}/demo2/IBD_PGx_demo2.csv")
-# demo2_df = demo2_df.rename(columns={'EMR ID':'UID','height':'HT','weight':'WT','bmi':'BMI','bsa':'BSA','name':'NAME'})
-# demo2_df = demo2_df[['UID','NAME']].copy()
+# demo2_df = demo2_df.rename(columns={'EMR ID':'UID','height':'HT','weight':'WT','bmi':'BMI','bsa':'BSA'})
+# demo2_df = demo2_df[['UID','HT', 'WT', 'BMI','BSA']].copy()
 # demo2_df['UID'] = demo2_df['UID'].astype(str)
 
 ## WT, HT, ADHERENCE Covariates / PD markers Loading
@@ -39,7 +39,7 @@ pms_hx_df['PD_PRO2'] = pms_hx_df['PMS_STLCNT'] + pms_hx_df['PMS_HEMATOCHEZIA']
 pms_hx_df['PD_STLFREQ'] = pms_hx_df['PMS_STLCNT']
 pms_hx_df['PD_ABDPAIN'] = np.nan
 pms_hx_df['PD_RECTBLD'] = pms_hx_df['PMS_HEMATOCHEZIA']
-pms_hx_df['PD_CR'] = (((pms_hx_df['PD_STLFREQ']==0)&(pms_hx_df['PD_ABDPAIN']==0))|(pms_hx_df['PD_PRO2']==0))*1
+pms_hx_df['PD_CR'] = (((pms_hx_df['PD_STLFREQ']<=1)&(pms_hx_df['PD_ABDPAIN']==0))|(pms_hx_df['PD_PRO2']==0))*1
 pms_hx_df['IBD_TYPE'] = 'UC'
 # pms_adh_df.columns
 # pd_df[pd_df['UID']=='29702679'][['DATETIME','PD_PRO2']]
@@ -61,7 +61,7 @@ for uid, uid_df in pd_df.groupby('UID',as_index=False): #break
     uid_fulldt_df['DATETIME'] = pd.date_range(start=min_lab_date,end=max_lab_date).astype(str)
     uid_fulldt_df['UID'] = uid
 
-    uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left')#.fillna(method='bfill')
+    uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left').fillna(method='bfill')
     # uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left')
     # uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left')
 
@@ -103,7 +103,7 @@ for uid, uid_df in bsize_df.groupby('UID',as_index=False): #break
     uid_fulldt_df['DATETIME'] = pd.date_range(start=min_lab_date,end=max_lab_date).astype(str)
     uid_fulldt_df['UID'] = uid
 
-    uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left')#.fillna(method='ffill')
+    uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left').fillna(method='ffill')
     # uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left')
 
     if count==0:
@@ -113,12 +113,9 @@ for uid, uid_df in bsize_df.groupby('UID',as_index=False): #break
 
     count+=1
 
-# bsize_df = full_result_df.fillna(full_result_df.median(numeric_only=True))
+bsize_df = full_result_df.fillna(full_result_df.median(numeric_only=True))
 
 
 pd_bsize_df = pd_df.merge(bsize_df, on=['UID','DATETIME'], how='left')
-pd_bsize_df = pd_bsize_df[(~pd_bsize_df.loc[:,'ADHERENCE':].isna()).sum(axis=1)!=0].copy()
-# pd_bsize_df['UID'].drop_duplicates()
-# pd_bsize_df = pd_bsize_df.merge(demo2_df[['UID','NAME']].copy(),on=['UID'],how='left')
-# pd_bsize_df.to_csv(f"{output_dir}/pd_bsize_df(filt).csv", encoding='utf-8-sig', index=False)
+pd_bsize_df.to_csv(f"{output_dir}/pd_bsize_df.csv", encoding='utf-8-sig', index=False)
 # pd_bsize_df.to_csv(f"{output_dir}/pd_bsize_df_ori.csv", encoding='utf-8-sig', index=False)

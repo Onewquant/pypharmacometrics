@@ -198,7 +198,7 @@ for uid, uid_df in df.groupby('UID'): #break
     # min_date_af13mo = (datetime.strptime(min_date, '%Y-%m-%d') + timedelta(days=395)).strftime('%Y-%m-%d')
 
     min_date_af10mo = (datetime.strptime(min_date, '%Y-%m-%d') + timedelta(days=305)).strftime('%Y-%m-%d')
-    min_date_af14mo = (datetime.strptime(min_date, '%Y-%m-%d') + timedelta(days=365)).strftime('%Y-%m-%d')
+    min_date_af12mo = (datetime.strptime(min_date, '%Y-%m-%d') + timedelta(days=365)).strftime('%Y-%m-%d')
 
     # min_date_af10mo = (datetime.strptime(min_date, '%Y-%m-%d') + timedelta(days=290)).strftime('%Y-%m-%d')
     # min_date_af14mo = (datetime.strptime(min_date, '%Y-%m-%d') + timedelta(days=380)).strftime('%Y-%m-%d')
@@ -206,7 +206,8 @@ for uid, uid_df in df.groupby('UID'): #break
     ## 1YR 기록하기
 
     # tg_pd_df = uid_pd_df[(uid_pd_df['DATETIME'] <= min_date_af13mo) & (uid_pd_df['DATETIME'] >= min_date_af11mo)].copy()
-    tg_pd_df = uid_pd_df[(uid_pd_df['DATETIME'] <= min_date_af14mo) & (uid_pd_df['DATETIME'] >= min_date_af10mo)].copy()
+    tg_pd_df = uid_pd_df[(uid_pd_df['DATETIME'] <= min_date_af12mo) & (uid_pd_df['DATETIME'] >= min_date_af10mo)].copy()
+    # tg_pd_df = uid_pd_df[(uid_pd_df['DATETIME'] <= min_date_af14mo) & (uid_pd_df['DATETIME'] >= min_date_af10mo)].copy()
 
     if len(tg_pd_df) == 0:
         no_maint_blpd_uids.append(uid)
