@@ -279,12 +279,12 @@ def fit_ev_logistic(df,
     })
 
     # 14) 다중비교 보정: Benjamini–Hochberg FDR
-    _, p_adj, _, _ = multipletests(or_table["pvalue"].values, method="fdr_bh")
-    or_table["pvalue_adj"] = p_adj
+    # _, p_adj, _, _ = multipletests(or_table["pvalue"].values, method="fdr_bh")
+    # or_table["pvalue_adj"] = p_adj
 
     # 14) 다중비교 보정: Bonferroni
-    # _, p_adj, _, _ = multipletests(or_table["pvalue"].values, method="bonferroni")
-    # or_table["pvalue_adj"] = p_adj
+    _, p_adj, _, _ = multipletests(or_table["pvalue"].values, method="bonferroni")
+    or_table["pvalue_adj"] = p_adj
 
 
     # 15) Univariable Logistic Regression 추가
@@ -345,10 +345,10 @@ def fit_ev_logistic(df,
 
     info = {
         "fitted_with": fitted_with,
-        "corr_dropped": corr_dropped,
-        "vif_dropped": vif_dropped,
+        "dropped_by_corr": corr_dropped,
+        "dropped_by_vif": vif_dropped,
         "final_features": [c for c in X.columns if c != "const"],
-        "final_vif": final_vif.sort_values("VIF", ascending=False).reset_index(drop=True)
+        "final_vif": final_vif.sort_values("VIF", ascending=False).reset_index(drop=True).set_index('feature')['VIF'].to_dict()
     }
     return res, or_table, info
 
@@ -357,6 +357,7 @@ def fit_ev_logistic(df,
 output_dir = 'C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/LINEZOLID/results'
 multivar_totres_df = list()
 multivar_res_df = list()
+covar_info_df = list()
 orthreshold_dict = {True: 0.5, False: 0.33}
 for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
 # for endpoint in ['ANC', ]:
@@ -442,6 +443,10 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
 
         multivar_totres_df.append(or_table.copy())
 
+        info['endpoint'] = endpoint
+        info['subgroup'] = age_subgroup
+        covar_info_df.append(info.copy())
+
         # sig_res_frag = sig_res_frag[['subgroup','endpoint','N','EVN','EVPct']+list(sig_res_frag.columns)[:-4]]
         # multivar_res_df.append(sig_res_frag.copy())
         if not os.path.exists(f'{output_dir}/b1da/mvlreg_output/datasubset'):
@@ -452,9 +457,9 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
         # print(f"\nSaved OR table to: {out_csv}")
 
         print(f"\n[Correlation dropped ({endpoint})]")
-        print(info["corr_dropped"])
+        print(info["dropped_by_corr"])
         print(f"\n[VIF dropped ({endpoint})]")
-        print(info["vif_dropped"])
+        print(info["dropped_by_vif"])
         print(f"\n[Final features ({endpoint})]")
         print(info["final_features"])
         # print(f"\n[Final VIF ({endpoint})]")
@@ -467,6 +472,30 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
 multivar_totres_df = pd.concat(multivar_totres_df)
 # multivar_totres_df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_total_results({str(or_threshold)[-1]}).csv", index=False, encoding='utf-8-sig')
 multivar_totres_df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_total_results.csv", index=False, encoding='utf-8-sig')
+
+covar_info_df = pd.DataFrame(covar_info_df)
+covar_info_df = covar_info_df[['subgroup','endpoint']+list(covar_info_df.columns)[0:-2]].copy()
+covar_info_df_saving = pd.melt(covar_info_df,
+                   id_vars=['subgroup','endpoint','fitted_with'],          # 녹이지 않고 그대로 둘 열
+                   value_vars=['dropped_by_corr', 'dropped_by_vif', 'final_features', 'final_vif'],       # 녹일 열 (None이면 나머지 전부)
+                   var_name='info_type',         # 녹인 열 이름
+                   value_name="covar_list")    # 녹인 값의 열 이름)
+
+# covar_info_df_saving.columns
+
+
+covar_info_df_saving = covar_info_df_saving.sort_values(by=['subgroup','endpoint','info_type'],ascending=[False,True,True])
+covar_info_df_saving = covar_info_df_saving[covar_info_df_saving['info_type']!='final_vif'].copy()
+covar_info_df_saving = covar_info_df_saving.drop(['fitted_with'],axis=1)
+covar_info_df_saving['covar_list'] = covar_info_df_saving['covar_list'].map(lambda x: str({c.replace('(ACTIVE)','') for c in x}).replace("', '",", ").replace("{'","").replace("'}",""))
+covar_info_df_saving['info_type'] = covar_info_df_saving['info_type'].map({'dropped_by_corr':'(Dropped by correlation coefficient)','dropped_by_vif':'(Dropped by variance inflation factor)','final_features':'Covariates in the final model'})
+total_covar_list = list(set((", ".join(list(covar_info_df_saving['covar_list']))).split(", ")))
+total_covar_list.sort()
+covar_primer_df = pd.DataFrame([{'subgroup':'Total Covariates',	'endpoint':'-',	'info_type':'Total Covariates',	'covar_list':str(total_covar_list).replace("', '",", ").replace("['","").replace("']","")}])
+covar_info_df_saving = pd.concat([covar_primer_df,covar_info_df_saving])
+covar_info_df_saving.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_covar_info.csv", index=False, encoding='utf-8-sig')
+covar_info_df_saving.to_excel(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_covar_info.xlsx", index=False, encoding='utf-8-sig')
+
 
 sg_cond = (multivar_totres_df['subgroup'] == 'Total_Adult')
 uor_cond = (np.abs(multivar_totres_df['uni_OR']-1) >= ((multivar_totres_df['uni_OR']>=1).map(orthreshold_dict)))

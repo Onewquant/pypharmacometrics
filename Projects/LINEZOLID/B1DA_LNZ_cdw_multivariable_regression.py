@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from scipy.stats import spearmanr
 
 prj_name = 'LNZ'
-prj_dir = './Projects/LINEZOLID'
+prj_dir = 'C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/LINEZOLID'
 resource_dir = f'{prj_dir}/resource'
 output_dir = f"{prj_dir}/results"
 
@@ -17,7 +17,7 @@ output_dir = f"{prj_dir}/results"
 # str(list(dose_df['DOSE'].astype(int).drop_duplicates().sort_values().reset_index(drop=True))).replace("', '",", ")
 # str(list(dose_df['DAILY_DOSE'].astype(int).drop_duplicates().sort_values().reset_index(drop=True))).replace("', '",", ")
 # dose_df['DOSAGE_REGIMEN'].drop_duplicates().reset_index(drop=True)
-surv_res_df = pd.read_csv(f"{output_dir}/b1da/b1da_lnz_surv_res_df(365).csv")
+surv_res_df = pd.read_csv(f"{output_dir}/b1da/b1da_lnz_surv_res_df(90).csv")
 # surv_res_df = surv_res_df[(surv_res_df['CS']==0)].copy()
 # surv_res_df[(surv_res_df['ENDPOINT']=='Lactate')]
 

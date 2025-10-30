@@ -5,7 +5,7 @@ from typing import Dict, Any
 output_dir = 'C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/LINEZOLID/results'
 comed_df = pd.read_csv(f"{output_dir}/lnz_final_comed_df.csv")
 transfusion_df = pd.read_csv(f"{output_dir}/lnz_final_transfusion_df.csv")
-surv_res_df = pd.read_csv(f"{output_dir}/b1da/b1da_lnz_surv_res_df(365).csv")
+surv_res_df = pd.read_csv(f"{output_dir}/b1da/b1da_lnz_surv_res_df(90).csv")
 
 multivar_res_df = list()
 

@@ -89,7 +89,7 @@ for file_path in subgroup_files: #break
             data=df,
             x='EV',
             y=y2type,
-            # y='WT',
+            hue='SEX',
             palette=colors,
             width=0.5,
             showfliers=False
