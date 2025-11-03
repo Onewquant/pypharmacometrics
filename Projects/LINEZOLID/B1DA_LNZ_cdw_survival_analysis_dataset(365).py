@@ -277,8 +277,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 kmf = KaplanMeierFitter()
-basic_size=13.5
-fig, ax = plt.subplots(figsize=(basic_size+3.5 if max_time_at_risk > 190 else basic_size, 12))
+basic_size=20
+fig, ax = plt.subplots(figsize=(basic_size+3.5 if max_time_at_risk > 190 else basic_size, 13))
 
 
 final_rates = []  # 최종 발생률과 95% CI를 저장할 리스트
@@ -365,13 +365,16 @@ for g, gdf in surv_res_df.groupby("ENDPOINT"):
     })
 
 
-ax.set_title("Cumulative Incidence (ADRs) by Group (with 95% CI)",fontsize=14)
-ax.set_xlabel("Time (Days)",fontsize=14)
-ax.set_ylabel(f"Cumulative Incidence (ADRs)",fontsize=14)
+font_size = 18
+ax.set_title("Cumulative Incidence (ADRs) by Group (with 95% CI)",fontsize=font_size)
+ax.set_xlabel("Time (Days)",fontsize=font_size)
+ax.set_ylabel(f"Cumulative Incidence (ADRs)",fontsize=font_size)
+ax.tick_params(axis='both', labelsize=font_size)
 ax.set_ylim(0, 1.1)
 ax.set_xlim(0, int(400/(int(365/max_time_at_risk))))
 ax.grid(True, linestyle="--")
-ax.legend(title="Group", title_fontsize=12, fontsize=12)
+ax.legend(title="Group", title_fontsize=font_size, fontsize=font_size)
+
 
 plt.tight_layout()
 plt.savefig(f"{output_dir}/b1da/B1DA_KM_plot(ADRs)({max_time_at_risk}).png")  # PNG 파일로 저장

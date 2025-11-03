@@ -363,7 +363,8 @@ to_be_adj = [
              # T/P 두번 기록, DV 움직임 비정상적
              {'ID':377,'TIME':190.92,'DV':35.0, 'NEW_TIME':179.033},
              {'ID':367,'TIME':60.2,'DV':17.36, 'NEW_TIME':73},
-             {'ID':353,'TIME':103.17,'DV':17.11, 'NEW_TIME':120},]
+             {'ID':353,'TIME':103.17,'DV':17.11, 'NEW_TIME':120},
+]
 
 # to_be_adj_inx = list()
 for row in to_be_adj:
@@ -375,6 +376,27 @@ for row in to_be_adj:
     covar_modeling_df.at[adj_inx, 'TIME'] = row['NEW_TIME']
     # raise ValueError
     # to_be_adj_inx.append()
+
+# Wrong Data row 수정2
+to_be_adj2 = [
+             {'ID':777,'SEARCH_VARI':'TIME','SEARCH_VAL':498.21,'CHANGE_VAR':'TAD','PREV_VAL':0.0666667,'NEW_VAL':1},
+             {'ID':777,'SEARCH_VARI':'TIME','SEARCH_VAL':498.21,'CHANGE_VAR':'TIME','PREV_VAL':498.21,'NEW_VAL':499.15},
+             {'ID':377,'SEARCH_VARI':'TIME','SEARCH_VAL':179.033,'CHANGE_VAR':'TAD','PREV_VAL':12.8833333,'NEW_VAL':1},
+             {'ID':367,'SEARCH_VARI':'TIME','SEARCH_VAL':73,'CHANGE_VAR':'TAD','PREV_VAL':12.2,'NEW_VAL':1},
+             # {'ID': 367, 'SEARCH_VARI': 'TIME', 'SEARCH_VAL': 73, 'CHANGE_VAR': 'TAD', 'PREV_VAL': 12.2, 'NEW_VAL': 1},
+
+]
+
+# to_be_adj_inx = list()
+for row in to_be_adj2:
+    # raise ValueError
+    # covar_modeling_df[(covar_modeling_df['ID'] == row['ID'])]
+    # covar_modeling_df[(covar_modeling_df['ID'] == row['ID']) & (covar_modeling_df['TIME'].map(lambda x:round(x,1)) == round(row['TIME'],1))]
+    adj2_row = covar_modeling_df[(covar_modeling_df['ID']==row['ID'])&(covar_modeling_df[row['SEARCH_VARI']].map(lambda x:round(x,1)) == round(row['SEARCH_VAL'],1))&(covar_modeling_df['DV']!='.')].copy()
+    adj2_inx = adj2_row.index[0]
+    covar_modeling_df.at[adj2_inx, row['CHANGE_VAR']] = row['NEW_VAL']
+
+
 
 # Wrong Data row 삭제
 to_be_del = [
@@ -391,7 +413,7 @@ to_be_del = [
              {'ID':1630,'TIME':212.7833333,'DV':0.3},
 
              # CWRE > 15
-             # {'ID': 353, 'TIME': 120, 'DV': 17.11},
+             {'ID': 353, 'TIME': 120, 'DV': 17.11},
              ]
 
 to_be_del_inx = list()
@@ -403,6 +425,16 @@ for row in to_be_del:
     to_be_del_inx.append(del_row.index[0])
 covar_modeling_df = covar_modeling_df[~(covar_modeling_df.index.isin(to_be_del_inx))].copy()
 
+# DV==0, TIME==0 인 데이터는 모두 MDV==1 로 설정
+for inx, row in covar_modeling_df.iterrows(): #break
+    if (row['DV']=='0.0') and (row['TIME']==0):
+        covar_modeling_df.at[inx,'MDV']=1
+
+    # 한 대상자의 컬럼 하나 전체 수정
+    if row['ID'] == 572:
+        covar_modeling_df.at[inx, 'HT'] = 146.9
+
+covar_modeling_df = covar_modeling_df.sort_values(['ID','TIME'], ignore_index=True)
 
 ##############
 
