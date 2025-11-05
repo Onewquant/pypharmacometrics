@@ -172,7 +172,7 @@ for inx, row in pd_res_df.iterrows():
     # partial_dose_df['ROUTE']
     bioavailability = 0.667
     pd_res_df.at[inx, 'CUM_ADJ_DOSE'] = partial_dose_df.apply(lambda x:x['AMT']*bioavailability if x['ROUTE']==2 else x['AMT'], axis=1).sum()
-    pd_res_df.at[inx, 'ADJ_DOSE24'] = (partial_dose_df['AMT'].sum())/(delta_days)
+    pd_res_df.at[inx, 'ADJ_DOSE24'] = (pd_res_df.at[inx, 'CUM_ADJ_DOSE'])/(delta_days)
 
     pd_res_df.at[inx, 'CUM_ADJ_DOSEpWT'] = pd_res_df.at[inx, 'CUM_ADJ_DOSE']/(partial_dose_df['WT'].mean())
     pd_res_df.at[inx, 'ADJ_DOSE24pWT'] = pd_res_df.at[inx, 'ADJ_DOSE24']/(partial_dose_df['WT'].mean())
