@@ -55,6 +55,7 @@ pd_bsize_df = pd_bsize_df.merge(pd_addon_df, on=['UID','DATETIME'], how='left')
 for drug in ['infliximab','adalimumab']:
     for mode_str in ['integrated',]:
         added_filename_str = '(for pda)'
+        # added_filename_str = ''
         raw_modeling_df = pd.read_csv(f'{output_dir}/modeling_df_datacheck{added_filename_str}/{drug}_{mode_str}_datacheck{added_filename_str}.csv')
         raw_modeling_df['UID']= raw_modeling_df['UID'].astype(str)
         raw_modeling_df['DATETIME'] = raw_modeling_df['DATETIME'].map(lambda x:x.split('T')[0])
@@ -196,6 +197,8 @@ for drug in ['infliximab','adalimumab']:
         pre_sim_df['DT_MONTH'] = pre_sim_df['DATETIME'].map(lambda x:int(x.split('-')[1]))
         pre_sim_df['DT_DAY'] = pre_sim_df['DATETIME'].map(lambda x:int(x.split('-')[-1]))
         # pre_sim_df['DATETIME'] = pre_sim_df['DATETIME'].map(lambda x:int(x.replace('-','')))
+        pre_sim_df['TAD'] = add_time_after_dosing_column(df=pre_sim_df)
+        pre_sim_df['TAD'] = pre_sim_df['TAD'] / 24
         pre_sim_df['TIME'] = pre_sim_df['TIME'] / 24
         pre_sim_df['DUR'] = pre_sim_df['DUR'].map(lambda x: float(x) / 24 if x != '.' else x)
         pre_sim_df.to_csv(f'{output_dir}/modeling_df_covar/{drug}_{mode_str}_presim_df_dayscale{added_filename_str}.csv', index=False, encoding='utf-8')
@@ -208,6 +211,8 @@ for drug in ['infliximab','adalimumab']:
         print(f"Mode: {mode_str} / {modeling_input_line}")
 
         modeling_df.drop(columns=pd_marker_list, axis=1).to_csv(f'{output_dir}/modeling_df_covar/{drug}_{mode_str}_modeling_df{added_filename_str}.csv',index=False, encoding='utf-8-sig')
+        modeling_df['TAD'] = add_time_after_dosing_column(df=modeling_df)
+        modeling_df['TAD'] = modeling_df['TAD'] / 24
         modeling_df['TIME']= modeling_df['TIME']/24
         modeling_df['DUR'] = modeling_df['DUR'].map(lambda x: float(x)/24 if x!='.' else x)
         modeling_df.drop(columns=pd_marker_list, axis=1).to_csv(f'{output_dir}/modeling_df_covar/{drug}_{mode_str}_modeling_df_dayscale{added_filename_str}.csv',index=False, encoding='utf-8')

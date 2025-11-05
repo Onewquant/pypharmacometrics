@@ -26,7 +26,7 @@ maint_uids = list(uniq_df[(uniq_df['START_INDMAINT']==1)]['UID'].reset_index(dro
 
 ## Simulation 데이터셋 로딩
 
-sim_df = pd.read_csv(f"{nonmem_dir}/run/sim86",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
+sim_df = pd.read_csv(f"{nonmem_dir}/run/sim90",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
 # sim_df[sim_df['ID']==1]
 sim_df['ID'] = sim_df['ID'].astype(int)
 sim_df['UID'] = sim_df['ID'].map(id_uid_dict)

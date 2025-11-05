@@ -721,7 +721,7 @@ def add_time_after_dosing_column(df):
     ## 최근 투약 기준 시간으로 TAD 설정
     tad_df = df.copy()
     tad_df['TAD'] = np.nan
-
+    # tad_df[tad_df['TAD'] != 0]
     # 농도값 바로 전에 투약기록 있는 경우
     tad_cond0 = (tad_df['MDV'] == 0)
     tad_cond1 = (tad_df['MDV'].shift(1).fillna(1.0) == 1)

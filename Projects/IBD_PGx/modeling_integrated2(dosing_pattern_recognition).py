@@ -517,6 +517,7 @@ for drug in set(ind_df['DRUG']).union(set(maint_df['DRUG'])): #break
             drug_df.at[inx, 'DATETIME'] = (datetime.strptime(drug_df.at[near_dinx, 'DATETIME'], '%Y-%m-%dT%H:%M') - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
 
     drug_df = drug_df.sort_values(['ID', 'TIME', 'MDV'], ignore_index=True)
+    # drug_df[drug_df['TAD']!=0]
     drug_df['TIME(DAY)'] = drug_df['TIME'] / 24
     drug_df['TIME(WEEK)'] = drug_df['TIME'] / (7 * 24)
 
