@@ -41,9 +41,13 @@ aki_pt_df = aki_pt_df.merge(aki_df[['ID','AKI_DT']], on=['ID'],how='left')
 aki_pt_df = aki_pt_df[(aki_pt_df['TIME'] <= aki_pt_df['AKI_DT'])].copy()
 
 filt_final_sim_df = pd.concat([aki_pt_df, nonaki_pt_df]).sort_values(['ID','TIME','MDV'])
-filt_final_sim_df = filt_final_sim_df[['ID', 'TIME', 'TAD', 'DV', 'MDV', 'CMT', 'AMT', 'RATE', 'UID','CREATININE','AKI_DT']].copy()
+filt_final_sim_df = filt_final_sim_df[['ID', 'TIME', 'TAD', 'DV', 'MDV', 'CMT', 'AMT', 'RATE', 'UID','SEX','AGE','ALB','WT','CREATININE','AKI_DT']].copy()
 # filt_final_sim_df.to_csv(f"{output_dir}/amk_simulation_df.csv",index=False, encoding='utf-8-sig')
 filt_final_sim_df.to_csv(f"{nonmem_dir}/amk_simulation_df.csv",index=False, encoding='utf-8-sig')
+
+# filt_final_sim_df[filt_final_sim_df['AKI_DT']>0][['ID','UID']].drop_duplicates()
+# aki_pt_df[(aki_pt_df['ID']==21)][['ID','UID','TIME','CREATININE','AKI_DT']]
+
 # max_time_df = nonaki_pt_df.groupby('ID',as_index=False)['TIME'].agg('max')
 # sns.displot(max_time_df['TIME']/24)
 # aki_pt_df['AKI_DT'] = aki_pt_df['AKI_DT'].map()

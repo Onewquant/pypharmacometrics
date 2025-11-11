@@ -81,33 +81,81 @@ for file_path in subgroup_files: #break
 
     # 색상 설정 (고급스러운 tone)
     colors = ['#1f77b4', '#ff7f0e']  # EV=0 → blue, EV=1 → orange
+    ggdf = df.copy()
+    ggdf['SEX'] = ggdf['SEX'].map({0:'Male',1:'Female'})
+    # for y2type, unit_str in {'WT':('(kg)','Weight'),'DOSE24PERWT':('(mg/kg/day)','Weight-normalized mean daily dose')}.items():
+    #
+    #     plt.figure(figsize=(10, 8))
+    #     sns.boxplot(
+    #         data=ggdf,
+    #         x='EV',
+    #         y=y2type,
+    #         hue='SEX',
+    #         hue_order=['Male','Female'],
+    #         palette=colors,
+    #         width=0.5,
+    #         showfliers=False
+    #     )
+    #
+    #     # 스타일링
+    #     # plt.xticks([0, 1], ['EV = 0', 'EV = 1'])
+    #     plt.yticks(fontsize=12)
+    #     plt.xticks([0, 1], ['Event = 0', 'Event = 1'],fontsize=12)
+    #     plt.xlabel('Lactic acidosis event group',fontsize=12)
+    #     # plt.ylabel(f'{y2type} {unit_str[0]}')
+    #     plt.ylabel(f'{unit_str[1]} {unit_str[0]}',fontsize=12)
+    #     # plt.title(f'Comparison of {y2type} by Event Occurrence')
+    #     plt.title(f'Comparison of {unit_str[1]} by event occurrence',fontsize=12)
+    #     plt.grid(alpha=0.2)
+    #     plt.tight_layout()
+    #
+    #     plt.savefig(f"{output_dir}/b1da/mvlreg_output/subgroup_analysis/EV_to_{y2type}_boxplot({pd_endpoint}).png")  # PNG 파일로 저장
+    #
+    #     plt.cla()
+    #     plt.clf()
+    #     plt.close()
 
-    for y2type, unit_str in {'WT':'(kg)','DOSE24PERWT':'(mg/kg/day)'}.items():
+    fig, axes = plt.subplots(2, 1, figsize=(12, 15), sharex=True)
 
-        plt.figure(figsize=(6, 5))
+    plot_items = {
+        'WT': ('(kg)', 'weight'),
+        'DOSE24PERWT': ('(mg/kg/day)', 'weight-normalized mean daily dose')
+    }
+    x_order = [0, 1]
+    ggfontsize = 18
+
+    for i, (y2type, unit_str) in enumerate(plot_items.items()):
+        i_alph = 'A' if i == 0 else 'B'
+        ax = axes[i]
+
         sns.boxplot(
-            data=df,
-            x='EV',
-            y=y2type,
-            hue='SEX',
-            palette=colors,
-            width=0.5,
-            showfliers=False
+            data=ggdf,
+            x='EV', y=y2type,
+            hue='SEX', hue_order=['Male', 'Female'],
+            palette=colors, width=0.5, showfliers=False,
+            order=x_order, ax=ax
         )
+        ax.set_xticklabels(['Event = 0', 'Event = 1'], fontsize=ggfontsize)
+        ax.set_xlabel('Lactic acidosis event group', fontsize=ggfontsize)
+        ax.set_ylabel(f'{unit_str[1]} {unit_str[0]}', fontsize=ggfontsize)
+        ax.set_title(f'({i_alph}) Comparison of {unit_str[1]} by event occurrence', fontsize=ggfontsize)
+        ax.grid(alpha=0.2)
 
-        # 스타일링
-        plt.xticks([0, 1], ['EV = 0', 'EV = 1'])
-        plt.xlabel('Event group')
-        plt.ylabel(f'{y2type} {unit_str}')
-        plt.title(f'Comparison of {y2type} by Event Occurrence')
-        plt.grid(alpha=0.2)
-        plt.tight_layout()
+    # ⬇⬇⬇ 추가: 위/아래 subplot 모두 x축 라벨 보이게
+    axes[0].tick_params(axis='x', which='both', labelbottom=True)
+    axes[1].tick_params(axis='x', which='both', labelbottom=True)
 
-        plt.savefig(f"{output_dir}/b1da/mvlreg_output/subgroup_analysis/EV_to_{y2type}_boxplot({pd_endpoint}).png")  # PNG 파일로 저장
+    # 통합 legend
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, title="Sex", loc='upper right', fontsize=ggfontsize, title_fontsize=ggfontsize)
+    axes[0].legend_.remove()
+    axes[1].legend_.remove()
 
-        plt.cla()
-        plt.clf()
-        plt.close()
+    plt.tight_layout(rect=[0, 0, 0.95, 1])
+    plt.savefig(f"{output_dir}/b1da/mvlreg_output/subgroup_analysis/EV_to_WT_DOSE24PERWT_boxplot({pd_endpoint}).png")
+    plt.cla()
+    plt.clf()
+    plt.close()
 
     ###################################################
     # Subgroup간 Covariates 값 비교
@@ -180,7 +228,7 @@ for file_path in subgroup_files: #break
     }
 
     # Subplot 생성 (y축 공유)
-    fig, axes = plt.subplots(1, 2, figsize=(10, 5), sharey=True)
+    fig, axes = plt.subplots(1, 2, figsize=(12, 6), sharey=True)
 
     # SEX=0 (left subplot)
     axes[0].scatter(df_0['WT'], df_0['EV'], color=colors[0], alpha=0.7, edgecolor='none')
