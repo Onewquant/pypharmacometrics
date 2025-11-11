@@ -96,7 +96,7 @@ mindt_df = mindt_df[['UID','MIN_DATE']].copy()
 # mindt_df[mindt_df['UID']=='11356291']
 
 # vs_df_ori = pd.read_csv(f"{output_dir}/final_req_vs_data.csv",encoding='utf-8-sig')
-vs_df = pd.read_csv(f"{output_dir}/final_req_vs_data.csv",encoding='utf-8-sig')
+vs_df = pd.read_csv(f"{output_dir}/final_req_bodysize_data.csv",encoding='utf-8-sig')
 vs_df['UID'] = vs_df['UID'].astype(str)
 vs_df = vs_df.merge(mindt_df, on=['UID'], how='left')
 vs_df = vs_df.dropna(subset=['MIN_DATE'])

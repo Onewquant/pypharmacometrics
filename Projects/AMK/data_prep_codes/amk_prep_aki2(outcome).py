@@ -6,9 +6,10 @@ prj_name = 'AMK'
 prj_dir = f'./Projects/{prj_name}'
 resource_dir = f'{prj_dir}/resource'
 output_dir = f"{prj_dir}/results"
-# nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
+nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
 
-sim_df = pd.read_csv(f'{output_dir}/sim114.csv')
+# sim_df = pd.read_csv(f'{output_dir}/sim114.csv')
+sim_df = pd.read_csv(f'{nonmem_dir}/amk_modeling_df_covar.csv')
 sim_df['ID'] = sim_df['ID'].astype(int)
 dose_df = sim_df[sim_df['MDV']==1].copy()
 conc_df = sim_df[sim_df['MDV']==0].copy()
@@ -54,7 +55,7 @@ for inx, row in cycle_df.iterrows(): #break
     for cr_inx, cr_row in id_cr_df.iterrows():
 
         bl_dt = cr_row['TIME']
-        bl_cr = cr_row['CREATININ']
+        bl_cr = cr_row['CREATININE']
 
         aki_48h_dt = cr_row['TIME'] + 24*2
         aki_7days_dt = cr_row['TIME'] + 24*7
@@ -67,9 +68,9 @@ for inx, row in cycle_df.iterrows(): #break
 
         if (((id_cr_df['TIME'] < aki_48h_dt) & (id_cr_df['TIME'] != cr_row['TIME']))*1).sum() > 0:
             cond_exist_df = id_cr_df[(id_cr_df['TIME'] < aki_48h_dt) & (id_cr_df['TIME'] != cr_row['TIME'])]
-            aki_exist_df = cond_exist_df[cond_exist_df['CREATININ'] >= bl_cr+0.3]
+            aki_exist_df = cond_exist_df[cond_exist_df['CREATININE'] >= bl_cr+0.3]
             if len(aki_exist_df)>0:
-                aki_exist_df = aki_exist_df.rename(columns={'TIME':'AKI_DT','CREATININ':'AKI_RSLT'})
+                aki_exist_df = aki_exist_df.rename(columns={'TIME':'AKI_DT','CREATININE':'AKI_RSLT'})
                 aki_exist_df['COND_TYPE'] = '48h'
                 aki_exist_df['BLCr_DT'] = bl_dt
                 aki_exist_df['BLCr_RSLT'] = bl_cr
@@ -78,25 +79,34 @@ for inx, row in cycle_df.iterrows(): #break
 
         if (((id_cr_df['TIME'] < aki_7days_dt) & (id_cr_df['TIME'] != cr_row['TIME'])) * 1).sum() > 0:
             cond_exist_df = id_cr_df[(id_cr_df['TIME'] < aki_7days_dt) & (id_cr_df['TIME'] != cr_row['TIME'])]
-            aki_exist_df = cond_exist_df[cond_exist_df['CREATININ'] >= bl_cr*1.5]
+            aki_exist_df = cond_exist_df[cond_exist_df['CREATININE'] >= bl_cr*1.5]
             if len(aki_exist_df)>0:
-                aki_exist_df = aki_exist_df.rename(columns={'TIME':'AKI_DT','CREATININ':'AKI_RSLT'})
+                aki_exist_df = aki_exist_df.rename(columns={'TIME':'AKI_DT','CREATININE':'AKI_RSLT'})
                 aki_exist_df['COND_TYPE'] = '7days'
                 aki_exist_df['BLCr_DT'] = bl_dt
                 aki_exist_df['BLCr_RSLT'] = bl_cr
                 result_df.append(aki_exist_df[result_cols].copy())
 
 result_df = pd.concat(result_df)
-# result_df['ID'].drop_duplicates()
-
-# result_df.to_csv('./prepdata/amikacin_aki.csv', index=False, encoding='utf-8')
-result_df.to_csv(f'{output_dir}/amk_aki.csv', index=False, encoding='utf-8')
 
 filt_res_df = result_df[result_df['BLCr_RSLT']<=1.2].copy()
-filt_res_df.to_csv(f'{output_dir}/amk_aki(filtered).csv', index=False, encoding='utf-8')
+filt_res_df_new = filt_res_df[filt_res_df['AKI_RSLT']>1.2].copy()
+
+result_df.to_csv(f'{output_dir}/amk_aki.csv', index=False, encoding='utf-8')
+print(f"AKI cases: {len(result_df['ID'].drop_duplicates())}")
+# filt_res_df.to_csv(f'{output_dir}/amk_aki(filtered).csv', index=False, encoding='utf-8')
+# print(f"AKI cases: {len(filt_res_df['ID'].drop_duplicates())}")
+# filt_res_df_new.to_csv(f'{output_dir}/amk_aki(filtered).csv', index=False, encoding='utf-8')
+# print(f"AKI cases: {len(filt_res_df_new['ID'].drop_duplicates())}")
+
+
+# result_df['ID'].drop_duplicates()
+# filt_res_df_new['ID'].drop_duplicates()
+# filt_res_df['ID'].drop_duplicates()
+# sim_df['ID'].drop_duplicates()
 
 #(datetime.strptime(row['SDOSE_DT'], '%Y-%m-%dT%H:%M') - timedelta(days=30)).strftime('%Y-%m-%dT%H:%M')
-print(f"AKI cases: {len(filt_res_df['ID'].drop_duplicates())}")
+
 
 # cycle_df = pd.DataFrame(cycle_df)
 

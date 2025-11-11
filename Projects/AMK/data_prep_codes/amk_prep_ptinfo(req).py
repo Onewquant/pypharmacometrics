@@ -14,7 +14,7 @@ if not os.path.exists(output_dir):
 
 # Dosing 정보 불러오기
 
-pid_df = pd.read_csv(f"{resource_dir}/AMK_REQ_DATA/df_11007_재식별.csv")
+pid_df = pd.read_csv(f"{resource_dir}/[AMK_AKI_ML_DATA]/CCM.csv")
 pid_df = pid_df.rename(columns={'Deidentification_ID':'UID','환자번호':'REQ_ID'}).drop(['Column1', 'Column2'],axis=1)
 
 ptinfo_result_df = pd.read_csv(f"{resource_dir}/AMK_REQ_DATA/dt_11007_환자정보_3538.csv")
