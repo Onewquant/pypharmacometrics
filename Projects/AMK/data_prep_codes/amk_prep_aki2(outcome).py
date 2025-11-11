@@ -37,6 +37,8 @@ result_cols = ['ID','COND_TYPE','BLCr_DT','BLCr_RSLT','AKI_DT','AKI_RSLT']
 result_df = list()
 for inx, row in cycle_df.iterrows(): #break
     # if inx[0]==148484876560382: raise ValueError
+    # if row['ID']==9:
+    #     raise ValueError
     id_cr_df = sim_df[sim_df['ID']==row['ID']].sort_values(['TIME'])
 
     print(f"({inx}) {row['ID']}")
@@ -52,7 +54,7 @@ for inx, row in cycle_df.iterrows(): #break
 
     # id_cr_df.columns
     # id_cr_df = pd.concat([recentbl_df, afterdose_df])
-    for cr_inx, cr_row in id_cr_df.iterrows():
+    for cr_inx, cr_row in id_cr_df.iterrows():#break
 
         bl_dt = cr_row['TIME']
         bl_cr = cr_row['CREATININE']
@@ -66,9 +68,9 @@ for inx, row in cycle_df.iterrows(): #break
         # (1) 48h 이내에 Cr 0.3 증가
         # (2) 7일 이내에 기저치 * 1.5 이상으로 상승
 
-        if (((id_cr_df['TIME'] < aki_48h_dt) & (id_cr_df['TIME'] != cr_row['TIME']))*1).sum() > 0:
-            cond_exist_df = id_cr_df[(id_cr_df['TIME'] < aki_48h_dt) & (id_cr_df['TIME'] != cr_row['TIME'])]
-            aki_exist_df = cond_exist_df[cond_exist_df['CREATININE'] >= bl_cr+0.3]
+        if (((id_cr_df['TIME'] < aki_48h_dt) & (id_cr_df['TIME'] > bl_dt))*1).sum() > 0:
+            cond_exist_df = id_cr_df[(id_cr_df['TIME'] < aki_48h_dt) & (id_cr_df['TIME'] > bl_dt)].copy()
+            aki_exist_df = cond_exist_df[cond_exist_df['CREATININE'] >= bl_cr+0.3].copy()
             if len(aki_exist_df)>0:
                 aki_exist_df = aki_exist_df.rename(columns={'TIME':'AKI_DT','CREATININE':'AKI_RSLT'})
                 aki_exist_df['COND_TYPE'] = '48h'
@@ -77,9 +79,9 @@ for inx, row in cycle_df.iterrows(): #break
                 result_df.append(aki_exist_df[result_cols].copy())
 
 
-        if (((id_cr_df['TIME'] < aki_7days_dt) & (id_cr_df['TIME'] != cr_row['TIME'])) * 1).sum() > 0:
-            cond_exist_df = id_cr_df[(id_cr_df['TIME'] < aki_7days_dt) & (id_cr_df['TIME'] != cr_row['TIME'])]
-            aki_exist_df = cond_exist_df[cond_exist_df['CREATININE'] >= bl_cr*1.5]
+        if (((id_cr_df['TIME'] < aki_7days_dt) & (id_cr_df['TIME'] > bl_dt)) * 1).sum() > 0:
+            cond_exist_df = id_cr_df[(id_cr_df['TIME'] < aki_7days_dt) & (id_cr_df['TIME'] > bl_dt)].copy()
+            aki_exist_df = cond_exist_df[cond_exist_df['CREATININE'] >= bl_cr*1.5].copy()
             if len(aki_exist_df)>0:
                 aki_exist_df = aki_exist_df.rename(columns={'TIME':'AKI_DT','CREATININE':'AKI_RSLT'})
                 aki_exist_df['COND_TYPE'] = '7days'

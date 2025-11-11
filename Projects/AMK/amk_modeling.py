@@ -150,6 +150,7 @@ for id, id_df in modeling_df.groupby('ID'): #break
     # next_cycle_rows = id_df[id_df['MDV'] == 1].copy()
     next_cycle_rows = id_df[id_df['TIME'].diff() >= 96]
     if len(next_cycle_rows)>0:
+        # raise ValueError
         next_cycle_inx = next_cycle_rows.index[0]
         id_df = id_df[id_df.index < next_cycle_inx].reset_index(drop=True)
         # raise ValueError
