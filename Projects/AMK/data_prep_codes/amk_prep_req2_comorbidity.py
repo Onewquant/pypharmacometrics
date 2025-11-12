@@ -17,6 +17,9 @@ if not os.path.exists(output_dir):
 # pid_df = pd.read_csv(f"{resource_dir}/[AMK_AKI_ML_DATA]/CCM.csv")
 # pid_df = pid_df.rename(columns={'Deidentification_ID':'UID','환자번호':'REQ_ID'}).drop(['Column1', 'Column2'],axis=1)
 
+pid_decode_df = pd.read_csv(f"{resource_dir}/[AMK_AKI_ML_DATA]/재식별 파일.csv")
+pid_decode_df = pid_decode_df.rename(columns={'환자번호':'UID','Deidentification_ID':'PID'})
+pid_decode_df['UID'] = pid_decode_df['UID'].map(lambda x: x.split('-')[0])
 
 df = pd.read_csv(f"{resource_dir}/[AMK_AKI_ML_DATA]/CM.csv")
 df = df.rename(columns={'ID':'UID'})
@@ -59,6 +62,11 @@ cm_df = cm_df.drop_duplicates(['UID','DATE','CM_CATNUM']).sort_values(['UID','DA
 
 
 cm_df = cm_df.merge(cm_index_df, on=['CM_CATNUM'], how='left')
+
+cm_df['UID'] = cm_df['UID'].map(str)
+cm_df = cm_df.merge(pid_decode_df, on=['UID'],how='left')
+cm_df['UID'] = cm_df['PID'].copy()
+cm_df = cm_df.drop(['PID'], axis=1)
 
 if not os.path.exists(f'{output_dir}'):
     os.mkdir(f'{output_dir}')

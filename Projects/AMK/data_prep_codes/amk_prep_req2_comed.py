@@ -17,6 +17,9 @@ if not os.path.exists(output_dir):
 # pid_df = pd.read_csv(f"{resource_dir}/[AMK_AKI_ML_DATA]/CCM.csv")
 # pid_df = pid_df.rename(columns={'Deidentification_ID':'UID','환자번호':'REQ_ID'}).drop(['Column1', 'Column2'],axis=1)
 
+pid_decode_df = pd.read_csv(f"{resource_dir}/[AMK_AKI_ML_DATA]/재식별 파일.csv")
+pid_decode_df = pid_decode_df.rename(columns={'환자번호':'UID','Deidentification_ID':'PID'})
+pid_decode_df['UID'] = pid_decode_df['UID'].map(lambda x: x.split('-')[0])
 
 df = pd.read_csv(f"{resource_dir}/[AMK_AKI_ML_DATA]/CCM.csv")
 
@@ -218,6 +221,17 @@ ren_tox_dict = ren_tox_df.set_index(['CAT_ATC_LIST'])['NEPHTOX_DRUG_YN'].to_dict
 comed_res_df['CCM_CATNUM'] = comed_res_df['ATC'].map(cat_num_dict)
 comed_res_df['NEPHTOX_DRUG_YN'] = comed_res_df['ATC'].map(ren_tox_dict)
 # comed_res_df[~comed_res_df['CCM_CATNUM'].isna()]
+
+# comed_res_df = pd.read_csv(f"{output_dir}/final_comed_df.csv")
+comed_res_df['UID'] = comed_res_df['UID'].map(str)
+comed_res_df = comed_res_df.merge(pid_decode_df, on=['UID'],how='left')
+comed_res_df['UID'] = comed_res_df['PID'].copy()
+comed_res_df = comed_res_df.drop(['PID'], axis=1)
+comed_res_df = comed_res_df[~((comed_res_df['CCM_CATNUM'].isna())&(comed_res_df['NEPHTOX_DRUG_YN'].isna()))].reset_index(drop=True)
+comed_res_df['CCM_CATNUM'] = comed_res_df['CCM_CATNUM'].map(int)
+comed_res_df['NEPHTOX_DRUG_YN'] = comed_res_df['NEPHTOX_DRUG_YN'].map(int)
+# comed_res_df['UID'].iloc[0]
+# pid_decode_df['UID'].iloc[0]
 
 if not os.path.exists(f'{output_dir}'):
     os.mkdir(f'{output_dir}')
