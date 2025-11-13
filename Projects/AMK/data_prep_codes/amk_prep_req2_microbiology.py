@@ -30,17 +30,30 @@ mic_df = mic_df[~mic_df['RESULT'].isna()].copy()
 # mic_df['UID'] = mic_df['UID'].map(lambda x: x.split('-')[0])
 # for c in mic_df['UID']:
 
-mic_df = mic_df[~(mic_df['CODE'].isin(['L41071','L7347','L2585','L26002']))].copy() # 결핵균 약제내성 검사 제외
-mic_df = mic_df[~(mic_df['CODE'].isin(['L25137']))].copy() # pharmacogenomics 검사 제외
+mic_df = mic_df[~(mic_df['CODE'].isin(['L41071','L4107','L7347','L2585','L26002','L731002','L2584']))].copy() # 결핵균 약제내성 검사 제외
+mic_df = mic_df[~(mic_df['CODE'].isin(['L2588','L25137','L2537','L25371','L25361','L25373','L4067','L43242']))].copy() # pharmacogenomics 및 기타 약제검사 제외
 
 afb_df = mic_df[(mic_df['CODE'].isin(['L4106']))].copy() # 항산균 검사
-ntm_df = mic_df[(mic_df['CODE'].isin(['L2518']))].copy() # ntm 검사
+tb_df = mic_df[(mic_df['CODE'].isin(['L2510']))].copy() # tb 검사
+ntm_df = mic_df[(mic_df['CODE'].isin(['L2518','L2508']))].copy() # ntm 검사
+respvirus_df = mic_df[(mic_df['CODE'].isin(['L25159','L25158','L25198','L25199','L25104','L2513','L25140']))].copy() # 호흡기바이러스/폐렴 검사
+parainfluenza_df = mic_df[(mic_df['CODE'].isin(['L25132']))].copy() # ntm 검사
+diar_df = mic_df[(mic_df['CODE'].isin(['L25116','L25117','L25118','L25153','L25154']))].copy() # Acute diarrhea 검사
+legionella_df = mic_df[(mic_df['CODE'].isin(['L2507']))].copy() # legionella pcr 검사
 fungi_df = mic_df[(mic_df['CODE'].isin(['L25125','L2566']))].copy() # ntm 검사
-other_mic_df = mic_df[~(mic_df['CODE'].isin(['L4106','L2518','L25125','L2566']))].copy()
-other_mic_df['RESULT'] = other_mic_df['RESULT'].map(lambda x:x.split('항생제 감수성결과')[0].split('동정결과')[-1].split('(최종보고')[0].split('판독결과')[-1].split('\n\n[검')[0].replace(':','').replace('균주명  ','').replace(']','').split('\n\n')[0].strip())
+vre_df = mic_df[(mic_df['CODE'].isin(['L1704','L1703','L1702','L1701','L1705','L1706']))].copy() # vre 검사
+mening_df = mic_df[(mic_df['CODE'].isin(['L25152']))].copy() # vre 검사
+
+other_mic_df = mic_df[~(mic_df['CODE'].isin(['L4106','L2518','L2508','L25125','L2566','L25159','L25158','L25198','L25199','L25116','L25117','L2507','L25104','L2513','L1704','L25118','L2513','L1702','L1703','L25153','L25152','L1701','L1705','L25154','L25132','L2510','L25140','L1706']))].copy()
+other_mic_df['RESULT'] = other_mic_df['RESULT'].map(lambda x:x.split('분리 균명')[-1].split('항생제 감수성결과')[0].split('동정결과')[-1].split('동정 결과')[-1].split('(최종보고')[0].split('판독결과')[-1].split('\n\n[검')[0].replace(':','').replace('균주명  ','').replace(']','').split('중간보고')[0].split('[검체')[0].split('약제명        절대농도(㎍/ml)      판정결과')[0].split('[검사방법')[0].split('Comment 본 검사는 CRE surveillance를 목적으로 시행하였음')[0].split('항생제 감수성 검사결과')[0].split('* 항생제 감수성 결과가 있는 경우')[0].split('카바페넴내성 장내세균 확인검사')[0].split('Comment')[0].split('COMMENT')[0].split('----------------------------------------------')[0].strip()) # .split('\n\n')[0]
 other_mic_df['RESULT'] = other_mic_df.apply(lambda x: x['NAME'].split('[분자진단]')[0] if 'IU/mL' in x['RESULT'] else x['RESULT'], axis=1)
+other_mic_df['RESULT'] = other_mic_df['RESULT'].map(lambda x: 'Negative' if ('Negative for' in x) or ('Unable to identify due to probably mixed condition' in x) or ('No amplification' in x) else x)
 for inx, x in enumerate(other_mic_df['RESULT'].unique()):
-    print(f"({inx} {x})")
+    print(f"({inx}) {x}")
+
+gumun = '2월 11일 Blood 검체 접종  BAP plate에서 Acid fast bacilli 의심되는 col'
+other_mic_df[other_mic_df['RESULT'].map(lambda x:gumun in x)]['CODE'].unique()
+other_mic_df.columns
 
 surgery_df['PROC_CATNUM'] = surgery_df['CODE'].astype(float).map(lambda x: 1 if x in (35.2, 35.22, 35.24, 35.28, 36.1, 36.11, 36.12, 37.12, 37.31, 37.33, 37.34, 37.5, 37.62, 37.66, 37.8) else 2)
 surgery_df['PROC'] = surgery_df['NAME'].copy()
