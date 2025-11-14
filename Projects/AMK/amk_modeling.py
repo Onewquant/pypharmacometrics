@@ -246,15 +246,15 @@ print(f"Abnormal conc movement: {len(abnm_conc_moving_pids)} patients / {abnm_co
 print(f"[Completed] Final Modeling Dataset: {len(modeling_datacheck_df['ID'].unique())} patients / {len(final_modeling_df['ID'])} rows")
 
 
-recent_modeling_df = modeling_datacheck_df[modeling_datacheck_df['DATETIME'].map(lambda x:x.split('T')[0][0:4]) > '2020'].copy()
-recent_modeling_df.to_csv(f"{modeling_datacheck_dir}/recent_amk_modeling_datacheck.csv",index=False, encoding='utf-8-sig')
-recent_modeling_df.drop(['NAME'],axis=1).to_csv(f"{modeling_datacheck_dir}/recent_amk_modeling_df.csv",index=False, encoding='utf-8-sig')
-
-# len(recent_modeling_df.drop(['NAME'],axis=1))
-# modeling_datacheck_df.columns
-past_modeling_df = modeling_datacheck_df[modeling_datacheck_df['DATETIME'].map(lambda x:x.split('T')[0][0:4]) < '2008'].copy()
-past_modeling_df.to_csv(f"{modeling_datacheck_dir}/past_amk_modeling_datacheck.csv",index=False, encoding='utf-8-sig')
-past_modeling_df[com_cols+['UID']].drop(['NAME'],axis=1).to_csv(f"{output_dir}/past_amk_modeling_df.csv",index=False, encoding='utf-8-sig')
+# recent_modeling_df = modeling_datacheck_df[modeling_datacheck_df['DATETIME'].map(lambda x:x.split('T')[0][0:4]) > '2020'].copy()
+# recent_modeling_df.to_csv(f"{modeling_datacheck_dir}/recent_amk_modeling_datacheck.csv",index=False, encoding='utf-8-sig')
+# recent_modeling_df.drop(['NAME'],axis=1).to_csv(f"{modeling_datacheck_dir}/recent_amk_modeling_df.csv",index=False, encoding='utf-8-sig')
+#
+# # len(recent_modeling_df.drop(['NAME'],axis=1))
+# # modeling_datacheck_df.columns
+# past_modeling_df = modeling_datacheck_df[modeling_datacheck_df['DATETIME'].map(lambda x:x.split('T')[0][0:4]) < '2008'].copy()
+# past_modeling_df.to_csv(f"{modeling_datacheck_dir}/past_amk_modeling_datacheck.csv",index=False, encoding='utf-8-sig')
+# past_modeling_df[com_cols+['UID']].drop(['NAME'],axis=1).to_csv(f"{output_dir}/past_amk_modeling_df.csv",index=False, encoding='utf-8-sig')
 
 ####### NONMEM SDTAB
 

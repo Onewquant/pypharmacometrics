@@ -132,8 +132,11 @@ other_mic_df['RESULT'] = other_mic_df['RESULT'].map(lambda x: 'Negative' if ('Ne
 neg_factor_list = list()
 # for c in ['Rare(<1)','A few(1~5)']:
 #     for g in ['G(-) rod','G(+) rod','Yeast like cell']:
-for c in ['Rare(<1)','Afew(1~5)']:
-    for g in ['G(-)rod','G(+)rod','G(-)cocci','G(+)cocci','G(-)cocci,chains','G(+)cocci,chains','Yeastlikecell']:
+neg_degree_list = ['Rare(<1)','Afew(1~5)']
+bact_type_list = ['G(-)rod','G(+)rod','G(-)cocci','G(+)cocci','G(-)cocci,chains','G(+)cocci,chains','Yeastlikecell']
+
+for c in neg_degree_list:
+    for g in bact_type_list:
         cg_str = f"{c}{g}"
         neg_factor_list.append(cg_str)
 
@@ -149,78 +152,130 @@ for a in neg_factor_list:
 row_inx_list = list()
 for inx, row in other_mic_df.iterrows():
     row_bool = False
+    # Negative 구문이 2개 들어있는 경우
     for neg_str in neg_list:
-        # if neg_str in row['RESULT']:
         if neg_str in row['RESULT'].replace(' ',''):
             row_bool=True
             row_inx_list.append(inx)
             print(f"({len(row_inx_list)}) Negative // {other_mic_df.at[inx,'RESULT']}")
             other_mic_df.at[inx,'RESULT'] = 'Negative'
             break
+
+    # Negative 구문이 1개 들어있고 나머지 균에 대한 구문은 없는 경우
+    if not row_bool:
+        for neg_factor_str in neg_factor_list:
+            if (neg_factor_str in row['RESULT'].replace(' ', '')):
+                no_other_bact = True
+                for bactype in bact_type_list:
+                    if (bactype not in neg_factor_str) and (bactype in row['RESULT']):
+                        no_other_bact = False
+                    # pass
+                if no_other_bact:
+                    # if other_mic_df.at[inx, 'RESULT'] not in ['Many(>10) WBC,A few(1~5) Yeast like cell']:
+                    #     raise ValueError
+                    row_bool = True
+                    row_inx_list.append(inx)
+                    print(f"({len(row_inx_list)}) Negative2 // {other_mic_df.at[inx, 'RESULT']}")
+                    other_mic_df.at[inx, 'RESULT'] = 'Negative'
+                    break
     # if row_bool:
 
-for inx, x in enumerate(other_mic_df['RESULT'].unique()):
-    print(f"({inx}) {x}")
+
 
 
 micbio_df = pd.concat([afb_df, tb_df, ntm_df, respvirus_df, parainfluenza_df, diar_df, legionella_df,fungi_df,vre_df, mening_df, other_mic_df])
+# if not os.path.exists(f'{output_dir}'):
+#     os.mkdir(f'{output_dir}')
+# micbio_df.to_csv(f"{output_dir}/final_microbiology_df.csv", encoding='utf-8-sig', index=False)
+
+
+
+##############################
+
+micbio_index_dict = {1:"Pseudomonas aeruginosa",
+                     2:"Acinetobacter baumannii",
+                     3:"Klebsiella pneumoniae",
+                     4:"Escherichia coli",
+                     5:"Enterobacter species",
+                     6:"Serratia marcescens",
+                     7:"Mycobacterium tuberculosis",
+                     8:"NonTuberculous Mycobacterium",
+                     9:"Others",
+                     10:"Empirical"
+                     }
+
+# micbio_df = pd.read_csv(f"{output_dir}/final_microbiology_df.csv")
+# for vre_str in ['No Vancomycin-resistance Enterococci(VRE) isolated','No Vancomycin-resistant Enterococci (VRE) isolated']:
+#     vre_df['RESULT'] = vre_df['RESULT'].replace(vre_str,'Negative')
+
+micbio_df = micbio_df[~micbio_df['RESULT'].isna()].copy()
+micbio_df['RESULT'] = micbio_df['RESULT'].replace('No aerobic or anaerobic bacteria isolated','Negative')
+micbio_df['RESULT'] = micbio_df['RESULT'].map(lambda x: 'Negative' if 'No Bacteria' in x else x)
+catnum_list = list()
+for inx, row in micbio_df.iterrows():
+    shrink_res_str = row['RESULT'].replace(' ','').lower()
+    if 'pseudomonasaeruginosa' in shrink_res_str:
+        catnum_list.append(1)
+        continue
+    elif 'acinetobacterbaumannii' in shrink_res_str:
+        catnum_list.append(2)
+        continue
+    elif 'klebsiellapneumoniae' in shrink_res_str:
+        catnum_list.append(3)
+        continue
+    elif 'escherichiacoli' in shrink_res_str:
+        catnum_list.append(4)
+        continue
+    elif 'enterobacter' in shrink_res_str:
+        # raise ValueError
+        catnum_list.append(5)
+        continue
+    elif 'klebsiellaaerogenes' in shrink_res_str:
+        # raise ValueError
+        catnum_list.append(5)
+        continue
+    elif 'serratiamarcescens' in shrink_res_str:
+        # raise ValueError
+        catnum_list.append(6)
+        continue
+    elif ('tuberculosis' in shrink_res_str) and ('mott' not in shrink_res_str):
+        # raise ValueError
+        catnum_list.append(7)
+        continue
+    elif ('nontuberculous' in shrink_res_str):
+        # raise ValueError
+        catnum_list.append(8)
+        continue
+    elif (('mycobacterium' in shrink_res_str) and ('tuberculosis' not in shrink_res_str)) or ('nontuberculous' in shrink_res_str) or ('mott' in shrink_res_str):
+        # raise ValueError
+        catnum_list.append(8)
+        continue
+    elif ('negative'==shrink_res_str) or ('nobacteria' in shrink_res_str) or ('throatnormalflora' in shrink_res_str) or ('nogrowth' in shrink_res_str) or ('noaerobicoranaerobicbacteriaisolated' in shrink_res_str) or ('nomicroorganism' in shrink_res_str) or ('nowbc' in shrink_res_str) or (shrink_res_str in ['rare(<1)wbc','afew(1~5)wbc','moderate(5~10)wbc','many(>10)wbc','stain불가(q.n.s.검체량부족)','[','', 'nowbcnowbc','nowbc, noorgani','nowbc,nonowbc,noorganismorganism']):
+        # raise ValueError
+        catnum_list.append(10)
+        continue
+    else:
+        # raise ValueError
+        catnum_list.append(9)
+        continue
+
+micbio_df['MICBIO_CATNUM'] = catnum_list
+micbio_df['MICBIO'] = micbio_df['MICBIO_CATNUM'].map(micbio_index_dict)
+# micbio_df.columns
+micbio_df['DATE'] = micbio_df['DATETIME'].map(lambda x:x.split(' ')[0])
 if not os.path.exists(f'{output_dir}'):
     os.mkdir(f'{output_dir}')
-micbio_df.to_csv(f"{output_dir}/final_microbiology_df.csv", encoding='utf-8-sig', index=False)
-
-#################
-
-gumun = '2월 11일 Blood 검체 접종  BAP plate에서 Acid fast bacilli 의심되는 col'
-other_mic_df[other_mic_df['RESULT'].map(lambda x:gumun in x)]['CODE'].unique()
-other_mic_df.columns
-
-surgery_df['PROC_CATNUM'] = surgery_df['CODE'].astype(float).map(lambda x: 1 if x in (35.2, 35.22, 35.24, 35.28, 36.1, 36.11, 36.12, 37.12, 37.31, 37.33, 37.34, 37.5, 37.62, 37.66, 37.8) else 2)
-surgery_df['PROC'] = surgery_df['NAME'].copy()
-surgery_df = surgery_df[['UID','DATE','PROC_CATNUM','PROC']].copy()
-
-# surgery_df.columns
-icu_mortal_df = pd.read_csv(f"{resource_dir}/[AMK_AKI_ML_DATA]/PROCEDURE_AND_OUTCOME/LOS,MORTALITY,ICU.csv")
-icu_mortal_df = icu_mortal_df.rename(columns={'ID':'UID'})
-icu_mortal_df['UID'] = icu_mortal_df['UID'].map(lambda x: x.split('-')[0])
-# icu_mortal_df.columns
-# icu_mortal_df[['UID','LOS','ICU','ADD_DATE','DIS_DATE']]
-icu_mortal_df = icu_mortal_df[~icu_mortal_df['ICU'].isna()][['UID','LOS','ICU','ADD_DATE','DIS_DATE']].reset_index(drop=True)
-icu_mortal_df['PROC_CATNUM'] = 3
-icu_mortal_df['PROC'] = 'ICU'
-# DIS_DATE 비어있는 데이터 채우기 (ADD_DATE + ICU 이용 days)
-for inx, row in icu_mortal_df.iterrows():
-    if type(row['DIS_DATE'])!=str:
-        icu_mortal_df.at[inx, 'DIS_DATE'] = (datetime.strptime(row['ADD_DATE'],'%Y-%m-%d')+timedelta(days=int(row['LOS']))).strftime('%Y-%m-%d')
-
-icu_mortal_df['DATE'] = icu_mortal_df.apply(lambda x:pd.date_range(x['ADD_DATE'],x['DIS_DATE']).strftime('%Y-%m-%d').tolist(), axis=1)
-icu_mortal_df = icu_mortal_df[['UID','DATE','PROC_CATNUM', 'PROC']].explode('DATE').drop_duplicates(['UID','DATE']).sort_values(['UID','DATE'], ignore_index=True)
-
-# icu_mortal_df[icu_mortal_df['ADD_DATE'].isna()]
-
-# x = {'ADD_DATE':'2008-11-11','DIS_DATE':'2009-05-26'}
-
-mv_df = pd.read_csv(f"{resource_dir}/[AMK_AKI_ML_DATA]/PROCEDURE_AND_OUTCOME/MV.csv", encoding='euc-kr')
-mv_df = mv_df.rename(columns={'ID':'UID'})
-mv_df['UID'] = mv_df['UID'].map(lambda x: x.split('-')[0])
-mv_df = mv_df[mv_df['MLCODE'] > 0][['UID','DATE']].copy()
-mv_df['PROC_CATNUM'] = 4
-mv_df['PROC'] = 'Mechanical Ventilation'
-mv_df = mv_df[['UID','DATE','PROC_CATNUM', 'PROC']].copy()
+micbio_df[['UID','DATE','MICBIO_CATNUM','MICBIO','CODE','NAME']].to_csv(f"{output_dir}/final_microbiology_df.csv", encoding='utf-8-sig', index=False)
 
 
-proc_df = pd.concat([surgery_df, icu_mortal_df, mv_df])
-proc_df = proc_df.drop_duplicates(['UID','DATE','PROC_CATNUM'])
+# micbio_df['MICBIO_CATNUM'].describe()
+# sns.displot(micbio_df['MICBIO_CATNUM'])
+micbio_stats = micbio_df.groupby('MICBIO_CATNUM', as_index=False)['UID'].agg('count')
+micbio_stats['MICBIO'] = micbio_stats['MICBIO_CATNUM'].map(micbio_index_dict)
+print(micbio_stats[['MICBIO_CATNUM','MICBIO','UID']])
+# = micbio_df['RESULT'].map(lambda x: 'Negative' if 'No Bacteria' in x else x)
 
-proc_df['UID'] = proc_df['UID'].map(str)
-proc_df = proc_df.merge(pid_decode_df, on=['UID'],how='left')
-proc_df['UID'] = proc_df['PID'].copy()
-proc_df = proc_df.drop(['PID'], axis=1)
+#
 
-proc_index_dict = {1:(365,1),2:(365,1),3:(365,1),4:(14,1)}
-proc_df['PROC_PERIOD_FROM'] = proc_df['PROC_CATNUM'].map(lambda x:proc_index_dict[x][0])
-proc_df['PROC_PERIOD_UNTIL'] = proc_df['PROC_CATNUM'].map(lambda x:proc_index_dict[x][1])
-
-
-if not os.path.exists(f'{output_dir}'):
-    os.mkdir(f'{output_dir}')
-proc_df.to_csv(f"{output_dir}/final_procedure_df.csv", encoding='utf-8-sig', index=False)
+# for inx, x in enumerate(micbio_df['RESULT'].unique()):
+#     print(f"({inx}) {x}")

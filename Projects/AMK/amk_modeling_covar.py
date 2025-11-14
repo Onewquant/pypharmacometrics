@@ -296,8 +296,6 @@ if not os.path.exists(modeling_covar_dir):
 right_covar_col = 'TDM_REQ_DATE'
 datacheck_cols = ['ID',	'UID', 'NAME', 'DATETIME', 'TIME', 'DV', 'MDV', 'AMT', 'RATE', 'CMT','LLOQ','BLQ','REC_REASON'] + list(covar_modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
 covar_modeling_df[datacheck_cols].to_csv(f'{modeling_covar_dir}/{drug}_modeling_datacheck_covar.csv', index=False, encoding='utf-8-sig')
-# dcheck_df = modeling_df[~(modeling_df['DV'].isin(['.','0.0']))][['ID',	'UID', 'NAME', 'DATETIME', 'DV']].copy()
-# dcheck_df[dcheck_df['DV'].map(float) > 40]
 covar_modeling_df = covar_modeling_df.drop(keep_ori_covar_cols, axis=1)
 modeling_cols = ['ID','NAME','TIME','TAD','DV','MDV','CMT','AMT','RATE','UID','LLOQ','BLQ'] + list(covar_modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
 
