@@ -33,7 +33,7 @@ cycle_df = pd.DataFrame(cycle_df)
 #     return (datetime.strptime(dtstr, format) + timedelta(days=days)).strftime(format)
 
 aki_df = list()
-result_cols = ['ID','COND_TYPE','BLCr_DT','BLCr_RSLT','AKI_DT','AKI_RSLT']
+result_cols = ['ID','COND_TYPE','BLCr_DT','BLCr_DATETIME','BLCr_RSLT','AKI_DT','AKI_DATETIME','AKI_RSLT']
 result_df = list()
 for inx, row in cycle_df.iterrows(): #break
     # if inx[0]==148484876560382: raise ValueError
@@ -57,6 +57,7 @@ for inx, row in cycle_df.iterrows(): #break
     for cr_inx, cr_row in id_cr_df.iterrows():#break
 
         bl_dt = cr_row['TIME']
+        bl_dt_ori = cr_row['DATETIME_ORI']
         bl_cr = cr_row['CREATININE']
 
         aki_48h_dt = cr_row['TIME'] + 24*2
@@ -72,9 +73,11 @@ for inx, row in cycle_df.iterrows(): #break
             cond_exist_df = id_cr_df[(id_cr_df['TIME'] < aki_48h_dt) & (id_cr_df['TIME'] > bl_dt)].copy()
             aki_exist_df = cond_exist_df[cond_exist_df['CREATININE'] >= bl_cr+0.3].copy()
             if len(aki_exist_df)>0:
-                aki_exist_df = aki_exist_df.rename(columns={'TIME':'AKI_DT','CREATININE':'AKI_RSLT'})
+                # raise ValueError
+                aki_exist_df = aki_exist_df.rename(columns={'TIME':'AKI_DT','DATETIME_ORI':'AKI_DATETIME','CREATININE':'AKI_RSLT'})
                 aki_exist_df['COND_TYPE'] = '48h'
                 aki_exist_df['BLCr_DT'] = bl_dt
+                aki_exist_df['BLCr_DATETIME'] = bl_dt_ori
                 aki_exist_df['BLCr_RSLT'] = bl_cr
                 result_df.append(aki_exist_df[result_cols].copy())
 
@@ -83,9 +86,10 @@ for inx, row in cycle_df.iterrows(): #break
             cond_exist_df = id_cr_df[(id_cr_df['TIME'] < aki_7days_dt) & (id_cr_df['TIME'] > bl_dt)].copy()
             aki_exist_df = cond_exist_df[cond_exist_df['CREATININE'] >= bl_cr*1.5].copy()
             if len(aki_exist_df)>0:
-                aki_exist_df = aki_exist_df.rename(columns={'TIME':'AKI_DT','CREATININE':'AKI_RSLT'})
+                aki_exist_df = aki_exist_df.rename(columns={'TIME':'AKI_DT','DATETIME_ORI':'AKI_DATETIME','CREATININE':'AKI_RSLT'})
                 aki_exist_df['COND_TYPE'] = '7days'
                 aki_exist_df['BLCr_DT'] = bl_dt
+                aki_exist_df['BLCr_DATETIME'] = bl_dt_ori
                 aki_exist_df['BLCr_RSLT'] = bl_cr
                 result_df.append(aki_exist_df[result_cols].copy())
 

@@ -16,6 +16,7 @@ simulation_df = pd.read_csv(f"{nonmem_dir}/amk_modeling_df_covar.csv")
 interval = 10/60
 # final_sim_df = get_model_population_sim_df(df=simulation_df, interval=interval, add_on_period=4*24)
 final_sim_df = get_model_population_sim_df(df=simulation_df, interval=interval, add_on_period=0)
+final_sim_df['UID'] = final_sim_df['UID'].astype(int)
 # final_sim_df.to_csv(f"{output_dir}/amk_simulation_df_ori.csv",index=False, encoding='utf-8-sig')
 
 # uniq_ids = list(final_sim_df['ID'].unique())[:30]
@@ -27,21 +28,32 @@ final_sim_df = get_model_population_sim_df(df=simulation_df, interval=interval, 
 ## Filtered simulation dataset (aki 반영)
 
 # final_sim_df = pd.read_csv(f"{output_dir}/amk_simulation_df.csv")
+# final_sim_df = simulation_df.copy()
+# final_sim_df['UID'] = final_sim_df['UID'].astype(int)
+
 aki_df = pd.read_csv(f'{output_dir}/amk_aki.csv')
 # aki_df = pd.read_csv(f'{output_dir}/amk_aki(filtered).csv')
 # aki_df = aki_df.drop_duplicates(subset=['ID','COND_TYPE','BLCr_DT','AKI_RSLT'])
-aki_df = aki_df.sort_values(['ID','AKI_DT']).drop_duplicates(subset=['ID'])
-aki_ids = list(aki_df['ID'])
+aki_df = aki_df.sort_values(['UID','AKI_DT']).drop_duplicates(subset=['UID'])
+aki_ids = list(aki_df['UID'])
 
-nonaki_pt_df = final_sim_df[~final_sim_df['ID'].isin(aki_ids)].copy()
+nonaki_pt_df = final_sim_df[~final_sim_df['UID'].isin(aki_ids)].copy()
 nonaki_pt_df['AKI_DT'] = -1
-
-aki_pt_df = final_sim_df[final_sim_df['ID'].isin(aki_ids)].copy()
-aki_pt_df = aki_pt_df.merge(aki_df[['ID','AKI_DT']], on=['ID'],how='left')
-aki_pt_df = aki_pt_df[(aki_pt_df['TIME'] <= aki_pt_df['AKI_DT'])].copy()
+aki_pt_df = final_sim_df[final_sim_df['UID'].isin(aki_ids)].copy()
+aki_pt_df = aki_pt_df.merge(aki_df[['UID','AKI_DT']], on=['UID'],how='left')
+aki_pt_df = aki_pt_df[(aki_pt_df['TIME'] <= (aki_pt_df['AKI_DT']-24))].copy()
+# aki_pt_df = aki_pt_df[(aki_pt_df['TIME'] <= (aki_pt_df['AKI_DT']))].copy()
+# aki_pt_df[aki_pt_df['AKI_DT'] <= 24].drop_duplicates(['UID'])
+# aki_pt_df[(aki_pt_df['TIME'] <= (aki_pt_df['AKI_DT']-24))].copy()
+# aki_pt_df.drop_duplicates(['UID'])
 
 filt_final_sim_df = pd.concat([aki_pt_df, nonaki_pt_df]).sort_values(['ID','TIME','MDV'])
-filt_final_sim_df = filt_final_sim_df[['ID', 'TIME', 'TAD', 'DV', 'MDV', 'CMT', 'AMT', 'RATE', 'UID','SEX','AGE','ALB','WT','CREATININE','AKI_DT']].copy()
+filt_final_sim_df['YY'] = filt_final_sim_df['DATETIME_ORI'].map(lambda x:int(x[:4]))
+filt_final_sim_df['MM'] = filt_final_sim_df['DATETIME_ORI'].map(lambda x:int(x[5:7]))
+filt_final_sim_df['DD'] = filt_final_sim_df['DATETIME_ORI'].map(lambda x:int(x[8:10]))
+filt_final_sim_df['HOUR'] = filt_final_sim_df['DATETIME_ORI'].map(lambda x:int(x[11:13]))
+filt_final_sim_df['MINUTE'] = filt_final_sim_df['DATETIME_ORI'].map(lambda x:int(x[14:]))
+filt_final_sim_df = filt_final_sim_df[['ID', 'TIME', 'TAD', 'DV', 'MDV', 'CMT', 'AMT', 'RATE', 'UID','SEX','AGE','ALB','WT','CREATININE','AKI_DT','YY','MM','DD','HOUR','MINUTE']].copy()
 # filt_final_sim_df.to_csv(f"{output_dir}/amk_simulation_df.csv",index=False, encoding='utf-8-sig')
 filt_final_sim_df.to_csv(f"{nonmem_dir}/amk_simulation_df.csv",index=False, encoding='utf-8-sig')
 

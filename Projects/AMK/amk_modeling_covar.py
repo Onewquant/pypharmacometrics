@@ -55,7 +55,6 @@ nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
 
 
 
-
 totlab_df = pd.read_csv(f"{output_dir}/totlab_df.csv")
 
 # [c for c in totlab_df.columns.unique() if 'ada' in c.lower()]
@@ -292,11 +291,12 @@ covar_modeling_df = pd.concat([covar_modeling_df, keep_ori_covar_df], axis=1)
 modeling_covar_dir = f"{output_dir}/amk_modeling_covar"
 if not os.path.exists(modeling_covar_dir):
     os.mkdir(modeling_covar_dir)
-
+# covar_modeling_df.columns
+# covar_modeling_df['DATETIME_ORI']
 right_covar_col = 'TDM_REQ_DATE'
 datacheck_cols = ['ID',	'UID', 'NAME', 'DATETIME', 'TIME', 'DV', 'MDV', 'AMT', 'RATE', 'CMT','LLOQ','BLQ','REC_REASON'] + list(covar_modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
 covar_modeling_df[datacheck_cols].to_csv(f'{modeling_covar_dir}/{drug}_modeling_datacheck_covar.csv', index=False, encoding='utf-8-sig')
-covar_modeling_df = covar_modeling_df.drop(keep_ori_covar_cols, axis=1)
+# covar_modeling_df = covar_modeling_df.drop(keep_ori_covar_cols, axis=1)
 modeling_cols = ['ID','NAME','TIME','TAD','DV','MDV','CMT','AMT','RATE','UID','LLOQ','BLQ'] + list(covar_modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
 
 # modeling_df['AGE'] = modeling_df.apply(lambda x: int((datetime.strptime(x['DATETIME'],'%Y-%m-%d') - datetime.strptime(x['AGE'],'%Y-%m-%d')).days/365.25), axis=1)
@@ -332,6 +332,7 @@ covar_modeling_df['SEX'] = covar_modeling_df['SEX'].map({'M':0,'F':1})
 #     tad_cond3 = (covar_modeling_df['TAD'].isna())
 #     tad_cond4 = (~(covar_modeling_df['TAD'].shift(1).isna()))
 #
+# covar_modeling_df.columns
 # covar_modeling_df['TAD'] = covar_modeling_df['TAD'].replace(np.nan,0)
 covar_modeling_df['TAD'] = add_time_after_dosing_column(df=covar_modeling_df)
 covar_modeling_df['TAD'] = covar_modeling_df['TAD'].map(lambda x:round(x,7))
@@ -354,16 +355,17 @@ print(f"Mode: {modeling_input_line}")
 ##############
 # raise ValueError
 # GFR < 15 대상자 삭제
-covar_modeling_df = covar_modeling_df[~(covar_modeling_df['ID'].isin([156, 159, 255, 263, 449, 816, 1081, 1851, 2093, 2377, 840]))].copy()
+# covar_modeling_df = covar_modeling_df[~(covar_modeling_df['ID'].isin([156, 159, 255, 263, 449, 816, 1081, 1851, 2093, 2377, 840]))].copy()
 
 # Wrong Data row 수정
 to_be_adj = [
              # T/P 두번 기록, DV 움직임 비정상적
-             {'ID':377,'TIME':190.92,'DV':35.0, 'NEW_TIME':179.033},
+             # {'ID':377,'TIME':190.92,'DV':35.0, 'NEW_TIME':179.033},
              {'ID':367,'TIME':60.2,'DV':17.36, 'NEW_TIME':73},
              {'ID':353,'TIME':103.17,'DV':17.11, 'NEW_TIME':120},
 ]
-
+# covar_modeling_df[(covar_modeling_df['ID']==row['ID'])&(covar_modeling_df['TIME'].map(lambda x:round(x,1)) == round(row['TIME'],1))&(covar_modeling_df['DV']==str(row['DV']))].copy()
+# covar_modeling_df[(covar_modeling_df['ID']==row['ID'])]['TAD']
 # to_be_adj_inx = list()
 for row in to_be_adj:
     # raise ValueError
@@ -379,7 +381,7 @@ for row in to_be_adj:
 to_be_adj2 = [
              {'ID':777,'SEARCH_VARI':'TIME','SEARCH_VAL':498.21,'CHANGE_VAR':'TAD','PREV_VAL':0.0666667,'NEW_VAL':1},
              {'ID':777,'SEARCH_VARI':'TIME','SEARCH_VAL':498.21,'CHANGE_VAR':'TIME','PREV_VAL':498.21,'NEW_VAL':499.15},
-             {'ID':377,'SEARCH_VARI':'TIME','SEARCH_VAL':179.033,'CHANGE_VAR':'TAD','PREV_VAL':12.8833333,'NEW_VAL':1},
+             # {'ID':377,'SEARCH_VARI':'TIME','SEARCH_VAL':179.033,'CHANGE_VAR':'TAD','PREV_VAL':12.8833333,'NEW_VAL':1},
              {'ID':367,'SEARCH_VARI':'TIME','SEARCH_VAL':73,'CHANGE_VAR':'TAD','PREV_VAL':12.2,'NEW_VAL':1},
              # {'ID': 367, 'SEARCH_VARI': 'TIME', 'SEARCH_VAL': 73, 'CHANGE_VAR': 'TAD', 'PREV_VAL': 12.2, 'NEW_VAL': 1},
 

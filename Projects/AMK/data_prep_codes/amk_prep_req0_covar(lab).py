@@ -61,7 +61,8 @@ for finx, fpath in enumerate(lab_files): #break
     fdf['VALUE'] = fdf['검사결과']
     fdf['VALUE'] = pd.to_numeric(fdf['VALUE'], errors='coerce') # 숫자 아닌 랩은 NAN으로 변환
     fdf = fdf.drop_duplicates(['DATETIME','LAB'], keep='last', ignore_index=True)
-    fpv_df = fdf.pivot_table(index='DATETIME', columns='LAB', values='VALUE', aggfunc='min').reset_index(drop=False).fillna(method='ffill')
+    # fpv_df = fdf.pivot_table(index='DATETIME', columns='LAB', values='VALUE', aggfunc='min').reset_index(drop=False).fillna(method='ffill')
+    fpv_df = fdf.pivot_table(index='DATETIME', columns='LAB', values='VALUE', aggfunc='min').reset_index(drop=False)
     # fpv_df = fdf.pivot(index='DATETIME', columns='LAB', values='VALUE').reset_index(drop=False).fillna(method='ffill')
 
     # fpv_df = fdf.pivot_table(index='DATETIME', columns='LAB', values='VALUE', aggfunc='min').reset_index(drop=False)
@@ -91,8 +92,8 @@ for uid, uid_df in lab_result_df.groupby('UID',as_index=False): #break
     uid_fulldt_df['DATETIME'] = pd.date_range(start=min_lab_date,end=max_lab_date).astype(str)
     uid_fulldt_df['UID'] = uid
 
-    uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left').fillna(method='ffill')
-    # uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left')
+    # uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left').fillna(method='ffill')
+    uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left')
 
     if count==0:
         full_result_df = uid_fulldt_df.copy()
@@ -100,9 +101,9 @@ for uid, uid_df in lab_result_df.groupby('UID',as_index=False): #break
         full_result_df = pd.concat([full_result_df, uid_fulldt_df.copy()])
 
 
-    # if not os.path.exists(f"{output_dir}/uid_lab_df"):
-    #     os.mkdir(f"{output_dir}/uid_lab_df")
-    # uid_fulldt_df.to_csv(f"{output_dir}/uid_lab_df/uid_fulldt_df({uid}).csv", encoding='utf-8-sig', index=False)
+    if not os.path.exists(f"{output_dir}/uid_lab_df"):
+        os.mkdir(f"{output_dir}/uid_lab_df")
+    uid_fulldt_df.to_csv(f"{output_dir}/uid_lab_df/uid_fulldt_df({uid}).csv", encoding='utf-8-sig', index=False)
 
     count+=1
 

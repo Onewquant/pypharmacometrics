@@ -32,7 +32,7 @@ cycle_df = pd.DataFrame(cycle_df)
 #     return (datetime.strptime(dtstr, format) + timedelta(days=days)).strftime(format)
 
 aki_df = list()
-result_cols = ['UID','COND_TYPE','BLCr_DT','BLCr_RSLT','AKI_DT','AKI_RSLT']
+result_cols = ['UID','COND_TYPE','BLCr_DT','BLCr_DATETIME','BLCr_RSLT','AKI_DT','AKI_DATETIME','AKI_RSLT']
 result_df = list()
 for inx, row in cycle_df.iterrows(): #break
     # if inx[0]==148484876560382: raise ValueError
@@ -56,6 +56,7 @@ for inx, row in cycle_df.iterrows(): #break
     for cr_inx, cr_row in id_cr_df.iterrows():#break
 
         bl_dt = cr_row['TIME']
+        bl_dt_ori = cr_row['DATETIME_ORI']
         bl_cr = cr_row['CREATININE']
 
         aki_48h_dt = cr_row['TIME'] + 24*2
@@ -71,9 +72,10 @@ for inx, row in cycle_df.iterrows(): #break
             cond_exist_df = id_cr_df[(id_cr_df['TIME'] < aki_48h_dt) & (id_cr_df['TIME'] > bl_dt)].copy()
             aki_exist_df = cond_exist_df[cond_exist_df['CREATININE'] >= bl_cr+0.3].copy()
             if len(aki_exist_df)>0:
-                aki_exist_df = aki_exist_df.rename(columns={'TIME':'AKI_DT','CREATININE':'AKI_RSLT'})
+                aki_exist_df = aki_exist_df.rename(columns={'TIME':'AKI_DT','DATETIME_ORI':'AKI_DATETIME','CREATININE':'AKI_RSLT'})
                 aki_exist_df['COND_TYPE'] = '48h'
                 aki_exist_df['BLCr_DT'] = bl_dt
+                aki_exist_df['BLCr_DATETIME'] = bl_dt_ori
                 aki_exist_df['BLCr_RSLT'] = bl_cr
                 result_df.append(aki_exist_df[result_cols].copy())
 
@@ -82,16 +84,29 @@ for inx, row in cycle_df.iterrows(): #break
             cond_exist_df = id_cr_df[(id_cr_df['TIME'] < aki_7days_dt) & (id_cr_df['TIME'] > bl_dt)].copy()
             aki_exist_df = cond_exist_df[cond_exist_df['CREATININE'] >= bl_cr*1.5].copy()
             if len(aki_exist_df)>0:
-                aki_exist_df = aki_exist_df.rename(columns={'TIME':'AKI_DT','CREATININE':'AKI_RSLT'})
+                aki_exist_df = aki_exist_df.rename(columns={'TIME':'AKI_DT','DATETIME_ORI':'AKI_DATETIME','CREATININE':'AKI_RSLT'})
                 aki_exist_df['COND_TYPE'] = '7days'
                 aki_exist_df['BLCr_DT'] = bl_dt
+                aki_exist_df['BLCr_DATETIME'] = bl_dt_ori
                 aki_exist_df['BLCr_RSLT'] = bl_cr
                 result_df.append(aki_exist_df[result_cols].copy())
 
 result_df = pd.concat(result_df)
+result_df = result_df.drop_duplicates()
+sorted_result_df = result_df.sort_values(['UID','AKI_DT']).drop_duplicates(subset=['UID'])
+filt_res_df_new = sorted_result_df[sorted_result_df['AKI_DT']>=24].copy()
+# filt_res_df = result_df[result_df['BLCr_RSLT']<=1.2].copy()
+# filt_res_df_new = filt_res_df[filt_res_df['AKI_RSLT']>1.2].copy()
 
-filt_res_df = result_df[result_df['BLCr_RSLT']<=1.2].copy()
-filt_res_df_new = filt_res_df[filt_res_df['AKI_RSLT']>1.2].copy()
+# filt_res_df_new1 = result_df[result_df['AKI_DT']>=24].copy()
+# filt_res_df_new2 = sorted_result_df[sorted_result_df['AKI_DT']>=24].copy()
 
-result_df.to_csv(f'{output_dir}/amk_aki.csv', index=False, encoding='utf-8')
+# uids1 = set(sorted_result_df.drop_duplicates(['UID'])['UID'])
+# uids2 = set(filt_res_df_new2.drop_duplicates(['UID'])['UID'])
+# uids1 - uids2
+# len(uids1 - uids2)
+# result_df[result_df['UID']==25524226][['COND_TYPE','BLCr_DATETIME','BLCr_RSLT','AKI_DATETIME','AKI_RSLT']]
+sorted_result_df.to_csv(f'{output_dir}/amk_aki.csv', index=False, encoding='utf-8')
+# result_df.to_csv(f'{output_dir}/amk_aki.csv', index=False, encoding='utf-8')
 print(f"AKI cases: {len(result_df['UID'].drop_duplicates())}")
+print(f"AKI cases (filt): {len(filt_res_df_new['UID'].drop_duplicates())}")
