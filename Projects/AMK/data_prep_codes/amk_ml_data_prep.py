@@ -7,7 +7,7 @@ from scipy.stats import spearmanr
 # result_type = 'R'
 
 prj_name = 'AMK'
-prj_dir = f'./Projects/{prj_name}'
+prj_dir = f'C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/{prj_name}'
 resource_dir = f'{prj_dir}/resource'
 output_dir = f"{prj_dir}/results"
 nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
@@ -16,6 +16,7 @@ if not os.path.exists(output_dir):
 
 aki_df = pd.read_csv(f"{output_dir}/amk_aki.csv")
 aki_df = aki_df.rename(columns={'ID':'UID'})
+aki_df = aki_df[aki_df['AKI_DT']>=24].copy()
 print(f"AKI cases: {len(aki_df['UID'].drop_duplicates())}")
 print(f"AKI cases: {len(aki_df[aki_df['AKI_DT']>=24]['UID'].drop_duplicates())}")
 # aki_df.columns
@@ -298,7 +299,7 @@ for inx, row in ml_df.iterrows():
 ml_res_df = pd.DataFrame(ml_res_df)
 ml_res_df.to_csv(f"{output_dir}/final_mlres_data.csv", index=False, encoding='utf-8-sig')
 
-
+# ml_res_df['AKI_OCCURRENCE'].sum()
 # uid_demo_df.columns
 # aki_df['UID'].drop_duplicates()
 # aki_df[aki_df['AKI_DT'] > 24]['UID'].drop_duplicates()
