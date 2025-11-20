@@ -3,7 +3,7 @@ from pynca.tools import *
 from datetime import datetime, timedelta
 
 prj_name = 'AMK'
-prj_dir = f'./Projects/{prj_name}'
+prj_dir = f'C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/{prj_name}'
 resource_dir = f'{prj_dir}/resource'
 output_dir = f"{prj_dir}/results"
 nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
@@ -355,7 +355,7 @@ print(f"Mode: {modeling_input_line}")
 ##############
 # raise ValueError
 # GFR < 15 대상자 삭제
-# covar_modeling_df = covar_modeling_df[~(covar_modeling_df['ID'].isin([156, 159, 255, 263, 449, 816, 1081, 1851, 2093, 2377, 840]))].copy()
+covar_modeling_df = covar_modeling_df[~(covar_modeling_df['ID'].isin([156, 159, 255, 263, 449, 816, 1081, 1851, 2093, 2377, 840]))].copy()
 
 # Wrong Data row 수정
 to_be_adj = [

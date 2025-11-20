@@ -3,13 +3,18 @@ from pynca.tools import *
 from datetime import datetime, timedelta
 
 prj_name = 'AMK'
-prj_dir = f'./Projects/{prj_name}'
+prj_dir = f'C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/{prj_name}'
 resource_dir = f'{prj_dir}/resource'
 output_dir = f"{prj_dir}/results"
 nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
 
-## DEMO Covariates Loading
+# df = pd.read_csv(f"{nonmem_dir}/amk_simulation_df.csv")
+# df.drop_duplicates(['ID'])
+# df[df['ID']==449]
+# 156, 159, 255, 263, 449, 816, 1081, 1851, 2093, 2377, 840
 
+## DEMO Covariates Loading
+# simulation_df.drop_duplicates(['ID'])
 simulation_df = pd.read_csv(f"{nonmem_dir}/amk_modeling_df_covar.csv")
 # simulation_df['TIME_DIFF'] = simulation_df['TIME'].diff()
 # simulation_df[simulation_df['TIME_DIFF']>0]['TIME_DIFF'].sort_values()
@@ -46,6 +51,9 @@ aki_pt_df = aki_pt_df[(aki_pt_df['TIME'] <= (aki_pt_df['AKI_DT']-24))].copy()
 # aki_pt_df[aki_pt_df['AKI_DT'] <= 24].drop_duplicates(['UID'])
 # aki_pt_df[(aki_pt_df['TIME'] <= (aki_pt_df['AKI_DT']-24))].copy()
 # aki_pt_df.drop_duplicates(['UID'])
+# nonaki_pt_df.drop_duplicates(['UID'])
+# aki_pt_df.drop_duplicates(['UID'])
+# filt_final_sim_df.drop_duplicates(['UID'])
 
 filt_final_sim_df = pd.concat([aki_pt_df, nonaki_pt_df]).sort_values(['ID','TIME','MDV'])
 filt_final_sim_df['YY'] = filt_final_sim_df['DATETIME_ORI'].map(lambda x:int(x[:4]))

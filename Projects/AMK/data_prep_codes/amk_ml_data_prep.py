@@ -16,9 +16,12 @@ if not os.path.exists(output_dir):
 
 aki_df = pd.read_csv(f"{output_dir}/amk_aki.csv")
 aki_df = aki_df.rename(columns={'ID':'UID'})
+print(f"Total AKI cases: {len(aki_df['UID'].drop_duplicates())}")
+except_aki_df = aki_df[aki_df['AKI_DT']<24].copy()
+print(f"-(Patients with AKI < 24hr): {set(except_aki_df['UID'])}")
 aki_df = aki_df[aki_df['AKI_DT']>=24].copy()
-print(f"AKI cases: {len(aki_df['UID'].drop_duplicates())}")
-print(f"AKI cases: {len(aki_df[aki_df['AKI_DT']>=24]['UID'].drop_duplicates())}")
+print(f"AKI cases (Filtered): {len(aki_df['UID'].drop_duplicates())}")
+
 # aki_df.columns
 # modeling_df.columns
 modeling_df = pd.read_csv(f"{nonmem_dir}/amk_modeling_df_covar.csv")
@@ -134,7 +137,6 @@ for inx, row in ml_df.iterrows():
     uid_lab_df = uid_lab_df.drop(['보고일', '오더일','검사명','검사결과', '참고치', '직전결과'],axis=1)
 
 
-
     uid_lab_df = uid_lab_df.pivot_table(index='DATE', columns='LAB', values='VALUE', aggfunc='min').reset_index(drop=False)
     uid_lab_df.columns.name=None
 
@@ -196,6 +198,7 @@ for inx, row in ml_df.iterrows():
         aki_occurrence_date = aki_occurrence_dt.split('T')[0]
 
     # BASELINE Features 정리
+    min30_bl_date = (datetime.strptime(aki_occurrence_date, '%Y-%m-%d') - timedelta(days=30)).strftime('%Y-%m-%d')
     min14_bl_date = (datetime.strptime(aki_occurrence_date, '%Y-%m-%d') - timedelta(days=14)).strftime('%Y-%m-%d')
     min7_bl_date = (datetime.strptime(aki_occurrence_date, '%Y-%m-%d') - timedelta(days=7)).strftime('%Y-%m-%d')
     min3_bl_date = (datetime.strptime(aki_occurrence_date, '%Y-%m-%d') - timedelta(days=3)).strftime('%Y-%m-%d')
@@ -210,10 +213,11 @@ for inx, row in ml_df.iterrows():
     ml_demo_df = uid_modeling_df[(uid_modeling_df['DATE'] <= aki_occurrence_date)&(uid_modeling_df['DATE'] >= min7_bl_date)].copy()
     ml_demo_df_last_row = ml_demo_df.iloc[-1]
 
-    ml_lab_df = uid_lab_df[(uid_lab_df['DATE'] <= max_bl_date)&(uid_lab_df['DATE'] >= min_bl_date)].copy()
+    # ml_lab_df = uid_lab_df[(uid_lab_df['DATE'] <= max_bl_date)&(uid_lab_df['DATE'] >= min_bl_date)].copy()
+    ml_lab_df = uid_lab_df[(uid_lab_df['DATE'] <= max_bl_date)&(uid_lab_df['DATE'] >= min14_bl_date)].copy()
     ml_comed_df = uid_comed_df[(uid_comed_df['DATE'] <= max_bl_date)&(uid_comed_df['DATE'] >= min_bl_date)].copy()
     ml_cm_df = uid_cm_df[(uid_cm_df['DATE'] >= uid_cm_df['CM_PERIOD_FROM_DATE'])&(uid_cm_df['DATE'] <= max_bl_date)].copy()
-    ml_vs_df = uid_vs_df[(uid_vs_df['DATE'] <= max_bl_date)&(uid_vs_df['DATE'] >= min14_bl_date)].copy()
+    ml_vs_df = uid_vs_df[(uid_vs_df['DATE'] <= max_bl_date)&(uid_vs_df['DATE'] >= min30_bl_date)].copy()
     ml_proc_df = uid_proc_df[(uid_proc_df['DATE'] >= uid_proc_df['CM_PERIOD_FROM_DATE'])&(uid_proc_df['DATE'] <= max_bl_date)].copy()
     ml_micbio_df = uid_micbio_df[(uid_micbio_df['DATE'] <= max_bl_date)&(uid_micbio_df['DATE'] >= min14_bl_date)].copy()
     uid_losmot_df = uid_micbio_df[(uid_micbio_df['DATE'] <= max_bl_date)&(uid_micbio_df['DATE'] >= min14_bl_date)].copy()
@@ -223,6 +227,11 @@ for inx, row in ml_df.iterrows():
         no_dose_pids.append(uid)
         print(f"/ No dose data")
         continue
+
+    # first_dose_dt = ml_dose_df.iloc[0]['DATETIME_ORI']
+    # last_dose_dt = ml_dose_df.iloc[-1]['DATETIME_ORI']
+    first_dose_dt = ml_dose_df.iloc[0]['DATE']
+    last_dose_dt = ml_dose_df.iloc[-1]['DATE']
 
     ## ml feature 기록
     ml_row_dict['UID'] = uid
@@ -237,7 +246,7 @@ for inx, row in ml_df.iterrows():
     ml_row_dict['LAST_DAILY_DOSE'] = ml_dose_df.groupby('DATE').agg({'AMT':'sum'}).iloc[-1]['AMT']
     ml_row_dict['LAST_DOSE_perWT'] = ml_row_dict['LAST_DOSE']/ml_row_dict['WT']
     ml_row_dict['LAST_DAILY_DOSE_perWT'] = ml_row_dict['LAST_DAILY_DOSE']/ml_row_dict['WT']
-    ml_row_dict['DURATION(DAYS)'] = (ml_dose_df.iloc[-1]['TIME'] - ml_dose_df.iloc[0]['TIME'])/24
+    ml_row_dict['DURATION(DAYS)'] = (ml_dose_df.iloc[-1]['TIME'] - ml_dose_df.iloc[0]['TIME'] + 1)/24
     ml_row_dict['CUM_DOSE'] = ml_dose_df['AMT'].sum()
     ml_row_dict['MEAN_DAILY_DOSE'] = ml_row_dict['CUM_DOSE']/ml_row_dict['DURATION(DAYS)']
     ml_row_dict['MEAN_DAILY_DOSE_perWT'] = ml_row_dict['CUM_DOSE']/ml_row_dict['WT']
@@ -293,11 +302,20 @@ for inx, row in ml_df.iterrows():
 
     # OUTCOME
     ml_row_dict['AKI_OCCURRENCE'] = aki_occurrence
+    ml_row_dict['AKI_DATE'] = aki_occurrence_date
+    ml_row_dict['BL_LAB_DATE'] = uid_last_lab_row['DATE']
+    ml_row_dict['FIRST_DOSE_DATE'] = first_dose_dt
+    ml_row_dict['LAST_DOSE_DATE'] = last_dose_dt
+
+    # raise ValueError
     ml_res_df.append(ml_row_dict)
     # raise ValueError
 
 ml_res_df = pd.DataFrame(ml_res_df)
 ml_res_df.to_csv(f"{output_dir}/final_mlres_data.csv", index=False, encoding='utf-8-sig')
+
+print(f"Patients without lab data: {len(no_lab_pids)} / {set(no_lab_pids)}")
+print(f"Patients without dose data: {len(no_dose_pids)} / {set(no_dose_pids)}")
 
 # ml_res_df['AKI_OCCURRENCE'].sum()
 # uid_demo_df.columns
