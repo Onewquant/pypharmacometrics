@@ -471,6 +471,7 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
 # df[(df['EV']==0)]['DOSE_PERIOD'].mean()
 multivar_totres_df = pd.concat(multivar_totres_df)
 # multivar_totres_df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_total_results({str(or_threshold)[-1]}).csv", index=False, encoding='utf-8-sig')
+
 multivar_totres_df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_total_results.csv", index=False, encoding='utf-8-sig')
 
 covar_info_df = pd.DataFrame(covar_info_df)
@@ -493,7 +494,27 @@ total_covar_list = list(set((", ".join(list(covar_info_df_saving['covar_list']))
 total_covar_list.sort()
 covar_primer_df = pd.DataFrame([{'subgroup':'Total Covariates',	'endpoint':'-',	'info_type':'Total Covariates',	'covar_list':str(total_covar_list).replace("', '",", ").replace("['","").replace("']","")}])
 covar_info_df_saving = pd.concat([covar_primer_df,covar_info_df_saving])
-covar_info_df_saving.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_covar_info.csv", index=False, encoding='utf-8-sig')
+# covar_info_df_saving.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_covar_info.csv", index=False, encoding='utf-8-sig')
+covar_info_df_saving = covar_info_df_saving[(covar_info_df_saving['info_type'].isin(['Covariates in the final model','Total Covariates']))&(covar_info_df_saving['subgroup']!='Elderly')].copy()
+covar_name_dict = {'TF_CRYO':'Cryoprecipitate transfusion', 'TF_FFP':'FFP transfusion', 'TF_PLT':'Platelet transfusion',
+                   'TF_RBC':'RBC transfusion', 'TPRO':'Total protein', 'WBC':'WBC count', 'ALB':'Albumin', 'ALT':'ALT', 'ANC':'ANC', 'AST':'AST', 'BMI':'BMI', 'CRP':'CRP',
+                   'CUM_DOSE':'Cumulative dose', 'DOSE24PERWT':'Weight-normalized daily dose', 'DOSE24': 'Daily dose',
+                   'DOSE_INTERVAL':'Dosing interval', 'DOSE_PERIOD':'Dosing period', 'ELD':'Elderly', 'GLU':'Glucose',
+                   'Hb':'Hemoglobin', 'Lactate':'Lactate', 'PLT':'Platelet count', 'SCR':'Serum creatinine',
+                   'TBIL':'Total bilirubin',  'aspirinclopidogrel':'Aspirin/clopidogrel', 'clozapine':'Clozapine',
+                   'cyclophosphamide':'Cyclophosphamide','eGFR':'eGFR', 'eGFR-CKD-EPI':'eGFR-CKD-EPI', 'heparin':'Heparin',
+                   'isoniazid':'Isoniazid', 'metformin':'Metformin', 'methimazole':'Methimazole', 'SEX':'Sex', 'pH':'pH',
+                   'piperacillintazobactam':'Piperacillin/tazobactam', 'propofol':'Propofol',
+                   'tmpsmx':'Trimethoprim/sulfamethoxazole', 'valproate':'Valproate','WT':'Weight',
+                   'AGE':'Age', 'HT':'Height', }
+
+for inx, row in covar_info_df_saving.iterrows():
+    for k, v in covar_name_dict.items():
+        covar_info_df_saving.at[inx,'covar_list'] = covar_info_df_saving.at[inx,'covar_list'].replace(k,v)
+    covar_info_df_saving.at[inx, 'covar_list'] = covar_info_df_saving.at[inx, 'covar_list'].replace('Clozapine, ', '').replace('Methimazole, ', '')
+
+
+# raise ValueError
 covar_info_df_saving.to_excel(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_covar_info.xlsx", index=False, encoding='utf-8-sig')
 
 
@@ -540,6 +561,11 @@ multi_res_df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_multivar_r
 # uni_res_df[uni_res_df['subgroup']=='Total_Adult'][['endpoint','feature','OR (95% CI)','pval']]
 
 tot_res_df = multivar_totres_df.sort_values(['subgroup','endpoint','aOR'],ascending=[False,True,False])[['subgroup','endpoint','feature','EV_Count (%)','OR (95% CI)','pval','aOR (95% CI)','pval (adj)']].reset_index(drop=True)
+# raise ValueError
+tot_res_df.columns
+for k, v in covar_name_dict.items():
+    tot_res_df['feature'] = tot_res_df['feature'].replace(k, v)
+tot_res_df = tot_res_df[tot_res_df['subgroup']=='Total_Adult'].copy()
 tot_res_df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_total_res_table.csv", index=False, encoding='utf-8-sig')
 
 # multivar_totres_df[pv_cond&sg_cond].sort_values(['subgroup','endpoint','OR'],ascending=[False,True,False])[['subgroup','endpoint','feature','n (%)','OR (95% CI)','pval','aOR (95% CI)','pval (adj)']]

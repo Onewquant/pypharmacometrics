@@ -115,19 +115,21 @@ for file_path in subgroup_files: #break
     #     plt.clf()
     #     plt.close()
 
-    fig, axes = plt.subplots(2, 1, figsize=(12, 15), sharex=True)
+    # fig, axes = plt.subplots(2, 1, figsize=(12, 15), sharex=True)
+    # fig, axes = plt.subplots(1, 1, figsize=(15, 20), sharex=True)
+    fig, ax = plt.subplots(figsize=(15, 15))
 
     plot_items = {
-        'WT': ('(kg)', 'weight'),
-        'DOSE24PERWT': ('(mg/kg/day)', 'weight-normalized mean daily dose')
+        'DOSE24PERWT': ('(mg/kg/day)', 'Weight-normalized mean daily dose')
+        # 'WT': ('(kg)', 'Weight'),
     }
     x_order = [0, 1]
     ggfontsize = 18
 
     for i, (y2type, unit_str) in enumerate(plot_items.items()):
         i_alph = 'A' if i == 0 else 'B'
-        ax = axes[i]
-
+        # ax = axes[i]
+        # raise ValueError
         sns.boxplot(
             data=ggdf,
             x='EV', y=y2type,
@@ -135,21 +137,66 @@ for file_path in subgroup_files: #break
             palette=colors, width=0.5, showfliers=False,
             order=x_order, ax=ax
         )
-        ax.set_xticklabels(['Event = 0', 'Event = 1'], fontsize=ggfontsize)
+        # ax.set_xticklabels(['Event = 0', 'Event = 1'], fontsize=ggfontsize)
+        ax.set_xticklabels(['Without lactic acidosis', 'lactic acidosis'], fontsize=ggfontsize)
+        ax.tick_params(axis='y', labelsize=ggfontsize)
+        # ax.set_yticklabels(fontsize=ggfontsize)
         ax.set_xlabel('Lactic acidosis event group', fontsize=ggfontsize)
         ax.set_ylabel(f'{unit_str[1]} {unit_str[0]}', fontsize=ggfontsize)
-        ax.set_title(f'({i_alph}) Comparison of {unit_str[1]} by event occurrence', fontsize=ggfontsize)
+        # ax.set_title(f'({i_alph}) Comparison of {unit_str[1]} by event occurrence', fontsize=ggfontsize)
+        # ax.set_title(f'({i_alph}) Comparison of {unit_str[1]} by event occurrence', fontsize=ggfontsize)
         ax.grid(alpha=0.2)
 
+        # -----------------------------
+        # (1) 공통 bracket y-level 계산
+        # -----------------------------
+        y_max = ggdf[y2type].max()*0.9
+        y_step = y_max * 0.08
+        common_y = y_max + y_step  # 모든 EV 그룹에서 동일 높이
+
+        # -----------------------------
+        # (2) EV(group)별 p-value 계산 + 동일 y-level에 annotate
+        # -----------------------------
+        for j, ev in enumerate(x_order):
+            sub = ggdf[ggdf['EV'] == ev]
+            male_vals = sub[sub['SEX'] == 'Male'][y2type].dropna()
+            female_vals = sub[sub['SEX'] == 'Female'][y2type].dropna()
+
+            if len(male_vals) > 0 and len(female_vals) > 0:
+                stat, pval = mannwhitneyu(male_vals, female_vals, alternative='two-sided')
+
+                # bracket 좌/우 x 위치
+                x1 = j - 0.2
+                x2 = j + 0.2
+
+                # -------- bracket (dark grey) --------
+                ax.plot([x1, x1, x2, x2],
+                        [common_y, common_y + y_step * 0.3,
+                         common_y + y_step * 0.3, common_y],
+                        linewidth=1.5,
+                        color='#555555')
+
+                # -------- p-value 텍스트 (dark grey) --------
+                ax.text(j, common_y + y_step * 0.35,
+                        f"p < 0.001" if pval < 0.001 else f"p = {pval:.3f}",
+                        ha='center', va='bottom',
+                        fontsize=ggfontsize - 2,
+                        color='#555555')
+
     # ⬇⬇⬇ 추가: 위/아래 subplot 모두 x축 라벨 보이게
-    axes[0].tick_params(axis='x', which='both', labelbottom=True)
-    axes[1].tick_params(axis='x', which='both', labelbottom=True)
+    # axes[0].tick_params(axis='x', which='both', labelbottom=True)
+    ax.tick_params(axis='x', which='both', labelbottom=True)
+    # axes[1].tick_params(axis='x', which='both', labelbottom=True)
 
     # 통합 legend
-    handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, title="Sex", loc='upper right', fontsize=ggfontsize, title_fontsize=ggfontsize)
-    axes[0].legend_.remove()
-    axes[1].legend_.remove()
+    # handles, labels = axes[0].get_legend_handles_labels()
+    # handles, labels = ax.get_legend_handles_labels()
+    # fig.legend(handles, labels, title="Sex", loc='upper right', fontsize=ggfontsize, title_fontsize=ggfontsize)
+    # fig.legend(handles, labels, loc='upper right', fontsize=ggfontsize, title_fontsize=ggfontsize)
+    # fig.legend(loc='upper right', fontsize=ggfontsize, title_fontsize=ggfontsize)
+    fig.legend(loc='upper right', bbox_to_anchor=(0.93, 0.98),  fontsize=ggfontsize, title_fontsize=ggfontsize)
+    ax.legend_.remove()
+    # axes[1].legend_.remove()
 
     plt.tight_layout(rect=[0, 0, 0.95, 1])
     plt.savefig(f"{output_dir}/b1da/mvlreg_output/subgroup_analysis/EV_to_WT_DOSE24PERWT_boxplot({pd_endpoint}).png")
