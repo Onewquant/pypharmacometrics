@@ -562,10 +562,29 @@ multi_res_df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_multivar_r
 
 tot_res_df = multivar_totres_df.sort_values(['subgroup','endpoint','aOR'],ascending=[False,True,False])[['subgroup','endpoint','feature','EV_Count (%)','OR (95% CI)','pval','aOR (95% CI)','pval (adj)']].reset_index(drop=True)
 # raise ValueError
-tot_res_df.columns
+# tot_res_df.columns
+covar_name_dict = {'TF_CRYO':'Cryoprecipitate transfusion', 'TF_FFP':'FFP transfusion', 'TF_PLT':'Platelet transfusion',
+                   'TF_RBC':'RBC transfusion', 'TPRO':'Total protein', 'WBC':'WBC count (/μL)', 'ALB':'Albumin (g/dL)',
+                   'ALT':'ALT (IU/L)', 'ANC':'ANC (/μL)', 'AST':'AST (IU/L)', 'BMI':'BMI (kg/m2)', 'CRP':'CRP (mg/dL)',
+                   'CUM_DOSE':'Cumulative dose (mg)', 'DOSE24PERWT':'Weight-normalized daily dose (mg/day·kg)',
+                   'DOSE24': 'Daily dose (mg/day)', 'DOSE_INTERVAL':'Dosing interval (hour)',
+                   'DOSE_PERIOD':'Dosing period (days)', 'ELD':'Elderly', 'GLU':'Glucose (mg/dL)',
+                   'Hb':'Hemoglobin (g/dL)', 'Lactate':'Lactate (mmol/L)', 'PLT':'Platelet count (/μL)',
+                   'SCR':'Serum creatinine (mg/dL)', 'TBIL':'Total bilirubin (mg/dL)',
+                   'aspirinclopidogrel':'Aspirin/clopidogrel', 'clozapine':'Clozapine',
+                   'cyclophosphamide':'Cyclophosphamide', 'eGFR':'eGFR (mL/min/1.73 m²)',
+                   'eGFR-CKD-EPI':'eGFR-CKD-EPI (mL/min/1.73 m²)', 'heparin':'Heparin',
+                   'isoniazid':'Isoniazid', 'metformin':'Metformin', 'methimazole':'Methimazole', 'SEX':'Sex', 'pH':'pH',
+                   'piperacillintazobactam':'Piperacillin/tazobactam', 'propofol':'Propofol',
+                   'tmpsmx':'Trimethoprim/sulfamethoxazole', 'valproate':'Valproate','WT':'Weight (kg)',
+                   'AGE':'Age (years)', 'HT':'Height (cm)', }
+
 for k, v in covar_name_dict.items():
     tot_res_df['feature'] = tot_res_df['feature'].replace(k, v)
 tot_res_df = tot_res_df[tot_res_df['subgroup']=='Total_Adult'].copy()
+# raise ValueError
+# tot_res_df.columns
+tot_res_df = tot_res_df[~tot_res_df['feature'].isin(['Clozapine','Methimazole'])].copy()
 tot_res_df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_total_res_table.csv", index=False, encoding='utf-8-sig')
 
 # multivar_totres_df[pv_cond&sg_cond].sort_values(['subgroup','endpoint','OR'],ascending=[False,True,False])[['subgroup','endpoint','feature','n (%)','OR (95% CI)','pval','aOR (95% CI)','pval (adj)']]
