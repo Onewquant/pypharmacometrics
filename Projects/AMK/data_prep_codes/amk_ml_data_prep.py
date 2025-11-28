@@ -261,12 +261,16 @@ for inx, row in ml_df.iterrows():
             ml_row_dict[cm_name] = 0
 
     # CONCOMITANT MEDICATION
+    # raise ValueError
+    # ml_comed_df.columns
     uid_uniq_comed_inx_list = list(ml_comed_df['CCM_CATNUM'].unique())
     for comed_inx, comed_name in comed_dict.items():
         if comed_inx in uid_uniq_comed_inx_list:
             ml_row_dict[comed_name] = 1
         else:
             ml_row_dict[comed_name] = 0
+
+    ml_row_dict['AT LEAST ONE NEPHROTOXIC AGENT'] = ml_comed_df['NEPHTOX_DRUG_YN'].max()
 
     # LAB
     try:

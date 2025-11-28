@@ -212,6 +212,7 @@ ccm_index_df = ccm_index_df_ori.iloc[:-1,:].copy()
 # ccm_index_df.columns
 ccm_index_df['CAT_ATC_LIST'] = ccm_index_df['CAT_ATC_LIST'].map(lambda x:x.split(', '))
 ccm_index_df = ccm_index_df.explode(column='CAT_ATC_LIST')
+
 ccm_index_df['NEPHTOX_DRUG_YN'] = (ccm_index_df['CAT_NUM'].isin([1, 2, 4, 11, 12, 13, 14, 15]))*1
 cat_num_df = ccm_index_df[['CAT_ATC_LIST','CAT_NUM']].copy()
 ren_tox_df = ccm_index_df[['CAT_ATC_LIST','NEPHTOX_DRUG_YN']].copy()
