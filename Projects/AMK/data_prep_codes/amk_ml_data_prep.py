@@ -270,7 +270,10 @@ for inx, row in ml_df.iterrows():
         else:
             ml_row_dict[comed_name] = 0
 
-    ml_row_dict['AT LEAST ONE NEPHROTOXIC AGENT'] = ml_comed_df['NEPHTOX_DRUG_YN'].max()
+    if len(ml_comed_df)==0:
+        ml_row_dict['AT LEAST ONE NEPHROTOXIC AGENT'] = 0
+    else:
+        ml_row_dict['AT LEAST ONE NEPHROTOXIC AGENT'] = int(ml_comed_df['NEPHTOX_DRUG_YN'].max())
 
     # LAB
     try:
@@ -318,7 +321,8 @@ for inx, row in ml_df.iterrows():
 
 ml_res_df = pd.DataFrame(ml_res_df)
 ml_res_df.to_csv(f"{output_dir}/final_mlres_data.csv", index=False, encoding='utf-8-sig')
-
+# ml_res_df['AT LEAST ONE NEPHROTOXIC AGENT'].unique()
+# ml_res_df['AT LEAST ONE NEPHROTOXIC AGENT'] = ml_res_df['AT LEAST ONE NEPHROTOXIC AGENT'].map(lambda x: int(x) if not np.isnan(x) else np.nan)
 print(f"Patients without lab data: {len(no_lab_pids)} / {set(no_lab_pids)}")
 print(f"Patients without dose data: {len(no_dose_pids)} / {set(no_dose_pids)}")
 

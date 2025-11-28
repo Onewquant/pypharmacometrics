@@ -35,5 +35,9 @@ df['ACIDOSIS'].sum()
 df['DIABETES'].sum()
 df['ANEMIA'].sum()
 
+df[df['ACIDOSIS']==1]
+
+df['ACIDOSIS'].unique()
+df['AT LEAST ONE NEPHROTOXIC AGENT'].unique()
 df['AT LEAST ONE NEPHROTOXIC AGENT'].sum()
 df['LOOP DIURETIC'].sum()
