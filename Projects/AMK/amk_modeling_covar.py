@@ -382,17 +382,51 @@ to_be_adj2 = [
              {'ID':777,'SEARCH_VARI':'TIME','SEARCH_VAL':498.21,'CHANGE_VAR':'TAD','PREV_VAL':0.0666667,'NEW_VAL':1},
              {'ID':777,'SEARCH_VARI':'TIME','SEARCH_VAL':498.21,'CHANGE_VAR':'TIME','PREV_VAL':498.21,'NEW_VAL':499.15},
              # {'ID':377,'SEARCH_VARI':'TIME','SEARCH_VAL':179.033,'CHANGE_VAR':'TAD','PREV_VAL':12.8833333,'NEW_VAL':1},
+
              {'ID':367,'SEARCH_VARI':'TIME','SEARCH_VAL':73,'CHANGE_VAR':'TAD','PREV_VAL':12.2,'NEW_VAL':1},
              # {'ID': 367, 'SEARCH_VARI': 'TIME', 'SEARCH_VAL': 73, 'CHANGE_VAR': 'TAD', 'PREV_VAL': 12.2, 'NEW_VAL': 1},
 
+             {'ID':763,'SEARCH_VARI':'TIME','SEARCH_VAL':0.0,'CHANGE_VAR':'AMT','PREV_VAL':70,'NEW_VAL':700},
+             {'ID':763,'SEARCH_VARI':'TIME','SEARCH_VAL':22.25,'CHANGE_VAR':'AMT','PREV_VAL':70,'NEW_VAL':700},
+             {'ID':763,'SEARCH_VARI':'TIME','SEARCH_VAL':48.01667,'CHANGE_VAR':'AMT','PREV_VAL':70,'NEW_VAL':700},
+             {'ID':763,'SEARCH_VARI':'TIME','SEARCH_VAL':74.41667,'CHANGE_VAR':'AMT','PREV_VAL':70,'NEW_VAL':700},
+
+             {'ID':151,'SEARCH_VARI':'TIME','SEARCH_VAL':0.0,'CHANGE_VAR':'AMT','PREV_VAL':100,'NEW_VAL':1000.0},
+             {'ID':151,'SEARCH_VARI':'TIME','SEARCH_VAL':24,'CHANGE_VAR':'AMT','PREV_VAL':100,'NEW_VAL':1000.0},
+             {'ID':151,'SEARCH_VARI':'TIME','SEARCH_VAL':48,'CHANGE_VAR':'AMT','PREV_VAL':100,'NEW_VAL':1000.0},
+             {'ID':151,'SEARCH_VARI':'TIME','SEARCH_VAL':72,'CHANGE_VAR':'AMT','PREV_VAL':100,'NEW_VAL':1000.0},
+             {'ID':151,'SEARCH_VARI':'TIME','SEARCH_VAL':96,'CHANGE_VAR':'AMT','PREV_VAL':100,'NEW_VAL':1000.0},
+
+             {'ID':656,'SEARCH_VARI':'TIME','SEARCH_VAL':57.11667,'CHANGE_VAR':'AMT','PREV_VAL':100,'NEW_VAL':1000.0},
+             {'ID':656,'SEARCH_VARI':'TIME','SEARCH_VAL':68.45,'CHANGE_VAR':'AMT','PREV_VAL':100,'NEW_VAL':1000.0},
+             {'ID':656,'SEARCH_VARI':'TIME','SEARCH_VAL':81.2,'CHANGE_VAR':'AMT','PREV_VAL':100,'NEW_VAL':1000.0},
+
+             # 추후 아래서 삭제 작업도 필요한 목록들
+             {'ID':935,'SEARCH_VARI':'TIME','SEARCH_VAL':126.9667,'CHANGE_VAR':'AMT','PREV_VAL':600,'NEW_VAL':700.0},
+             {'ID':1278,'SEARCH_VARI':'TIME','SEARCH_VAL':71.866667,'CHANGE_VAR':'AMT','PREV_VAL':500,'NEW_VAL':600.0},
+             {'ID':81,'SEARCH_VARI':'TIME','SEARCH_VAL':0,'CHANGE_VAR':'AMT','PREV_VAL':500,'NEW_VAL':525.0},
+             {'ID':1679,'SEARCH_VARI':'TIME','SEARCH_VAL':204.4667,'CHANGE_VAR':'AMT','PREV_VAL':500,'NEW_VAL':530.0},
 ]
 
 # to_be_adj_inx = list()
 for row in to_be_adj2:
     # raise ValueError
-    # covar_modeling_df[(covar_modeling_df['ID'] == row['ID'])]
-    # covar_modeling_df[(covar_modeling_df['ID'] == row['ID']) & (covar_modeling_df['TIME'].map(lambda x:round(x,1)) == round(row['TIME'],1))]
-    adj2_row = covar_modeling_df[(covar_modeling_df['ID']==row['ID'])&(covar_modeling_df[row['SEARCH_VARI']].map(lambda x:round(x,1)) == round(row['SEARCH_VAL'],1))&(covar_modeling_df['DV']!='.')].copy()
+    # if row['ID']==935:
+    # covar_modeling_df[(covar_modeling_df['ID'] == 1679)&(covar_modeling_df['TIME'] > 192)][['ID', 'TIME', 'AMT']]
+    # if row['ID'] == 935:
+    #     covar_modeling_df[(covar_modeling_df['ID'] == 935)][['ID','TIME','AMT']]
+    #     covar_modeling_df[(covar_modeling_df['ID'] == 81)][['ID','TIME','AMT']]
+    #     covar_modeling_df[(covar_modeling_df['ID'] == 1278)][['ID','TIME','AMT']]
+    #     covar_modeling_df[(covar_modeling_df['ID'] == 1679)][['ID','TIME','AMT']]
+    #     covar_modeling_df[(covar_modeling_df['ID'] == row['ID'])][['ID','TIME','AMT']]
+    #     raise ValueError
+    if row['CHANGE_VAR'] in ['TAD', 'TIME']:
+    # covar_modeling_df[(covar_modeling_df['ID'] == row['ID']) & (covar_modeling_df[row['SEARCH_VARI']].map(lambda x:round(x,1)) == round(row['SEARCH_VAL'],1))]
+        adj2_row = covar_modeling_df[(covar_modeling_df['ID']==row['ID'])&(covar_modeling_df[row['SEARCH_VARI']].map(lambda x:round(x,1)) == round(row['SEARCH_VAL'],1))&(covar_modeling_df['DV']!='.')].copy()
+    elif row['CHANGE_VAR'] =='AMT':
+        adj2_row = covar_modeling_df[(covar_modeling_df['ID']==row['ID'])&(covar_modeling_df[row['SEARCH_VARI']].map(lambda x:round(x,1)) == round(row['SEARCH_VAL'],1))&(covar_modeling_df['AMT']!='.')].copy()
+    else:
+        continue
     adj2_inx = adj2_row.index[0]
     covar_modeling_df.at[adj2_inx, row['CHANGE_VAR']] = row['NEW_VAL']
 
@@ -414,6 +448,12 @@ to_be_del = [
 
              # CWRE > 15
              {'ID': 353, 'TIME': 120, 'DV': 17.11},
+
+             # 추가 중복데이터
+             {'ID': 935, 'TIME': 126.85, 'AMT': 100.0},
+             {'ID': 1278, 'TIME': 71.866667, 'AMT': 100.0},
+             {'ID': 81, 'TIME': 3, 'AMT': 25.0},
+             {'ID': 1679, 'TIME': 197.6333, 'AMT': 30.0},
              ]
 
 to_be_del_inx = list()
@@ -421,7 +461,13 @@ for row in to_be_del:
     # raise ValueError
     # covar_modeling_df[(covar_modeling_df['ID'] == row['ID'])]
     # covar_modeling_df[(covar_modeling_df['ID'] == row['ID']) & (covar_modeling_df['TIME'].map(lambda x:round(x,1)) == round(row['TIME'],1))]
-    del_row = covar_modeling_df[(covar_modeling_df['ID']==row['ID'])&(covar_modeling_df['TIME'].map(lambda x:round(x,1)) == round(row['TIME'],1))&(covar_modeling_df['DV']==str(row['DV']))].copy()
+    if 'DV' in row:
+        del_row = covar_modeling_df[(covar_modeling_df['ID']==row['ID'])&(covar_modeling_df['TIME'].map(lambda x:round(x,1)) == round(row['TIME'],1))&(covar_modeling_df['DV']==str(row['DV']))].copy()
+    elif 'AMT' in row:
+        # raise ValueError
+        del_row = covar_modeling_df[(covar_modeling_df['ID']==row['ID'])&(covar_modeling_df['TIME'].map(lambda x:round(x,1)) == round(row['TIME'],1))&(covar_modeling_df['AMT']==str(row['AMT']))].copy()
+    else:
+        continue
     to_be_del_inx.append(del_row.index[0])
 covar_modeling_df = covar_modeling_df[~(covar_modeling_df.index.isin(to_be_del_inx))].copy()
 
@@ -445,71 +491,71 @@ covar_modeling_df.to_csv(f'{nonmem_dir}/{drug}_modeling_df_covar.csv',index=Fals
 
 # covar_modeling_df = pd.read_csv(f'{output_dir}/amk_modeling_datacheck_covar.csv')
 # covar_modeling_df['ID'].drop_duplicates()
-raise ValueError
+# raise ValueError
 ####### NONMEM SDTAB
 
-nmsdtab_df = pd.read_csv(f"{nonmem_dir}/run/sdtab011",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
-modeling_datacheck_df = pd.read_csv(f"{output_dir}/amk_modeling_covar/amk_modeling_datacheck_covar.csv")
-nmsdtab_df = nmsdtab_df.merge(modeling_datacheck_df[['ID','UID']].drop_duplicates(['ID']), on=['ID'], how='left')
-nmsdtab_df['ID'] = nmsdtab_df['ID'].astype(int)
-# nmsdtab_df['TDM_YEAR'] = nmsdtab_df['TDM_YEAR'].astype(int)
-under_pred_df = nmsdtab_df[(nmsdtab_df['DV'] >= 10)&(nmsdtab_df['IPRED'] < 10)].copy()
-over_pred_df = nmsdtab_df[(nmsdtab_df['DV'] < 10)&(nmsdtab_df['IPRED'] >= 10)].copy()
-
-
-under_pred_df.to_csv(f"{modeling_covar_dir}/amk_modeling_underpred.csv",index=False, encoding='utf-8-sig')
-over_pred_df.to_csv(f"{modeling_covar_dir}/amk_modeling_overpred.csv",index=False, encoding='utf-8-sig')
-# under_pred_df['ID'].drop_duplicates()
-
-mis_pred_df = pd.concat([under_pred_df, over_pred_df])
-mis_pred_df['ID'].drop_duplicates()
+# nmsdtab_df = pd.read_csv(f"{nonmem_dir}/run/sdtab011",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
+# modeling_datacheck_df = pd.read_csv(f"{output_dir}/amk_modeling_covar/amk_modeling_datacheck_covar.csv")
+# nmsdtab_df = nmsdtab_df.merge(modeling_datacheck_df[['ID','UID']].drop_duplicates(['ID']), on=['ID'], how='left')
+# nmsdtab_df['ID'] = nmsdtab_df['ID'].astype(int)
+# # nmsdtab_df['TDM_YEAR'] = nmsdtab_df['TDM_YEAR'].astype(int)
+# under_pred_df = nmsdtab_df[(nmsdtab_df['DV'] >= 10)&(nmsdtab_df['IPRED'] < 10)].copy()
+# over_pred_df = nmsdtab_df[(nmsdtab_df['DV'] < 10)&(nmsdtab_df['IPRED'] >= 10)].copy()
 #
-# covar_modeling_df = covar_modeling_df[~(covar_modeling_df['ID'].isin(mis_pred_df['ID'].drop_duplicates()))]
-# # covar_modeling_df['SEX'] = covar_modeling_df['SEX'].map({'M':1,'F':2})
-# covar_modeling_df = covar_modeling_df.drop(['NAME'], axis=1)[['ID','TIME','TAD','DV','MDV','CMT','AMT','RATE','UID'] + list(covar_modeling_df.loc[:,'ALB':].iloc[:,:].columns)]
-# covar_modeling_df.to_csv(f"{nonmem_dir}/amk_modeling_df_covar_filt.csv",index=False, encoding='utf-8-sig')
-
-
-####### NONMEM SDTAB
-# nmsdtab_df.columns
-modeling_covar_dir = f"{output_dir}/amk_modeling_datacheck"
-modeling_datacheck_df = pd.read_csv(f"{modeling_covar_dir}/amk_modeling_datacheck.csv")
-nmsdtab_df = pd.read_csv(f"{nonmem_dir}/run/sdtab011",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
-nmsdtab_df['ID'] = nmsdtab_df['ID'].astype(int)
-
-prep_conc_df = modeling_datacheck_df[modeling_datacheck_df['MDV']==0].copy()
-prep_conc_df['REC_REASON'] = prep_conc_df['REC_REASON'].replace(np.nan,'Vacant').map(lambda x:x.split('(')[0])
-nm_conc_df = nmsdtab_df[nmsdtab_df['MDV']==0]
-merge_conc_df = nm_conc_df.merge(prep_conc_df[['ID','TIME','REC_REASON']], on=['ID','TIME'], how='left')
-
-# merge_conc_df['REC_REASON'].unique()
-filt_gdf = merge_conc_df.copy()
-# filt_gdf.columns
-# filt_gdf = merge_conc_df[~merge_conc_df['REC_REASON'].isin(['오더비고반영', '결과비고반영(시간_분AP)', '결과비고반영(날짜_시간AP)', '결과비고반영(날짜_시간)'])].copy()
-
-# merge_conc_df['ID'].drop_duplicates()
-# # filt_gdf['ID'].drop_duplicates()
-# merge_conc_df[(merge_conc_df['REC_REASON']!='Vacant')]['ID'].drop_duplicates()
-# merge_conc_df[(merge_conc_df['REC_REASON']=='Vacant')]['ID'].drop_duplicates()
-
-import matplotlib.font_manager as fm
-plt.rc('font', family='Malgun Gothic')
-plt.rcParams['axes.unicode_minus'] = False
-sns.scatterplot(data=filt_gdf, x='IPRED',y='DV', hue='REC_REASON')
-
-
-
-# covar_modeling_df.drop(['NAME','DATETIME'], axis=1).applymap(lambda x:x if (type(x)==str) else np.nan).dropna(axis=1)
-# covar_modeling_df['DV'].unique()
-# covar_modeling_df.columns
-# covar_modeling_df['ID'].drop_duplicates()
-# str(covar_modeling_df.columns).replace("', '",' ').replace("',\n       '",' ')
-
-""" 
-# 결과에서 Covariate 일부분이 비어있는 이유
-# - basic_prep_lab_covar에서 각 사람마다의 lab 수치가 존재하는 날짜 기준으로 date range 를 생성했는데, 
-# - 이게 order data (dosing date range)와 안 맞을 수 있다 
-"""
-
-# modeling_df[modeling_df['AST'].isna()]['UID'].unique()
-
+#
+# under_pred_df.to_csv(f"{modeling_covar_dir}/amk_modeling_underpred.csv",index=False, encoding='utf-8-sig')
+# over_pred_df.to_csv(f"{modeling_covar_dir}/amk_modeling_overpred.csv",index=False, encoding='utf-8-sig')
+# # under_pred_df['ID'].drop_duplicates()
+#
+# mis_pred_df = pd.concat([under_pred_df, over_pred_df])
+# mis_pred_df['ID'].drop_duplicates()
+# #
+# # covar_modeling_df = covar_modeling_df[~(covar_modeling_df['ID'].isin(mis_pred_df['ID'].drop_duplicates()))]
+# # # covar_modeling_df['SEX'] = covar_modeling_df['SEX'].map({'M':1,'F':2})
+# # covar_modeling_df = covar_modeling_df.drop(['NAME'], axis=1)[['ID','TIME','TAD','DV','MDV','CMT','AMT','RATE','UID'] + list(covar_modeling_df.loc[:,'ALB':].iloc[:,:].columns)]
+# # covar_modeling_df.to_csv(f"{nonmem_dir}/amk_modeling_df_covar_filt.csv",index=False, encoding='utf-8-sig')
+#
+#
+# ####### NONMEM SDTAB
+# # nmsdtab_df.columns
+# modeling_covar_dir = f"{output_dir}/amk_modeling_datacheck"
+# modeling_datacheck_df = pd.read_csv(f"{modeling_covar_dir}/amk_modeling_datacheck.csv")
+# nmsdtab_df = pd.read_csv(f"{nonmem_dir}/run/sdtab011",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
+# nmsdtab_df['ID'] = nmsdtab_df['ID'].astype(int)
+#
+# prep_conc_df = modeling_datacheck_df[modeling_datacheck_df['MDV']==0].copy()
+# prep_conc_df['REC_REASON'] = prep_conc_df['REC_REASON'].replace(np.nan,'Vacant').map(lambda x:x.split('(')[0])
+# nm_conc_df = nmsdtab_df[nmsdtab_df['MDV']==0]
+# merge_conc_df = nm_conc_df.merge(prep_conc_df[['ID','TIME','REC_REASON']], on=['ID','TIME'], how='left')
+#
+# # merge_conc_df['REC_REASON'].unique()
+# filt_gdf = merge_conc_df.copy()
+# # filt_gdf.columns
+# # filt_gdf = merge_conc_df[~merge_conc_df['REC_REASON'].isin(['오더비고반영', '결과비고반영(시간_분AP)', '결과비고반영(날짜_시간AP)', '결과비고반영(날짜_시간)'])].copy()
+#
+# # merge_conc_df['ID'].drop_duplicates()
+# # # filt_gdf['ID'].drop_duplicates()
+# # merge_conc_df[(merge_conc_df['REC_REASON']!='Vacant')]['ID'].drop_duplicates()
+# # merge_conc_df[(merge_conc_df['REC_REASON']=='Vacant')]['ID'].drop_duplicates()
+#
+# import matplotlib.font_manager as fm
+# plt.rc('font', family='Malgun Gothic')
+# plt.rcParams['axes.unicode_minus'] = False
+# sns.scatterplot(data=filt_gdf, x='IPRED',y='DV', hue='REC_REASON')
+#
+#
+#
+# # covar_modeling_df.drop(['NAME','DATETIME'], axis=1).applymap(lambda x:x if (type(x)==str) else np.nan).dropna(axis=1)
+# # covar_modeling_df['DV'].unique()
+# # covar_modeling_df.columns
+# # covar_modeling_df['ID'].drop_duplicates()
+# # str(covar_modeling_df.columns).replace("', '",' ').replace("',\n       '",' ')
+#
+# """
+# # 결과에서 Covariate 일부분이 비어있는 이유
+# # - basic_prep_lab_covar에서 각 사람마다의 lab 수치가 존재하는 날짜 기준으로 date range 를 생성했는데,
+# # - 이게 order data (dosing date range)와 안 맞을 수 있다
+# """
+#
+# # modeling_df[modeling_df['AST'].isna()]['UID'].unique()
+#
