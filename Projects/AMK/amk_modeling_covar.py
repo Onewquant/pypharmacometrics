@@ -406,6 +406,29 @@ to_be_adj2 = [
              {'ID':1278,'SEARCH_VARI':'TIME','SEARCH_VAL':71.866667,'CHANGE_VAR':'AMT','PREV_VAL':500,'NEW_VAL':600.0},
              {'ID':81,'SEARCH_VARI':'TIME','SEARCH_VAL':0,'CHANGE_VAR':'AMT','PREV_VAL':500,'NEW_VAL':525.0},
              {'ID':1679,'SEARCH_VARI':'TIME','SEARCH_VAL':204.4667,'CHANGE_VAR':'AMT','PREV_VAL':500,'NEW_VAL':530.0},
+
+             # # 위 사람들 Rate 조정
+             #
+             # {'ID':763,'SEARCH_VARI':'TIME','SEARCH_VAL':0.0,'CHANGE_VAR':'RATE','PREV_VAL':70,'NEW_VAL':700},
+             # {'ID':763,'SEARCH_VARI':'TIME','SEARCH_VAL':22.25,'CHANGE_VAR':'RATE','PREV_VAL':70,'NEW_VAL':700},
+             # {'ID':763,'SEARCH_VARI':'TIME','SEARCH_VAL':48.01667,'CHANGE_VAR':'RATE','PREV_VAL':70,'NEW_VAL':700},
+             # {'ID':763,'SEARCH_VARI':'TIME','SEARCH_VAL':74.41667,'CHANGE_VAR':'RATE','PREV_VAL':70,'NEW_VAL':700},
+             #
+             # {'ID':151,'SEARCH_VARI':'TIME','SEARCH_VAL':0.0,'CHANGE_VAR':'RATE','PREV_VAL':100,'NEW_VAL':1000.0},
+             # {'ID':151,'SEARCH_VARI':'TIME','SEARCH_VAL':24,'CHANGE_VAR':'RATE','PREV_VAL':100,'NEW_VAL':1000.0},
+             # {'ID':151,'SEARCH_VARI':'TIME','SEARCH_VAL':48,'CHANGE_VAR':'RATE','PREV_VAL':100,'NEW_VAL':1000.0},
+             # {'ID':151,'SEARCH_VARI':'TIME','SEARCH_VAL':72,'CHANGE_VAR':'RATE','PREV_VAL':100,'NEW_VAL':1000.0},
+             # {'ID':151,'SEARCH_VARI':'TIME','SEARCH_VAL':96,'CHANGE_VAR':'RATE','PREV_VAL':100,'NEW_VAL':1000.0},
+             #
+             # {'ID':656,'SEARCH_VARI':'TIME','SEARCH_VAL':57.11667,'CHANGE_VAR':'RATE','PREV_VAL':100,'NEW_VAL':1000.0},
+             # {'ID':656,'SEARCH_VARI':'TIME','SEARCH_VAL':68.45,'CHANGE_VAR':'RATE','PREV_VAL':100,'NEW_VAL':1000.0},
+             # {'ID':656,'SEARCH_VARI':'TIME','SEARCH_VAL':81.2,'CHANGE_VAR':'RATE','PREV_VAL':100,'NEW_VAL':1000.0},
+             #
+             # # 추후 아래서 삭제 작업도 필요한 목록들
+             # {'ID':935,'SEARCH_VARI':'TIME','SEARCH_VAL':126.9667,'CHANGE_VAR':'RATE','PREV_VAL':600,'NEW_VAL':700.0},
+             # {'ID':1278,'SEARCH_VARI':'TIME','SEARCH_VAL':71.866667,'CHANGE_VAR':'RATE','PREV_VAL':500,'NEW_VAL':600.0},
+             # {'ID':81,'SEARCH_VARI':'TIME','SEARCH_VAL':0,'CHANGE_VAR':'RATE','PREV_VAL':500,'NEW_VAL':525.0},
+             # {'ID':1679,'SEARCH_VARI':'TIME','SEARCH_VAL':204.4667,'CHANGE_VAR':'RATE','PREV_VAL':500,'NEW_VAL':530.0},
 ]
 
 # to_be_adj_inx = list()
@@ -423,12 +446,17 @@ for row in to_be_adj2:
     if row['CHANGE_VAR'] in ['TAD', 'TIME']:
     # covar_modeling_df[(covar_modeling_df['ID'] == row['ID']) & (covar_modeling_df[row['SEARCH_VARI']].map(lambda x:round(x,1)) == round(row['SEARCH_VAL'],1))]
         adj2_row = covar_modeling_df[(covar_modeling_df['ID']==row['ID'])&(covar_modeling_df[row['SEARCH_VARI']].map(lambda x:round(x,1)) == round(row['SEARCH_VAL'],1))&(covar_modeling_df['DV']!='.')].copy()
-    elif row['CHANGE_VAR'] =='AMT':
+        adj2_inx = adj2_row.index[0]
+        covar_modeling_df.at[adj2_inx, row['CHANGE_VAR']] = row['NEW_VAL']
+    elif row['CHANGE_VAR'] in ['AMT']:
         adj2_row = covar_modeling_df[(covar_modeling_df['ID']==row['ID'])&(covar_modeling_df[row['SEARCH_VARI']].map(lambda x:round(x,1)) == round(row['SEARCH_VAL'],1))&(covar_modeling_df['AMT']!='.')].copy()
+        adj2_inx = adj2_row.index[0]
+        covar_modeling_df.at[adj2_inx, row['CHANGE_VAR']] = row['NEW_VAL']
+        covar_modeling_df.at[adj2_inx, 'RATE'] = row['NEW_VAL']/0.5
     else:
         continue
-    adj2_inx = adj2_row.index[0]
-    covar_modeling_df.at[adj2_inx, row['CHANGE_VAR']] = row['NEW_VAL']
+    # adj2_inx = adj2_row.index[0]
+    # covar_modeling_df.at[adj2_inx, row['CHANGE_VAR']] = row['NEW_VAL']
 
 
 

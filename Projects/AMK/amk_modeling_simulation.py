@@ -68,7 +68,7 @@ filt_final_sim_df['HOUR'] = filt_final_sim_df['DATETIME_ORI'].map(lambda x:int(x
 filt_final_sim_df['MINUTE'] = filt_final_sim_df['DATETIME_ORI'].map(lambda x:int(x[14:]))
 filt_final_sim_df = filt_final_sim_df[['ID', 'TIME', 'TAD', 'DV', 'MDV', 'CMT', 'AMT', 'RATE', 'UID','SEX','AGE','ALB','WT','CREATININE','AKI_DT','YY','MM','DD','HOUR','MINUTE']].copy()
 # filt_final_sim_df.to_csv(f"{output_dir}/amk_simulation_df.csv",index=False, encoding='utf-8-sig')
-filt_final_sim_df.to_csv(f"{nonmem_dir}/amk_simulation_df.csv",index=False, encoding='utf-8-sig')
+filt_final_sim_df.to_csv(f"{nonmem_dir}/amk_simulation_df.csv",index=False, encoding='utf-8')
 
 # filt_final_sim_df[filt_final_sim_df['AKI_DT']>0][['ID','UID']].drop_duplicates()
 # aki_pt_df[(aki_pt_df['ID']==21)][['ID','UID','TIME','CREATININE','AKI_DT']]
