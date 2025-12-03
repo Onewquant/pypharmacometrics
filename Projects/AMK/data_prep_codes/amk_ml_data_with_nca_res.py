@@ -11,12 +11,12 @@ output_dir = f"{prj_dir}/results"
 nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
 
 ########## NCA ###########
-sim_df = pd.read_csv(f"{resource_dir}/sim053",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
+sim_df = pd.read_csv(f"{resource_dir}/sim054",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
 sim_df['ID'] = sim_df['ID'].astype(int)
 
 
 
-conc_df = sim_df[sim_df['MDV']==0][['ID','TIME','DV','MDV','AMT']].copy()
+conc_df = sim_df[sim_df['MDV']==0][['ID','TIME','DV','MDV','AMT','CL','V1']].copy()
 
 # sim_df.drop_duplicates(['ID'], keep='last')
 # conc_df.drop_duplicates(['ID'], keep='last')
@@ -147,12 +147,12 @@ pk_df = AUC_F.merge(final_local_24H, on='ID', how='left')
 
 ml_res_df = pd.read_csv(f"{output_dir}/final_mlres_data.csv")
 ml_res_df = ml_res_df[~ml_res_df['UID'].isin({25524226, 24961411, 10617861, 15499525, 22006666, 25389067, 19551122, 18347926, 14009765, 24311845, 30514726, 10190892, 10451629, 11895215, 16574645, 34728899, 11584452, 11845188, 24913861, 28650698, 23809356, 10006221, 13115597, 21210190, 26599247, 13158741, 14783830, 18146774, 26367192, 28080857, 18991455, 10474848, 24925408, 26668770, 35441638, 21249383, 10963177, 25351536, 11675891, 24785011, 32592760, 26809209, 23084924, 26948351})]
-ml_res_df = ml_res_df[~ml_res_df['UID'].isin({10042359, 10646256, 10844269, 11505839, 11566803, 11666727, 11747950, 14258992, 15391683, 15957379, 19380320, 19447177, 21971589, 26893691, 29819692, 33246217, 33291185, 35679534, 39336264})]
+# ml_res_df = ml_res_df[~ml_res_df['UID'].isin({10042359, 10646256, 10844269, 11505839, 11566803, 11666727, 11747950, 14258992, 15391683, 15957379, 19380320, 19447177, 21971589, 26893691, 29819692, 33246217, 33291185, 35679534, 39336264})]
 # print(final_local_24H.head())
 
 ml_res_df1 = ml_res_df.loc[:,:'Empirical'].copy()
 ml_res_df1['eGFR(CKD_EPI_2021)'] = ml_res_df1.apply(lambda x: 142 * min(x['CREATININE'] / 0.7, 1) ** (-0.241) * max(x['CREATININE'] / 0.7, 1) ** (-1.200) * (0.9938 ** x['AGE']) * 1.012 if x['SEX']==0 else  142 * min(x['CREATININE'] / 0.9, 1) ** (-0.302) * max(x['CREATININE'] / 0.9, 1) ** (-1.200) * (0.9938 ** x['AGE']) * 1.0 ,axis=1)
-ml_res_df1['CRCL(Corkcroft_Gault)'] = ml_res_df1.apply(lambda x: ((140 - x['AGE']) * x['WT'] * 1) / (72 * x['CREATININE']) if x['SEX']==0 else  ((140 - x['AGE']) * x['WT'] * 0.85) / (72 * x['CREATININE']) ,axis=1)
+ml_res_df1['CRCL'] = ml_res_df1.apply(lambda x: ((140 - x['AGE']) * x['WT'] * 1) / (72 * x['CREATININE']) if x['SEX']==0 else  ((140 - x['AGE']) * x['WT'] * 0.85) / (72 * x['CREATININE']) ,axis=1)
 ml_res_df2 = pd.concat([ml_res_df[['ID']],ml_res_df.loc[:,'AKI_OCCURRENCE':].copy()], axis=1)
 ml_res_df = ml_res_df1.merge(pk_df, on='ID',how='left').merge(ml_res_df2, on='ID',how='left')
 ml_res_df = ml_res_df.rename(columns={'γ-GT':'GGT'})
@@ -161,6 +161,6 @@ ml_res_df = ml_res_df.rename(columns={'γ-GT':'GGT'})
 
 
 ml_res_df.to_csv(f"{output_dir}/final_mlres_data(with_pk).csv", index=False, encoding='utf-8')
-
+set(ml_res_df.columns)
 # local_total_auc_df_24H.to_csv(r"C:/PYCHARM/AMK/results/local_total_auc_3_24H.csv", index=False)
 # final_local_24H.to_csv(r"C:/PYCHARM/AMK/results/final_local_24H.csv", index=False)

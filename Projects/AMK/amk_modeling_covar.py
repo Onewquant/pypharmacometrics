@@ -453,6 +453,10 @@ for row in to_be_adj2:
         adj2_inx = adj2_row.index[0]
         covar_modeling_df.at[adj2_inx, row['CHANGE_VAR']] = row['NEW_VAL']
         covar_modeling_df.at[adj2_inx, 'RATE'] = row['NEW_VAL']/0.5
+        # covar_modeling_df.at[adj2_inx+1, 'TIME'] - covar_modeling_df.at[adj2_inx, 'TIME']
+        # covar_modeling_df.loc[adj2_inx]
+        # covar_modeling_df.loc[adj2_inx+1]
+        # raise ValueError
     else:
         continue
     # adj2_inx = adj2_row.index[0]
@@ -511,6 +515,8 @@ for inx, row in covar_modeling_df.iterrows(): #break
 covar_modeling_df = covar_modeling_df.sort_values(['ID','TIME'], ignore_index=True)
 
 ##############
+# raise ValueError
+# covar_modeling_df['CRCL'] = covar_modeling_df.apply(lambda x: ((140 - x['AGE']) * x['WT'] * 1) / (72 * x['CREATININE']) if x['SEX']==0 else  ((140 - x['AGE']) * x['WT'] * 0.85) / (72 * x['CREATININE']) ,axis=1)
 
 covar_modeling_df.to_csv(f'{modeling_covar_dir}/{drug}_modeling_df_covar.csv',index=False, encoding='utf-8-sig')
 covar_modeling_df.to_csv(f'{nonmem_dir}/{drug}_modeling_df_covar.csv',index=False, encoding='utf-8-sig')

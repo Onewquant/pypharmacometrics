@@ -46,7 +46,8 @@ nonaki_pt_df = final_sim_df[~final_sim_df['UID'].isin(aki_ids)].copy()
 nonaki_pt_df['AKI_DT'] = -1
 nonako_last_dosetime_df = nonaki_pt_df[nonaki_pt_df['MDV']>0].drop_duplicates(['UID'],keep='last')[['UID','TIME']].rename(columns={'TIME':'LASTDOSE_TIME'})
 nonaki_pt_df = nonaki_pt_df.merge(nonako_last_dosetime_df, how='left', on=['UID'])
-nonaki_pt_df = nonaki_pt_df[nonaki_pt_df['TIME']<=(nonaki_pt_df['LASTDOSE_TIME']-24)].copy()
+# nonaki_pt_df = nonaki_pt_df[nonaki_pt_df['TIME']<=(nonaki_pt_df['LASTDOSE_TIME']-24)].copy()
+nonaki_pt_df = nonaki_pt_df[nonaki_pt_df['TIME']<=nonaki_pt_df['LASTDOSE_TIME']].copy()
 
 # raise ValueError
 aki_pt_df = final_sim_df[final_sim_df['UID'].isin(aki_ids)].copy()
@@ -66,10 +67,10 @@ filt_final_sim_df['MM'] = filt_final_sim_df['DATETIME_ORI'].map(lambda x:int(x[5
 filt_final_sim_df['DD'] = filt_final_sim_df['DATETIME_ORI'].map(lambda x:int(x[8:10]))
 filt_final_sim_df['HOUR'] = filt_final_sim_df['DATETIME_ORI'].map(lambda x:int(x[11:13]))
 filt_final_sim_df['MINUTE'] = filt_final_sim_df['DATETIME_ORI'].map(lambda x:int(x[14:]))
-filt_final_sim_df = filt_final_sim_df[['ID', 'TIME', 'TAD', 'DV', 'MDV', 'CMT', 'AMT', 'RATE', 'UID','SEX','AGE','ALB','WT','CREATININE','AKI_DT','YY','MM','DD','HOUR','MINUTE']].copy()
+filt_final_sim_df = filt_final_sim_df[['ID', 'TIME', 'TAD', 'DV', 'MDV', 'CMT', 'AMT', 'RATE', 'UID','SEX','AGE','ALB','WT','CREATININE','CRCL','AKI_DT','YY','MM','DD','HOUR','MINUTE']].copy()
 # filt_final_sim_df.to_csv(f"{output_dir}/amk_simulation_df.csv",index=False, encoding='utf-8-sig')
 filt_final_sim_df.to_csv(f"{nonmem_dir}/amk_simulation_df.csv",index=False, encoding='utf-8')
-
+# filt_final_sim_df.columns
 # filt_final_sim_df[filt_final_sim_df['AKI_DT']>0][['ID','UID']].drop_duplicates()
 # aki_pt_df[(aki_pt_df['ID']==21)][['ID','UID','TIME','CREATININE','AKI_DT']]
 
