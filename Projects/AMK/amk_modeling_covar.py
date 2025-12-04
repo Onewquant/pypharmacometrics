@@ -522,8 +522,11 @@ inner_one_day_pids = ['25524226', '24961411', '10617861', '15499525', '22006666'
 
 covar_modeling_df = covar_modeling_df[~((covar_modeling_df['UID'].isin(inner_one_day_pids)) | (covar_modeling_df['UID'].isin(no_ml_lab_pids)))].copy()
 
-covar_modeling_df.to_csv(f'{modeling_covar_dir}/{drug}_modeling_df_covar.csv',index=False, encoding='utf-8-sig')
-covar_modeling_df.to_csv(f'{nonmem_dir}/{drug}_modeling_df_covar.csv',index=False, encoding='utf-8-sig')
+for col in ['CRCL','WT']:
+    covar_modeling_df[col]=covar_modeling_df[col].map(lambda x:round(x,6)*(10**6)/(10**6))
+# raise ValueError
+covar_modeling_df.to_csv(f'{modeling_covar_dir}/{drug}_modeling_df_covar.csv',index=False, encoding='utf-8')
+covar_modeling_df.to_csv(f'{nonmem_dir}/{drug}_modeling_df_covar.csv',index=False, encoding='utf-8')
 
 # (covar_modeling_df['MDV']==0).sum()
 

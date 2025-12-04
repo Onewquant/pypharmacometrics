@@ -179,7 +179,7 @@ for drug in ['infliximab','adalimumab']:
 
         ## Modeling Data Check용 파일 저장
         modeling_df[datacheck_cols].to_csv(f'{output_dir}/modeling_df_covar/{drug}_{mode_str}_datacheck(covar){added_filename_str}.csv', index=False, encoding='utf-8-sig')
-
+        # raise ValueError
         modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','ROUTE','IBD_TYPE'] + list(modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
         # modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','ROUTE','IBD_TYPE','START_INDMAINT'] + list(modeling_df.loc[:,right_covar_col:].iloc[:,1:].columns)
 
@@ -218,12 +218,18 @@ for drug in ['infliximab','adalimumab']:
         modeling_df.drop(columns=pd_marker_list, axis=1).to_csv(f'{output_dir}/modeling_df_covar/{drug}_{mode_str}_modeling_df_dayscale{added_filename_str}.csv',index=False, encoding='utf-8')
         modeling_df.drop(columns=pd_marker_list, axis=1).to_csv(f'{nonmem_dir}/{drug}_{mode_str}_modeling_df_dayscale{added_filename_str}.csv',index=False, encoding='utf-8')
 
+
         ## PD 분석용 파일 저장
         modeling_df.to_csv(f'{output_dir}/modeling_df_covar/{drug}_{mode_str}_pdeda_df_dayscale{added_filename_str}.csv',index=False, encoding='utf-8')
 
 
-
-
+# no_ada_uids=[35093356,37366865,37291334,38241008,18898880]
+# no_ada_df = modeling_df[modeling_df['UID'].isin(no_ada_uids)].copy()
+# no_ada_df['ADA']
+# modeling_df[modeling_df['UID'].isin([str(c) for c in no_ada_uids])][['ID','DATETIME','ADA']]['ADA'].sum()
+# modeling_df.columns
+#
+# modeling_df.groupby('ID')['ADA'].max().sum()
 
 
 """ 

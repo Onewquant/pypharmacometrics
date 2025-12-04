@@ -78,7 +78,7 @@ for uid, uid_sim_df in sim_df.groupby('ID'):
 ## PD 결과 정리한 데이터셋 로딩
 # pd_res_df.columns
 pd_res_df = pd.read_csv(f"{output_dir}/PKPD_EDA/PKPD_Corr0/pd_eda_df.csv")
-sim_df
+# sim_df
 
 ## PD 결과 자체만 정리
 # pd_res_df = pd_res_df.rename(columns={'BL_PD_CR':'BL_PD_PRO2(CR)','TG_PD_CR':'TG_PD_PRO2(CR)'})

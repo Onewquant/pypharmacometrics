@@ -73,6 +73,7 @@ filt_final_sim_df.to_csv(f"{nonmem_dir}/amk_simulation_df.csv",index=False, enco
 # filt_final_sim_df.columns
 # filt_final_sim_df[filt_final_sim_df['AKI_DT']>0][['ID','UID']].drop_duplicates()
 # aki_pt_df[(aki_pt_df['ID']==21)][['ID','UID','TIME','CREATININE','AKI_DT']]
+# filt_final_sim_df['CRCL']
 
 # max_time_df = nonaki_pt_df.groupby('ID',as_index=False)['TIME'].agg('max')
 # sns.displot(max_time_df['TIME']/24)

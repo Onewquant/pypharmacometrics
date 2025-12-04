@@ -331,4 +331,4 @@ print(f"Patients without dose data: {len(no_dose_pids)} / {set(no_dose_pids)}")
 # aki_df['UID'].drop_duplicates()
 # aki_df[aki_df['AKI_DT'] > 24]['UID'].drop_duplicates()
 
-set(ml_res_df[ml_res_df[['WBC', 'ANC', 'Lymphocyte', 'RBC', 'Hb', 'PLT', 'Na', 'K', 'Ca', 'P', 'Cl']].sum(axis=1)==0]['UID'])
+# set(ml_res_df[ml_res_df[['WBC', 'ANC', 'Lymphocyte', 'RBC', 'Hb', 'PLT', 'Na', 'K', 'Ca', 'P', 'Cl']].sum(axis=1)==0]['UID'])
