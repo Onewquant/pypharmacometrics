@@ -516,7 +516,11 @@ covar_modeling_df = covar_modeling_df.sort_values(['ID','TIME'], ignore_index=Tr
 
 ##############
 # raise ValueError
-# covar_modeling_df['CRCL'] = covar_modeling_df.apply(lambda x: ((140 - x['AGE']) * x['WT'] * 1) / (72 * x['CREATININE']) if x['SEX']==0 else  ((140 - x['AGE']) * x['WT'] * 0.85) / (72 * x['CREATININE']) ,axis=1)
+covar_modeling_df['CRCL'] = covar_modeling_df.apply(lambda x: ((140 - x['AGE']) * x['WT'] * 1) / (72 * x['CREATININE']) if x['SEX']==0 else  ((140 - x['AGE']) * x['WT'] * 0.85) / (72 * x['CREATININE']) ,axis=1)
+no_ml_lab_pids = ['10042359', '10646256', '10844269', '11018784', '11505839', '11566803', '11666727', '11747950', '14258992', '15391683', '15957379', '18345874', '19380320', '19447177', '21971589', '26893691', '29819692', '32719154', '33246217', '33291185', '35679534', '39336264']
+inner_one_day_pids = ['25524226', '24961411', '10617861', '15499525', '22006666', '25389067', '19551122', '18347926', '14009765', '24311845', '30514726', '10190892', '10451629', '11895215', '16574645', '34728899', '11584452', '11845188', '24913861', '28650698', '23809356', '10006221', '13115597', '21210190', '26599247', '13158741', '14783830', '18146774', '26367192', '28080857', '18991455', '10474848', '24925408', '26668770', '35441638', '21249383', '10963177', '25351536', '11675891', '24785011', '32592760', '26809209', '23084924', '26948351']
+
+covar_modeling_df = covar_modeling_df[~((covar_modeling_df['UID'].isin(inner_one_day_pids)) | (covar_modeling_df['UID'].isin(no_ml_lab_pids)))].copy()
 
 covar_modeling_df.to_csv(f'{modeling_covar_dir}/{drug}_modeling_df_covar.csv',index=False, encoding='utf-8-sig')
 covar_modeling_df.to_csv(f'{nonmem_dir}/{drug}_modeling_df_covar.csv',index=False, encoding='utf-8-sig')

@@ -44,6 +44,7 @@ with open(file_path, "rb") as f:
     office_file.load_key(password=password)   # 암호 입력
     office_file.decrypt(decrypted)
 raw_df_prev = pd.read_excel(decrypted, engine="openpyxl")
+raw_df_prev.columns
 
 raw_df_prev = raw_df_prev.rename(columns={'채혈일시':'라벨출력일시'})[['환자번호','검사 접수일자','검사 접수일시','검사결과','라벨출력일시']]
 raw_df = raw_df.merge(raw_df_prev, on=['환자번호','검사 접수일자','검사 접수일시','검사결과'], how='left')
