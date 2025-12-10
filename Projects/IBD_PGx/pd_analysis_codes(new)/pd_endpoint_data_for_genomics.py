@@ -93,6 +93,8 @@ pd_res_df['BL_PD_FCAL150(BR)'] = (pd_res_df['BL_PD_FCAL']<150)*1
 pd_res_df['TG_PD_FCAL150(BR)'] = (pd_res_df['TG_PD_FCAL']<150)*1
 # pd_res_df.columns
 
+# pd_res_df.columns
+
 # pd_sumres_df = pd.DataFrame(columns=['PD_EP','IND','MAINT'])
 # pd_sumres_df = list()
 # # for pd_ep in ['PRO2(CR)','CRP(BR)','FCAL250(BR)','FCAL150(BR)']:

@@ -380,6 +380,7 @@ ax.legend(title=None, fontsize=font_size)
 
 plt.tight_layout()
 plt.savefig(f"{output_dir}/b1da/B1DA_KM_plot(ADRs)({max_time_at_risk}).png")  # PNG 파일로 저장
+# plt.savefig(f"{output_dir}/b1da/B1DA_KM_plot(ADRs)({max_time_at_risk}).jpg",dpi=600,bbox_inches='tight')   # 선택: 주변 여백 최소화)  # PNG 파일로 저장
 
 # 👉 최종 발생률을 DataFrame으로 정리
 final_df = pd.DataFrame(final_rates)
