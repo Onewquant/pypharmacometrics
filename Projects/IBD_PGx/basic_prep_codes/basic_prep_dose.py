@@ -28,6 +28,11 @@ for finx, fpath in enumerate(order_files): #break
     # if pname=='이학준':
     #     raise ValueError
 
+    if pid in ('26675590',):
+        pass
+    else:
+        continue
+
     # if pid in ("15322168", "19739357", "34835292", "37366865", "21618097", "36898756", "36975211", "37858047"):       # lab, order 파일 다시 수집 필요
     #     continue
 
@@ -167,7 +172,17 @@ for finx, fpath in enumerate(order_files): #break
     dose_df['PERIOD'] = dose_df['처방지시'].map(lambda x: 'x1' if " [SC] " not in x else x.split(' [SC] ')[-1].split(':')[0].strip())
     # dose_df.to_csv(f"{output_dir}/dose_df_lhj.csv", encoding='utf-8-sig', index=False)
     # dose_df.loc[3203,'처방지시']
-
+    if pid=='37590846': # ADALIMUMAB DOSE 데이터 Correction
+        add_rows = pd.DataFrame([dose_df.sort_values(['ID','DATETIME']).iloc[0],dose_df.sort_values(['ID','DATETIME']).iloc[0]])
+        add_rows['DATETIME'] = ['2023-11-23T16:22','2023-12-06T16:22']
+        dose_df = pd.concat([dose_df, add_rows])
+    if pid=='26675590': # ADALIMUMAB DOSE 데이터 Correction
+        add_rows = pd.DataFrame([dose_df.sort_values(['ID','DATETIME']).iloc[0],dose_df.sort_values(['ID','DATETIME']).iloc[0]])
+        add_rows['DATETIME'] = ['2023-12-14T16:03','2023-12-28T16:03']
+        dose_df = pd.concat([dose_df, add_rows])
+        # dose_df[['DATETIME','ETC_INFO']]
+        # raise ValueError
+    dose_df.append()
     dose_result_df.append(dose_df[result_cols].drop_duplicates(no_dup_cols))
 
     # drug_order_set = drug_order_set.union(set(dose_df['처방지시'].map(lambda x:''.join(x.split(':')[0].replace('  ',' ').split(') ')[1:]).replace('[원내]','').replace('[D/C]','').replace('[보류]','').replace('[반납]','').replace('[Em] ','').strip()).drop_duplicates()))
@@ -175,6 +190,7 @@ for finx, fpath in enumerate(order_files): #break
 
 dose_result_df = pd.concat(dose_result_df, ignore_index=True).sort_values(['ID','DATETIME'], ascending=[True,False])
 
+# dose_result_df[dose_result_df['ID'].isin(('37590846',))]
 
 ## DATETIME 추가 조정
 dt_series = list()
@@ -209,7 +225,8 @@ dose_result_df['ETC_INFO_TREATED'] = ''
 
 ETC_INFO_cond = (dose_result_df['ETC_INFO']=='2주 뒤에 자가로 2개 맞으세요.')
 PERIOD_cond = list()
-PERIOD_added_list1 = ['2주 뒤에 맞으세요 ','2주 뒤에 자가 접종 ','2주 뒤 ','2주 뒤에 자가로 2개 맞으세요. '] + ["오늘 2amp, 내일 2mp 맞으세요 "]
+# PERIOD_added_list1 = ['2주 뒤에 맞으세요 ','2주 뒤에 자가 접종 ','2주 뒤 ','2주 뒤에 자가로 2개 맞으세요. '] + ["오늘 2amp, 내일 2mp 맞으세요 "]
+PERIOD_added_list1 = ['2주 뒤에 맞으세요 ','2주 뒤에 자가 접종 ','2주 뒤 ','2주 뒤에 자가로 2개 맞으세요. ']
 for inx, period_str in enumerate(dose_result_df['PERIOD']):
     period_tf = False
     for comment in PERIOD_added_list1:
@@ -230,7 +247,7 @@ dose_result_df = dose_result_df.sort_values(['ID','DATETIME'], ascending=[True,F
 
 ETC_INFO_cond = dose_result_df['ETC_INFO'].isin(['금일 주사실에서 2개 맞고 가고 그 다음날 자가로 2개 더 맞으세요.','금일 두 개, 내일 두 개 맞으세요.','하루에 2개씩 이틀에 나눠 맞으세요','금일 2개, 내일 2개 맞으세요.','금일 2개, 내일 2개','금일 주사실에서 2개 맞고 가고 그 다음날 자가로 2개 더 맞으세요. '])
 PERIOD_cond = list()
-PERIOD_added_list2 = ['오늘 2개, 내일 2개 맞으세요 ', '금일 2개, 내일 2개 맞으세요 ', '금일 2개, 내일 2개 맞으세요. ','주사실에서 2개 맞고 가고 그 다음날 자가로 2개 더 맞으세요. ']
+PERIOD_added_list2 = ['오늘 2개, 내일 2개 맞으세요 ', '금일 2개, 내일 2개 맞으세요 ', '금일 2개, 내일 2개 맞으세요. ','주사실에서 2개 맞고 가고 그 다음날 자가로 2개 더 맞으세요. ',"오늘 2amp, 내일 2mp 맞으세요 "]
 for inx, period_str in enumerate(dose_result_df['PERIOD']):
     period_tf = False
     for comment in PERIOD_added_list2:
@@ -249,6 +266,30 @@ for inx, row in change_df.iterrows():
     # dose_result_df.at[inx,'ETC_INFO'] = '처방비고 반영완료'
     dose_result_df.at[inx,'ETC_INFO_TREATED'] = '처방비고 반영완료'
 dose_result_df = pd.concat([dose_result_df,change_df]).reset_index(drop=True)
+
+
+# # 1일 뒤/2주 뒤에 맞는 오더가 붙어있을때 반영
+#
+# ETC_INFO_cond = (dose_result_df['ETC_INFO']=='내일 자가로 2개')
+# PERIOD_cond = list()
+# # PERIOD_added_list1 = ['2주 뒤에 맞으세요 ','2주 뒤에 자가 접종 ','2주 뒤 ','2주 뒤에 자가로 2개 맞으세요. '] + ["오늘 2amp, 내일 2mp 맞으세요 "]
+# PERIOD_added_list1 = ['2주 뒤에 맞으세요 ','2주 뒤에 자가 접종 ','2주 뒤 ','2주 뒤에 자가로 2개 맞으세요. ']
+# for inx, period_str in enumerate(dose_result_df['PERIOD']):
+#     period_tf = False
+#     for comment in PERIOD_added_list1:
+#         if comment in period_str:
+#             period_tf=True
+#     PERIOD_cond.append(period_tf)
+# PERIOD_cond = pd.Series(PERIOD_cond)
+#
+# change_df = dose_result_df[ETC_INFO_cond|PERIOD_cond].copy()
+# for inx, row in change_df.iterrows():
+#     # dose_result_df.iloc[inx]
+#     dose_result_df.at[inx,'DATETIME'] = (datetime.strptime(dose_result_df.at[inx,'DATETIME'],'%Y-%m-%dT%H:%M') + timedelta(days=14)).strftime('%Y-%m-%dT%H:%M')
+#     # dose_result_df.at[inx,'ETC_INFO'] = '처방비고 반영완료'
+#     dose_result_df.at[inx,'ETC_INFO_TREATED'] = '처방비고 반영완료'
+# dose_result_df = dose_result_df.sort_values(['ID','DATETIME'], ascending=[True,False], ignore_index=True)
+
 
 # Period에 들어있는 추가 글자 제거
 
