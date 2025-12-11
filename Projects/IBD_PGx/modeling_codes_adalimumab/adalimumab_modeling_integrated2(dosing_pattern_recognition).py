@@ -85,10 +85,17 @@ for drug in ['adalimumab']: #break
     indmaint_df = indmaint_df.merge(init_dosing_dt, on=['ID'], how='left')
     # indmaint_df.columns
     indmaint_df['DOSING_TIME'] = indmaint_df.apply(lambda x:(datetime.strptime(x['DATETIME'],'%Y-%m-%dT%H:%M') - datetime.strptime(x['INIT_DOSE_DT'],'%Y-%m-%dT%H:%M')), axis=1).dt.total_seconds() / 86400 / 7
-    indmaint_df['DOSING_TIME_WKNORM'] = indmaint_df['DOSING_TIME'].map(lambda x:round(x,0))
-    # indmaint_df.columns
-    indmaint_df[indmaint_df['ID']==(indmaint_df['ID'].drop_duplicates().iloc[50])][['ID','NAME','DATETIME','AMT','DOSING_TIME_WKNORM']]
-    indmaint_df[indmaint_df['DOSING_TIME_WKNORM']<3].groupby('ID',as_index=False)['AMT'].sum() ################################
+
+    if drug=='adalimumab':
+        adalimumab_maint_pids = [11591070, 27407125, 28275802, 29702679, 34886593] # EMR에서 maintenance임을 직접 확인한 사람들
+        indmaint_df['DOSING_TIME_WKNORM'] = indmaint_df['DOSING_TIME'].map(lambda x:round(x,0))
+        # indmaint_df[indmaint_df['ID']==(indmaint_df['ID'].drop_duplicates().iloc[1])][['ID','NAME','DATETIME','AMT','DOSING_TIME_WKNORM']]
+        adalimumab_init_amt = indmaint_df[indmaint_df['DOSING_TIME_WKNORM']<3].groupby('ID',as_index=False)['AMT'].sum() ################################
+        adalimumab_maint_pids = list(adalimumab_init_amt[(adalimumab_init_amt['AMT'] <= 80)|(adalimumab_init_amt['ID'].isin(adalimumab_maint_pids))]['ID'])
+        indmaint_df = indmaint_df.drop(['DOSING_TIME_WKNORM'],axis=1)
+        # indmaint_df[indmaint_df['ID'] == (indmaint_df['ID'].drop_duplicates().iloc[38])][['ID', 'NAME', 'DATETIME', 'AMT', 'DOSING_TIME_WKNORM']]
+        # raise ValueError
+
     # raise ValueError
     indmaint_list = list()
     for uid, id_indmaint_df in indmaint_df.groupby('ID'):
@@ -105,7 +112,7 @@ for drug in ['adalimumab']: #break
     elif drug=='adalimumab':
         indmaint_df = indmaint_df.groupby('ID', as_index=False).agg({'DRUG': 'first','DOSING_INTERVAL': 'first', 'ROUTE': 'first'})
         # raise ValueError
-        indmaint_df['START_INDMAINT'] = (~((indmaint_df['DOSING_INTERVAL'] < 4)&(indmaint_df['ROUTE']=='SC')))*1
+        indmaint_df['START_INDMAINT'] = (indmaint_df['ID'].isin(adalimumab_maint_pids))*1
     elif drug=='ustekinumab':
         indmaint_df = indmaint_df.groupby('ID', as_index=False).agg({'DRUG': 'first','DOSING_INTERVAL': 'first', 'ROUTE': 'first'})
         indmaint_df['START_INDMAINT'] = (~((indmaint_df['DOSING_INTERVAL'] < 4)&(indmaint_df['ROUTE']=='IV')))*1
@@ -152,11 +159,11 @@ merged_df.to_csv(f'{output_dir}/merged_df.csv',index=False, encoding='utf-8-sig'
 merged_df['DATE'] = merged_df['DATETIME'].map(lambda x:x.split('T')[0])
 # merged_df['AZERO'] = 0
 merged_df = merged_df.merge(ibd_type_df[['ID', 'IBD_TYPE']], on=['ID'], how='left')
-
+# raise ValueError
 ## ULOQ 넘는 농도값은 제거
-merged_df = merged_df[~((merged_df['DV']==48)&((merged_df['ID'].isin([21911051,])) & (merged_df['DATE'].isin(['2019-02-22',]))))].copy()
+# merged_df = merged_df[~((merged_df['DV']==48)&((merged_df['ID'].isin([21911051,])) & (merged_df['DATE'].isin(['2019-02-22',]))))].copy()
 # [21911051, 34019533, 32482522]
-
+# merged_df[(merged_df['DRUG']=='adalimumab')&(merged_df['DV']!='.')]['DV'].astype(float).sort_values()
 # Induction Phase 불일치 환자 구분 (전체 합친 데이터에서)
 
 # min_dose_df = merged_df.groupby(['ID','DRUG']).agg({'NAME':'min','DATETIME':'min'}).reset_index(drop=False)

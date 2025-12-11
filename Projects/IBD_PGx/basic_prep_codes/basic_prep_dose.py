@@ -28,10 +28,10 @@ for finx, fpath in enumerate(order_files): #break
     # if pname=='이학준':
     #     raise ValueError
 
-    if pid in ('26675590',):
-        pass
-    else:
-        continue
+    # if pid in ('32411481',):
+    #     pass
+    # else:
+    #     continue
 
     # if pid in ("15322168", "19739357", "34835292", "37366865", "21618097", "36898756", "36975211", "37858047"):       # lab, order 파일 다시 수집 필요
     #     continue
@@ -160,7 +160,7 @@ for finx, fpath in enumerate(order_files): #break
                     dose_val = float(re.findall(r'\d+[\.]?\d*mg',x)[0].replace('mg','').strip()) * pen_count
                     # raise ValueError
                 else:
-                    raise ValueError
+                    # raise ValueError
                     dose_val = x.split('(Infliximab')[-1].split('(Adalimumab')[-1].split('(Ustekinumab')[-1].split('▣')[-1].split('srg')[0].split('via')[0].split('mg')[0].split(':')[0].split(' [SC] ')[0].strip()
             dose_series.append(dose_val)
     # raise ValueError
@@ -172,22 +172,43 @@ for finx, fpath in enumerate(order_files): #break
     dose_df['PERIOD'] = dose_df['처방지시'].map(lambda x: 'x1' if " [SC] " not in x else x.split(' [SC] ')[-1].split(':')[0].strip())
     # dose_df.to_csv(f"{output_dir}/dose_df_lhj.csv", encoding='utf-8-sig', index=False)
     # dose_df.loc[3203,'처방지시']
-    if pid=='37590846': # ADALIMUMAB DOSE 데이터 Correction
+
+    ## ADALIMUMAB DOSE 데이터 Correction
+    if pid=='37590846':
         add_rows = pd.DataFrame([dose_df.sort_values(['ID','DATETIME']).iloc[0],dose_df.sort_values(['ID','DATETIME']).iloc[0]])
         add_rows['DATETIME'] = ['2023-11-23T16:22','2023-12-06T16:22']
         dose_df = pd.concat([dose_df, add_rows])
-    if pid=='26675590': # ADALIMUMAB DOSE 데이터 Correction
+    if pid=='26675590':
         add_rows = pd.DataFrame([dose_df.sort_values(['ID','DATETIME']).iloc[0],dose_df.sort_values(['ID','DATETIME']).iloc[0]])
         add_rows['DATETIME'] = ['2023-12-14T16:03','2023-12-28T16:03']
         dose_df = pd.concat([dose_df, add_rows])
+    if pid=='27364521':
+        dose_df = dose_df.sort_values(['ID', 'DATETIME'],ignore_index=True)
+        dose_df.at[0,'DOSE']=160
+        dose_df = dose_df[dose_df.index != 1].copy()
+    # if pid=='32411481':
+    #     raise ValueError
+        # dose_df.iloc[20]
+        # dose_df.iloc[21]
+        # dose_df = dose_df.sort_values(['ID', 'DATETIME'],ignore_index=True)
+        # dose_df.at[0,'DOSE']=160
+        # dose_df = dose_df[dose_df.index != 1].copy()
+
+
+
+        # dose_df[['DOSE','DATETIME']]
+        # dose_df = pd.concat([dose_df, add_rows])
+
+
         # dose_df[['DATETIME','ETC_INFO']]
         # raise ValueError
-    dose_df.append()
+
+
     dose_result_df.append(dose_df[result_cols].drop_duplicates(no_dup_cols))
 
     # drug_order_set = drug_order_set.union(set(dose_df['처방지시'].map(lambda x:''.join(x.split(':')[0].replace('  ',' ').split(') ')[1:]).replace('[원내]','').replace('[D/C]','').replace('[보류]','').replace('[반납]','').replace('[Em] ','').strip()).drop_duplicates()))
 
-
+# dose_result_df = dose_result_df[0]
 dose_result_df = pd.concat(dose_result_df, ignore_index=True).sort_values(['ID','DATETIME'], ascending=[True,False])
 
 # dose_result_df[dose_result_df['ID'].isin(('37590846',))]
@@ -215,7 +236,7 @@ dose_result_df['PERIOD'] = dose_result_df['PERIOD'].map(lambda x:x.replace('2주
 
 ## H, C, Z는 제거
 
-dose_result_df = dose_result_df[dose_result_df['ACTING'].map(lambda x: False if (('H' in x) or ('Z' in x) or ('C' in x) or ('N' in x)) else True)].reset_index(drop=True)
+dose_result_df = dose_result_df[dose_result_df['ACTING'].map(lambda x: False if (('H' in x) or ('Z' in x) or ('C' in x) or ('N' in x.replace('PEN',''))) else True)].reset_index(drop=True)
 dose_result_df = dose_result_df.sort_values(['ID','DATETIME'], ascending=[True,False], ignore_index=True)
 dose_result_df['ETC_INFO_TREATED'] = ''
 
@@ -347,6 +368,10 @@ dose_result_df.to_csv(f"{output_dir}/dose_df(addl_col).csv", encoding='utf-8-sig
 
 addl_dose_result_df = pd.concat([addl_dose_result_df, addl_added_df]).sort_values(['ID','DATETIME'], ascending=[True,True], ignore_index=True)
 addl_dose_result_df.to_csv(f"{output_dir}/dose_df.csv", encoding='utf-8-sig', index=False)
+
+
+# addl_dose_result_df[addl_dose_result_df['DRUG']=='adalimumab'].to_csv(f"{output_dir}/dose_df(adalimumab).csv", encoding='utf-8-sig', index=False)
+
 
 # ADDL시 다음 투약 날짜보다 큰 사람 확인
 
