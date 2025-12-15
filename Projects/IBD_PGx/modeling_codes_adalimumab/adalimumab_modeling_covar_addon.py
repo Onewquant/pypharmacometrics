@@ -65,8 +65,10 @@ for drug in ['adalimumab']:
         # raise ValueError
         # raw_modeling_df_ori = raw_modeling_df.copy()
         # raw_modeling_df = raw_modeling_df[raw_modeling_df['ID']==1].copy()
-
+        # raw_modeling_df.drop_duplicates(['UID'], ignore_index=True)
+        # uid_indphase_date_df.drop_duplicates(['UID'], ignore_index=True)
         uid_indphase_date_df = raw_modeling_df[(raw_modeling_df['TIME']==0)&(raw_modeling_df['MDV']==0)][['UID','DV']].copy()
+        # raise ValueError
         uid_indphase_date_df['PD_INDEXISTS'] = (uid_indphase_date_df['DV'].astype(float)==0)*1
         pd_basicinfo_df = uid_start_date_df.merge(uid_indphase_date_df[['UID','PD_INDEXISTS']], on=['UID'], how='left')
 

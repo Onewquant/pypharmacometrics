@@ -84,6 +84,16 @@ for drug in ['infliximab', 'adalimumab', 'ustekinumab']: #break
     # indmaint_df.columns
     indmaint_df['DOSING_TIME'] = indmaint_df.apply(lambda x:(datetime.strptime(x['DATETIME'],'%Y-%m-%dT%H:%M') - datetime.strptime(x['INIT_DOSE_DT'],'%Y-%m-%dT%H:%M')), axis=1).dt.total_seconds() / 86400 / 7
 
+    if drug=='adalimumab':
+        adalimumab_maint_pids = [11591070, 27407125, 28275802, 29702679, 34886593] # EMR에서 maintenance임을 직접 확인한 사람들
+        indmaint_df['DOSING_TIME_WKNORM'] = indmaint_df['DOSING_TIME'].map(lambda x:round(x,0))
+        # indmaint_df[indmaint_df['ID']==(indmaint_df['ID'].drop_duplicates().iloc[1])][['ID','NAME','DATETIME','AMT','DOSING_TIME_WKNORM']]
+        adalimumab_init_amt = indmaint_df[indmaint_df['DOSING_TIME_WKNORM']<3].groupby('ID',as_index=False)['AMT'].sum() ################################
+        adalimumab_maint_pids = list(adalimumab_init_amt[(adalimumab_init_amt['AMT'] <= 80)|(adalimumab_init_amt['ID'].isin(adalimumab_maint_pids))]['ID'])
+        indmaint_df = indmaint_df.drop(['DOSING_TIME_WKNORM'],axis=1)
+        # indmaint_df[indmaint_df['ID'] == (indmaint_df['ID'].drop_duplicates().iloc[38])][['ID', 'NAME', 'DATETIME', 'AMT', 'DOSING_TIME_WKNORM']]
+        # raise ValueError
+
     indmaint_list = list()
     for uid, id_indmaint_df in indmaint_df.groupby('ID'):
         id_indmaint_df['DOSING_INTERVAL'] = id_indmaint_df['DOSING_TIME'].diff()
@@ -98,7 +108,8 @@ for drug in ['infliximab', 'adalimumab', 'ustekinumab']: #break
         indmaint_df['START_INDMAINT'] = (~((indmaint_df['DOSING_INTERVAL'] < 4)&(indmaint_df['ROUTE']=='IV')))*1
     elif drug=='adalimumab':
         indmaint_df = indmaint_df.groupby('ID', as_index=False).agg({'DRUG': 'first','DOSING_INTERVAL': 'first', 'ROUTE': 'first'})
-        indmaint_df['START_INDMAINT'] = (~((indmaint_df['DOSING_INTERVAL'] < 4)&(indmaint_df['ROUTE']=='IV')))*1
+        # raise ValueError
+        indmaint_df['START_INDMAINT'] = (indmaint_df['ID'].isin(adalimumab_maint_pids))*1
     elif drug=='ustekinumab':
         indmaint_df = indmaint_df.groupby('ID', as_index=False).agg({'DRUG': 'first','DOSING_INTERVAL': 'first', 'ROUTE': 'first'})
         indmaint_df['START_INDMAINT'] = (~((indmaint_df['DOSING_INTERVAL'] < 4)&(indmaint_df['ROUTE']=='IV')))*1
@@ -144,10 +155,10 @@ merged_df['DATE'] = merged_df['DATETIME'].map(lambda x:x.split('T')[0])
 merged_df = merged_df.merge(ibd_type_df[['ID', 'IBD_TYPE']], on=['ID'], how='left')
 
 ## ULOQ 넘는 농도값은 제거
-merged_df = merged_df[~((merged_df['DV']==48)&((merged_df['ID'].isin([21911051,])) & (merged_df['DATE'].isin(['2019-02-22',]))))].copy()
+# merged_df = merged_df[~((merged_df['DV']==48)&((merged_df['ID'].isin([21911051,])) & (merged_df['DATE'].isin(['2019-02-22',]))))].copy()
 
 
-drug = 'infliximab'
+drug = 'adalimumab'
 maint_cons_df = total_indmaint_df[(total_indmaint_df['DRUG']==drug)&(total_indmaint_df['START_INDMAINT']==0)].reset_index(drop=True)
 maint_diff_df = total_indmaint_df[(total_indmaint_df['DRUG']==drug)&(total_indmaint_df['START_INDMAINT']==1)].reset_index(drop=True)
 
@@ -340,7 +351,8 @@ else:
 drug_df_dict = dict()
 modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','DATETIME','IBD_TYPE','UID','NAME','ROUTE','DRUG','START_INDMAINT']
 
-for drug in set(ind_df['DRUG']).union(set(maint_df['DRUG'])): #break
+# for drug in set(ind_df['DRUG']).union(set(maint_df['DRUG'])): #break
+for drug in [drug,]:  # break
     # drug_df_dict[drug]
     drug_ind_df = ind_df[ind_df['DRUG']==drug].copy()
     drug_maint_df = maint_df[maint_df['DRUG'] == drug].sort_values(['UID', 'DATETIME'], ignore_index=True)

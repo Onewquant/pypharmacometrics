@@ -340,7 +340,8 @@ else:
 drug_df_dict = dict()
 modeling_cols = ['ID','TIME','DV','MDV','AMT','DUR','CMT','DATETIME','IBD_TYPE','UID','NAME','ROUTE','DRUG','START_INDMAINT']
 
-for drug in set(ind_df['DRUG']).union(set(maint_df['DRUG'])): #break
+# for drug in set(ind_df['DRUG']).union(set(maint_df['DRUG'])): #break
+for drug in [drug,]:  # break
     # drug_df_dict[drug]
     drug_ind_df = ind_df[ind_df['DRUG']==drug].copy()
     drug_maint_df = maint_df[maint_df['DRUG'] == drug].sort_values(['UID', 'DATETIME'], ignore_index=True)
