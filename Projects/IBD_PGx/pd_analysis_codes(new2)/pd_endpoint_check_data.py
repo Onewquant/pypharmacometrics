@@ -25,7 +25,7 @@ nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
 # interval = 1
 # for_sim_df = get_model_population_sim_df(df=simulation_df, interval=interval, add_on_period=0)
 # for_sim_df = for_sim_df.replace(np.nan,'.')
-#
+# # simulation_df['ID']
 # for_sim_df = for_sim_df[['ID', 'TIME', 'DV', 'MDV', 'AMT', 'DUR', 'CMT', 'ROUTE', 'IBD_TYPE', 'ALB', 'ADA', 'AGE', 'SEX', 'WT', 'HT', 'BMI', 'REALDATA', 'RATE', 'TAD', 'DT_YEAR', 'DT_MONTH', 'DT_DAY']].copy()
 # for_sim_df.to_csv(f"{output_dir}/modeling_df_covar/adalimumab_integrated_simulation_df.csv",index=False, encoding='utf-8-sig')
 # for_sim_df.to_csv(f'{nonmem_dir}/adalimumab_integrated_simulation_df.csv',index=False, encoding='utf-8')

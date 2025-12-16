@@ -14,37 +14,47 @@ nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
 
 ## 모델링 데이터셋 로딩
 adalimumab_df = pd.read_csv(f'{output_dir}/modeling_df_datacheck(for pda)/adalimumab_integrated_datacheck(for pda).csv')
+adalimumab_id_uid_dict = {row['ID']:row['UID'] for inx, row in adalimumab_df[['ID','UID']].drop_duplicates(['ID']).iterrows()}
 infliximab_df = pd.read_csv(f'{output_dir}/modeling_df_datacheck(for pda)/infliximab_integrated_datacheck(for pda).csv')
-
+infliximab_id_uid_dict = {row['ID']:row['UID'] for inx, row in infliximab_df[['ID','UID']].drop_duplicates(['ID']).iterrows()}
+# infliximab_df.drop_duplicates(['UID'])
+# adalimumab_df.drop_duplicates(['UID'])
 # df = pd.read_csv(f'{output_dir}/modeling_df_datacheck(for pda)/infliximab_integrated_datacheck(for pda).csv')
+
 df = pd.concat([adalimumab_df, infliximab_df])
-# df['DATETIME'].min()
-# df['DATETIME'].max()
-# df[df['ID']==1]
-id_uid_dict = {row['ID']:row['UID'] for inx, row in df[['ID','UID']].drop_duplicates(['ID']).iterrows()}
 df['TIME'] = df['TIME(DAY)'].copy()
-uniq_df = df.drop_duplicates(['UID'])[['UID','NAME','START_INDMAINT']].copy()
+
+# uniq_df = df.drop_duplicates(['UID'])[['UID','NAME','START_INDMAINT']].copy()
 
 ## Simulation 데이터셋 로딩
 
 adalimumab_sim_df = pd.read_csv(f"{nonmem_dir}/run/sim92",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
 adalimumab_sim_df['DRUG'] = 'adalimumab'
+adalimumab_sim_df['ID'] = adalimumab_sim_df['ID'].astype(int)
+adalimumab_sim_df['UID'] = adalimumab_sim_df['ID'].map(adalimumab_id_uid_dict)
 infliximab_sim_df = pd.read_csv(f"{nonmem_dir}/run/sim90",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
 infliximab_sim_df['DRUG'] = 'infliximab'
+infliximab_sim_df['ID'] = infliximab_sim_df['ID'].astype(int)
+infliximab_sim_df['UID'] = infliximab_sim_df['ID'].map(infliximab_id_uid_dict)
 
-sim_df = pd.concat([adalimumab_sim_df, infliximab_sim_df])
-# sim_df[sim_df['ID']==1]
-sim_df['ID'] = sim_df['ID'].astype(int)
-sim_df['UID'] = sim_df['ID'].map(id_uid_dict)
+# adalimumab_sim_df.drop_duplicates(['UID'])
+# infliximab_sim_df.drop_duplicates(['UID'])
+sim_df = pd.concat([adalimumab_sim_df, infliximab_sim_df], ignore_index=True)
+# sim_df['UID'].unique()
+
 sim_df['DT_YEAR'] = sim_df['DT_YEAR'].map(lambda x:str(int(x)).zfill(4))
 sim_df['DT_MONTH'] = sim_df['DT_MONTH'].map(lambda x:str(int(x)).zfill(2))
 sim_df['DT_DAY'] = sim_df['DT_DAY'].map(lambda x:str(int(x)).zfill(2))
 sim_df['DATETIME'] = sim_df['DT_YEAR']+'-'+sim_df['DT_MONTH']+'-'+sim_df['DT_DAY']
 
+# sim_df['UID'].drop_duplicates()
 # 시뮬레이션 데이터에 날짜 매칭
 # sim_df[sim_df['ID']==0]
 # sim_df[sim_df['ID']==1].head(50)
-for uid, uid_sim_df in sim_df.groupby('ID'):
+for uid_drug, uid_sim_df in sim_df.groupby(['UID','DRUG']):
+    uid = uid_drug[0]
+    drug = uid_drug[1]
+    # raise ValueError
     # if uid==2:
     #     raise ValueError
     uid_base_inx = uid_sim_df[uid_sim_df['TIME']==0].index[0]
@@ -84,6 +94,7 @@ for uid, uid_sim_df in sim_df.groupby('ID'):
 ## PD 결과 정리한 데이터셋 로딩
 # pd_res_df.columns
 pd_res_df = pd.read_csv(f"{output_dir}/PKPD_EDA/PKPD_Corr0/pd_eda_df(all_drugs).csv")
+# pd_res_df['UID'].drop_duplicates()
 # sim_df
 
 ## PD 결과 자체만 정리
@@ -135,22 +146,25 @@ pd_res_df['TG_PD_FCAL150(BR)'] = (pd_res_df['TG_PD_FCAL']<150)*1
 # pd_res_df.columns
 bl_demo_list = ['ALB', 'AGE', 'SEX', 'WT', 'HT', 'BMI', 'ADA']
 pk_param_list = ['CL','V2','V3']
-secondary_param_list = ['CUM_AUC','AUC24','CUM_DOSE','DOSE24','CMAX','ADJ_DOSE24','CUM_DOSEpWT','DOSE24pWT','CUM_ADJ_DOSEpWT','ADJ_DOSE24pWT','OPT_PCT']
+secondary_param_list = ['CUM_AUC','AUC24','CUM_DOSE','DOSE24','CMAX','ADJ_DOSE24','CUM_DOSEpWT','DOSE24pWT','CUM_ADJ_DOSEpWT','ADJ_DOSE24pWT','OPT_PCT','DOSING_PERIOD']
 for pk_param in bl_demo_list+secondary_param_list+pk_param_list:
     pd_res_df[pk_param]=np.nan
     # uid_sim_conc_df.columns
     # pd_res_df.columns
+# pd_res_df['DRUG']
 for inx, row in pd_res_df.iterrows():
     # break
     uid = row['UID']
     pname = row['NAME']
     phase = row['PHASE']
+    drug = row['DRUG']
+    # raise ValueError
     # ibd_type = row['IBD_TYPE']
 
     # if uid==10875838:
     #     raise ValueError
 
-    uid_sim_df = sim_df[sim_df['UID']==uid].copy()
+    uid_sim_df = sim_df[(sim_df['UID']==uid)&(sim_df['DRUG']==drug)].copy()
     uid_sim_dose_df = uid_sim_df[uid_sim_df['MDV']==1].copy()
     uid_sim_conc_df = uid_sim_df[uid_sim_df['MDV']==0].copy()
 
@@ -170,7 +184,7 @@ for inx, row in pd_res_df.iterrows():
             pd_res_df.at[inx, pk_param] = np.nan
         continue
 
-    print(f"({inx}) {uid} / {pname} / {phase} / {str(start_date)} / {str(end_date)}")
+    print(f"({inx}) {uid} / {pname} / {drug} / {phase} / {str(start_date)} / {str(end_date)}")
     # uid_sim_conc_df.columns
     partial_conc_df = uid_sim_conc_df[(uid_sim_conc_df['DATETIME'] >= start_date)&(uid_sim_conc_df['DATETIME'] <= end_date)].copy()
     partial_dose_df = uid_sim_dose_df[(uid_sim_dose_df['DATETIME'] >= start_date)&(uid_sim_dose_df['DATETIME'] <= end_date)].copy()
@@ -200,6 +214,7 @@ for inx, row in pd_res_df.iterrows():
 
     int_day_conc_df = partial_conc_df[partial_conc_df['TIME']==(partial_conc_df['TIME'].map(int))].copy()
     pd_res_df.at[inx, 'OPT_PCT'] = ((int_day_conc_df['DV']>=5).sum())/len(int_day_conc_df)
+    pd_res_df.at[inx, 'DOSING_PERIOD'] = delta_days
 
     # partial_conc_df['DV']
 
@@ -241,7 +256,7 @@ for pd_ep in pd_ep_list:         # ['PD_CR', 'PD_ABDPAIN', 'PD_PRO2', 'PD_FCAL',
 
 # pd_res_df.columns
 
-id_list = ['UID','NAME', 'IBD_TYPE', 'PHASE', 'DAY_DELT']
+id_list = ['UID','NAME','DRUG', 'IBD_TYPE', 'PHASE', 'DAY_DELT']
 bl_demo_res_list = bl_demo_list
 pk_param_res_list = pk_param_list + secondary_param_list
 pd_ep_res_list = [f"DELT_{c}" for c in pd_ep_list] + [f"TG_{c}" for c in pd_ep_list]
@@ -253,8 +268,9 @@ gene_res_df = pd_res_df[total_res_cols].copy()
 
 if not os.path.exists(f"{output_dir}/PKPD_EDA/GENOMICS"):
     os.mkdir(f"{output_dir}/PKPD_EDA/GENOMICS")
-
-gene_res_df.to_csv(f"{output_dir}/PKPD_EDA/GENOMICS/for_genomics_df.csv", index=False, encoding='utf-8-sig')
+(gene_res_df.loc[:,'DAY_DELT':].sum(axis=1)+(gene_res_df['UID']/10000))*100
+gene_res_df['ECT'] = (((gene_res_df.loc[:,'DAY_DELT':].sum(axis=1)+(gene_res_df['UID']/100000))*100).map(int))/100
+gene_res_df.to_csv(f"{output_dir}/PKPD_EDA/GENOMICS/for_genomics_df(all_drugs).csv", index=False, encoding='utf-8-sig')
 
 # gene_res_df['ADA'].sum()
 # gene_res_df['UID'].drop_duplicates()
