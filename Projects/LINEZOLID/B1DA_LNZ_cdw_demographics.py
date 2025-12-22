@@ -16,6 +16,9 @@ ev_dose_cols = ['CUM_DOSE', 'DOSE_PERIOD','DOSE_PERIOD(ACTIVE)', 'DOSE24','DOSE2
 comed_cols = list(comed_df['DRUG'].drop_duplicates())
 transfusion_cols = list(transfusion_df['TF_TYPE'].drop_duplicates())
 
+exclude_cols = ["UID", "BL_DATE", "ENDPOINT"]
+categorical_cols = ["EV", "SEX", "ELD"] + comed_cols + transfusion_cols  # 범주형
+
 
 total_df = list()
 for inx, endpoint in enumerate(['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']):
@@ -28,12 +31,16 @@ for inx, endpoint in enumerate(['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']):
 total_df = pd.concat(total_df)
 # str 컬럼을 모두 'TOTAL'로 치환
 str_cols = total_df.select_dtypes(include="object").columns
-total_df[str_cols] = "TOTAL"
+total_df[str_cols] = 'TOTAL'
+# str_df = total_df[['UID']+list(str_cols)].drop_duplicates(['UID'], ignore_index=True)
 
 # UID별로 median 집계
 # total_df = total_df.groupby("UID").median(numeric_only=True).reset_index()
 total_df = total_df.groupby("UID").mean(numeric_only=True).reset_index()
-total_df['EV'] = (total_df['EV']>0)*1
+for catcol in categorical_cols:
+    total_df[catcol] = (total_df[catcol]>0)*1
+# total_df['EV'] = (total_df['EV']>0)*1
+# total_df['EV'] = (total_df['EV']>0)*1
 
 # str 컬럼은 다시 TOTAL 붙여줌
 for col in str_cols:
@@ -66,8 +73,6 @@ for inx, endpoint in enumerate(['TOTAL','PLT', 'Hb', 'WBC', 'ANC', 'Lactate']):
 
 
     # 제외할 컬럼과 변수 유형 지정
-    exclude_cols = ["UID", "BL_DATE", "ENDPOINT"]
-    categorical_cols = ["EV", "SEX", "ELD"] + comed_cols + transfusion_cols      # 범주형
     positive_levels: Dict[str, Any] = {    # N(%)로 표시할 수준
         "EV": 1,
         "SEX": 1,
@@ -148,3 +153,6 @@ rest_cols.sort()
 demo_table_df = demo_table_df.set_index("Variable").loc[demo_cols+rest_cols+total_dose_cols+ev_dose_cols+comed_cols+transfusion_cols].reset_index(drop=False)
 demo_table_df.to_csv(f"{output_dir}/B1DA/b1da_lnz_demographic_df.csv", index=False)
 
+
+demo_table_df_filt = demo_table_df[~demo_table_df['Variable'].isin(['clozapine','cyclophosphamide','methimazole','propofol','propylthiouracil','TF_WBLD'])]
+demo_table_df_filt.to_csv(f"{output_dir}/B1DA/b1da_lnz_demographic_df_filt.csv", index=False)

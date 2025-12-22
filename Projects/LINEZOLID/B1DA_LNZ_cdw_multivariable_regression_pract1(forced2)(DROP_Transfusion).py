@@ -165,11 +165,6 @@ def fit_ev_logistic(df,
     # 4) 숫자/범주 분리
     num_cols = X.select_dtypes(include=[np.number]).columns.tolist()
 
-    # --- [ADD] availability 계산 (imputation 전에) ---
-    X_raw = X.copy()
-    data_available_percent = (X_raw.notna().mean() * 100).to_dict()
-    # -----------------------------------------------
-
     # 5) 숫자 컬럼 정리: inf -> NaN -> median 대치
     if num_cols:
         X[num_cols] = X[num_cols].replace([np.inf, -np.inf], np.nan)
@@ -189,8 +184,6 @@ def fit_ev_logistic(df,
         raise ValueError("EV 외 설명변수가 없습니다.")
 
     X_ori = X.copy()
-
-
 
     # 7) 0-분산(상수) 컬럼 제거
     zero_var_cols = [c for c in X.columns if X[c].nunique(dropna=False) <= 1]
@@ -212,9 +205,9 @@ def fit_ev_logistic(df,
     X = add_constant(X, has_constant='add')
 
     # 10) 반드시 포함/제거될 항 강제 지정
+    # must_inclusive_cols = ['DOSE24PERWT','SEX']
     must_inclusive_cols = []
-    must_drop_cols = []
-    # must_drop_cols = ['TF_CRYO', 'TF_FFP', 'TF_PLT', 'TF_RBC']
+    must_drop_cols = ['TF_CRYO', 'TF_FFP', 'TF_PLT', 'TF_RBC']
 
     X_mincls_df = X_ori[must_inclusive_cols].copy()
 
@@ -282,7 +275,6 @@ def fit_ev_logistic(df,
     conf = res.conf_int()
     conf.columns = ["2.5%", "97.5%"]
     or_table = pd.DataFrame({
-        "data_availability": '',
         "feature": params.index,
         "beta": params.values,
         "aOR": np.exp(params.values),
@@ -291,20 +283,9 @@ def fit_ev_logistic(df,
         "pvalue": res.pvalues.values,
     })
 
-    # --- [ADD] availability(%) 컬럼 추가 (imputation 이전 기준) ---
-    or_table["data_availability"] = or_table["feature"].map(data_available_percent)
-
-
-    # # const는 dict에 없을 수 있으니 NaN -> 100 또는 NaN 유지 중 선택
-    # or_table["data_available_percent"] = or_table["data_available_percent"].fillna(np.nan)
-
     # 14) 다중비교 보정: Benjamini–Hochberg FDR
     _, p_adj, _, _ = multipletests(or_table["pvalue"].values, method="fdr_bh")
     or_table["pvalue_adj"] = p_adj
-
-    # 14) 다중비교 보정: Holm
-    # _, p_adj, _, _ = multipletests(or_table["pvalue"].values, method="holm")
-    # or_table["pvalue_adj"] = p_adj
 
     # 14) 다중비교 보정: Bonferroni
     # _, p_adj, _, _ = multipletests(or_table["pvalue"].values, method="bonferroni")
@@ -393,10 +374,10 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
 
     csv_path = f"{output_dir}/b1da/mvlreg/b1da_lnz_mvlreg_{endpoint}_df.csv"     # <-- 본인 파일 경로
 
-    if not os.path.exists(f'{output_dir}/b1da/mvlreg_output'):
-        os.mkdir(f'{output_dir}/b1da/mvlreg_output')
+    if not os.path.exists(f'{output_dir}/b1da/mvlreg_output(forced2)'):
+        os.mkdir(f'{output_dir}/b1da/mvlreg_output(forced2)')
 
-    out_csv = f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_{endpoint}_res.csv"
+    out_csv = f"{output_dir}/b1da/mvlreg_output(forced2)/b1da_lnz_mvlreg_{endpoint}_res.csv"
 
     # raise ValueError
     df_ori = pd.read_csv(csv_path)
@@ -408,7 +389,6 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
     # raise ValueError
 
     # for age_subgroup in ['Adult','Elderly','Total_Adult']:
-    # for age_subgroup in ['Elderly','Total_Adult']:
     for age_subgroup in ['Total_Adult']:
         # df.columns
         df = df_ori[df_ori['DOSE_PERIOD'] >= 1].copy()
@@ -437,8 +417,7 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
 
         # if endpoint=='lactate':
         #     raise ValueError
-        # for
-        df = df.drop(['clozapine','cyclophosphamide','methimazole','propofol','propylthiouracil','TF_WBLD'],axis=1)
+        df = df.drop(['clozapine', 'cyclophosphamide', 'methimazole', 'propofol', 'propylthiouracil', 'TF_WBLD'],axis=1)
 
         res, or_table, info = fit_ev_logistic(
             df=df,
@@ -476,9 +455,9 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
 
         # sig_res_frag = sig_res_frag[['subgroup','endpoint','N','EVN','EVPct']+list(sig_res_frag.columns)[:-4]]
         # multivar_res_df.append(sig_res_frag.copy())
-        if not os.path.exists(f'{output_dir}/b1da/mvlreg_output/datasubset'):
-            os.mkdir(f'{output_dir}/b1da/mvlreg_output/datasubset')
-        df.to_csv(f"{output_dir}/b1da/mvlreg_output/datasubset/b1da_lnz_mvlreg_datasubset({age_subgroup})({endpoint}).csv", index=False, encoding='utf-8-sig')
+        if not os.path.exists(f'{output_dir}/b1da/mvlreg_output(forced2)/datasubset'):
+            os.mkdir(f'{output_dir}/b1da/mvlreg_output(forced2)/datasubset')
+        df.to_csv(f"{output_dir}/b1da/mvlreg_output(forced2)/datasubset/b1da_lnz_mvlreg_datasubset({age_subgroup})({endpoint}).csv", index=False, encoding='utf-8-sig')
 
         print(sig_res_frag)
         # print(f"\nSaved OR table to: {out_csv}")
@@ -499,7 +478,7 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
 multivar_totres_df = pd.concat(multivar_totres_df)
 # multivar_totres_df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_total_results({str(or_threshold)[-1]}).csv", index=False, encoding='utf-8-sig')
 
-multivar_totres_df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_total_results.csv", index=False, encoding='utf-8-sig')
+multivar_totres_df.to_csv(f"{output_dir}/b1da/mvlreg_output(forced2)/b1da_lnz_mvlreg_total_results.csv", index=False, encoding='utf-8-sig')
 
 covar_info_df = pd.DataFrame(covar_info_df)
 covar_info_df = covar_info_df[['subgroup','endpoint']+list(covar_info_df.columns)[0:-2]].copy()
@@ -522,7 +501,7 @@ total_covar_list.sort()
 covar_primer_df = pd.DataFrame([{'subgroup':'Total Covariates',	'endpoint':'-',	'info_type':'Total Covariates',	'covar_list':str(total_covar_list).replace("', '",", ").replace("['","").replace("']","")}])
 covar_info_df_saving = pd.concat([covar_primer_df,covar_info_df_saving])
 # covar_info_df_saving.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_covar_info.csv", index=False, encoding='utf-8-sig')
-covar_info_df_saving = covar_info_df_saving[(covar_info_df_saving['info_type'].isin(['Covariates in the final model','Total Covariates']))&(covar_info_df_saving['subgroup']!='Elderly')].reset_index(drop=True)
+covar_info_df_saving = covar_info_df_saving[(covar_info_df_saving['info_type'].isin(['Covariates in the final model','Total Covariates']))&(covar_info_df_saving['subgroup']!='Elderly')].copy()
 covar_name_dict = {'TF_CRYO':'Cryoprecipitate transfusion', 'TF_FFP':'FFP transfusion', 'TF_PLT':'Platelet transfusion',
                    'TF_RBC':'RBC transfusion', 'TPRO':'Total protein', 'WBC':'WBC count', 'ALB':'Albumin', 'ALT':'ALT', 'ANC':'ANC', 'AST':'AST', 'BMI':'BMI', 'CRP':'CRP',
                    'CUM_DOSE':'Cumulative dose', 'DOSE24PERWT':'Weight-normalized daily dose', 'DOSE24': 'Daily dose',
@@ -532,23 +511,17 @@ covar_name_dict = {'TF_CRYO':'Cryoprecipitate transfusion', 'TF_FFP':'FFP transf
                    'cyclophosphamide':'Cyclophosphamide','eGFR':'eGFR', 'eGFR-CKD-EPI':'eGFR-CKD-EPI', 'heparin':'Heparin',
                    'isoniazid':'Isoniazid', 'metformin':'Metformin', 'methimazole':'Methimazole', 'SEX':'Sex', 'pH':'pH',
                    'piperacillintazobactam':'Piperacillin/tazobactam', 'propofol':'Propofol',
-                   'tmpsmx':'TMP/SMX', 'valproate':'Valproate','WT':'Weight',
+                   'tmpsmx':'Trimethoprim/sulfamethoxazole', 'valproate':'Valproate','WT':'Weight',
                    'AGE':'Age', 'HT':'Height', }
 
-# raise ValueError
 for inx, row in covar_info_df_saving.iterrows():
-    # raise ValueError
     for k, v in covar_name_dict.items():
         covar_info_df_saving.at[inx,'covar_list'] = covar_info_df_saving.at[inx,'covar_list'].replace(k,v)
-    # raise ValueError
-    covar_list_frag = covar_info_df_saving.at[inx, 'covar_list'].split(', ')
-    covar_list_frag.sort()
-    covar_info_df_saving.at[inx, 'covar_list'] = ', '.join(covar_list_frag)
-# covar_info_df_saving.at[inx, 'covar_list'] = covar_info_df_saving.at[inx, 'covar_list']
+    covar_info_df_saving.at[inx, 'covar_list'] = covar_info_df_saving.at[inx, 'covar_list'].replace('Clozapine, ', '').replace('Methimazole, ', '')
 
 
 # raise ValueError
-covar_info_df_saving.to_excel(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_covar_info.xlsx", index=False, encoding='utf-8-sig')
+covar_info_df_saving.to_excel(f"{output_dir}/b1da/mvlreg_output(forced2)/b1da_lnz_mvlreg_covar_info.xlsx", index=False, encoding='utf-8-sig')
 
 
 sg_cond = (multivar_totres_df['subgroup'] == 'Total_Adult')
@@ -588,13 +561,12 @@ multi_res_df = multi_res_df.drop(['pval_sig'],axis=1)
 # multi_res_df['pval'] = multi_res_df['pval'].replace(0,'<0.001')
 # multi_res_df['pval (adj)'] = multi_res_df['pval (adj)'].replace(0,'<0.001')
 
-uni_res_df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_univar_res_table.csv", index=False, encoding='utf-8-sig')
-multi_res_df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_multivar_res_table.csv", index=False, encoding='utf-8-sig')
+uni_res_df.to_csv(f"{output_dir}/b1da/mvlreg_output(forced2)/b1da_lnz_mvlreg_univar_res_table.csv", index=False, encoding='utf-8-sig')
+multi_res_df.to_csv(f"{output_dir}/b1da/mvlreg_output(forced2)/b1da_lnz_mvlreg_multivar_res_table.csv", index=False, encoding='utf-8-sig')
 
-print(multi_res_df[['subgroup','endpoint','feature','aOR (95% CI)','pval (adj)']])
 # uni_res_df[uni_res_df['subgroup']=='Total_Adult'][['endpoint','feature','OR (95% CI)','pval']]
 
-tot_res_df = multivar_totres_df.sort_values(['subgroup','endpoint','aOR'],ascending=[False,True,False])[['subgroup','endpoint','data_availability','feature','EV_Count (%)','OR (95% CI)','pval','aOR (95% CI)','pval (adj)']].reset_index(drop=True)
+tot_res_df = multivar_totres_df.sort_values(['subgroup','endpoint','aOR'],ascending=[False,True,False])[['subgroup','endpoint','feature','EV_Count (%)','OR (95% CI)','pval','aOR (95% CI)','pval (adj)']].reset_index(drop=True)
 # raise ValueError
 # tot_res_df.columns
 covar_name_dict = {'TF_CRYO':'Cryoprecipitate transfusion', 'TF_FFP':'FFP transfusion', 'TF_PLT':'Platelet transfusion',
@@ -610,20 +582,16 @@ covar_name_dict = {'TF_CRYO':'Cryoprecipitate transfusion', 'TF_FFP':'FFP transf
                    'eGFR-CKD-EPI':'eGFR-CKD-EPI (mL/min/1.73 m²)', 'heparin':'Heparin',
                    'isoniazid':'Isoniazid', 'metformin':'Metformin', 'methimazole':'Methimazole', 'SEX':'Sex', 'pH':'pH',
                    'piperacillintazobactam':'Piperacillin/tazobactam', 'propofol':'Propofol',
-                   'tmpsmx':'TMP/SMX', 'valproate':'Valproate','WT':'Weight (kg)',
+                   'tmpsmx':'Trimethoprim/sulfamethoxazole', 'valproate':'Valproate','WT':'Weight (kg)',
                    'AGE':'Age (years)', 'HT':'Height (cm)', }
 
 for k, v in covar_name_dict.items():
     tot_res_df['feature'] = tot_res_df['feature'].replace(k, v)
 tot_res_df = tot_res_df[tot_res_df['subgroup']=='Total_Adult'].copy()
-# tot_res_df.iloc[0]
 # raise ValueError
 # tot_res_df.columns
-# tot_res_df = tot_res_df[~tot_res_df['feature'].isin(['Clozapine','Methimazole'])].copy()
-tot_res_df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_total_res_table.csv", index=False, encoding='utf-8-sig')
-
-# tot_res_df[tot_res_df['pval'] < 0.05][['endpoint','feature','OR (95% CI)','pval']]
-# tot_res_df[tot_res_df['pval (adj)'] < 0.05][['endpoint','feature','aOR (95% CI)','pval (adj)']]
+tot_res_df = tot_res_df[~tot_res_df['feature'].isin(['Clozapine','Methimazole'])].copy()
+tot_res_df.to_csv(f"{output_dir}/b1da/mvlreg_output(forced2)/b1da_lnz_mvlreg_total_res_table.csv", index=False, encoding='utf-8-sig')
 
 # multivar_totres_df[pv_cond&sg_cond].sort_values(['subgroup','endpoint','OR'],ascending=[False,True,False])[['subgroup','endpoint','feature','n (%)','OR (95% CI)','pval','aOR (95% CI)','pval (adj)']]
 # multivar_totres_df.sort_values(['subgroup','endpoint','OR'],ascending=[False,True,False])[['endpoint','feature','n (%)','OR (95% CI)','pval','aOR (95% CI)','pval (adj)']]

@@ -10,7 +10,7 @@ output_dir = f"{prj_dir}/results"
 # nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
 # lab_df.columns
 lab_df = pd.read_csv(f"{output_dir}/lnz_final_lab_df.csv")
-lab_df.columns
+# lab_df.columns
 lab_df['Lactate'] = lab_df[['Lactate (ICU용)', 'Lactate (마취과용)', 'Lactate (응급실용)', 'Lactate, Lactic acid (em)', ]].max(axis=1)
 lab_df['pH'] = lab_df[['pH', 'pH (i-STAT)']].min(axis=1)
 lab_df['ANC'] = lab_df[['ANC', 'ANC (em)']].min(axis=1)
@@ -101,7 +101,7 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
             try:
                 sbl_row = sbl_rows.iloc[-1]
                 # Baseline에서 Cr이 이미 높아지는 경우 제외
-                if (uid_sbase_lab_df[uid_sbase_lab_df['DATE'] > sbl_row['DATE']][endpoint_lab] < 150).sum() > 0:
+                if (uid_sbase_lab_df[uid_sbase_lab_df['DATE'] > sbl_row['DATE']][endpoint_lab] < 100).sum() > 0:
                     continue
             except:
                 continue
@@ -141,18 +141,18 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
             tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df[endpoint_lab] < 4)].copy()
         elif endpoint_lab == 'Lactate':
             # lactate_cond =
-            sbl_rows = uid_sbase_lab_df[(~uid_sbase_lab_df[endpoint_lab].isna()) & (uid_sbase_lab_df[endpoint_lab] < 4) & (~uid_sbase_lab_df['pH'].isna()) & (uid_sbase_lab_df['pH'] >= 7.35)]
+            sbl_rows = uid_sbase_lab_df[(~uid_sbase_lab_df[endpoint_lab].isna()) & (uid_sbase_lab_df[endpoint_lab] < 5) & (~uid_sbase_lab_df['pH'].isna()) & (uid_sbase_lab_df['pH'] >= 7.35)]
 
             # sbl_row = sbl_rows.iloc[-1]
             try:
                 sbl_row = sbl_rows.iloc[-1]
                 # Baseline에서 Cr이 이미 높아지는 경우 제외
                 uid_sbase_check_df = uid_sbase_lab_df[uid_sbase_lab_df['DATE'] > sbl_row['DATE']].copy()
-                if ((uid_sbase_check_df[endpoint_lab] >= 4)&(uid_sbase_check_df['pH'] < 7.35)).sum() > 0:
+                if ((uid_sbase_check_df[endpoint_lab] >= 5)&(uid_sbase_check_df['pH'] < 7.35)).sum() > 0:
                     continue
             except:
                 continue
-            tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df[endpoint_lab] >= 4)&(uid_sadm_lab_df['pH'] < 7.35)].copy()
+            tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df[endpoint_lab] >= 5)&(uid_sadm_lab_df['pH'] < 7.35)].copy()
 
 
         single_res_dict = {'UID':uid,

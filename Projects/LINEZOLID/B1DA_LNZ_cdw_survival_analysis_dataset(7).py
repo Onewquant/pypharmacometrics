@@ -125,18 +125,19 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
 
         # raise ValueError
         if endpoint_lab == 'PLT':
-            sbl_rows = uid_sbase_lab_df[(~uid_sbase_lab_df[endpoint_lab].isna()) & (uid_sbase_lab_df[endpoint_lab] >= 150)]
+            plt_threshold = 100
+            sbl_rows = uid_sbase_lab_df[(~uid_sbase_lab_df[endpoint_lab].isna()) & (uid_sbase_lab_df[endpoint_lab] >= plt_threshold)]
             # sbl_row = sbl_rows.iloc[-1]
             try:
                 sbl_row = sbl_rows.iloc[-1]
                 # Baseline에서 Cr이 이미 높아지는 경우 제외
-                if (uid_sbase_lab_df[uid_sbase_lab_df['DATE'] > sbl_row['DATE']][endpoint_lab] < 150).sum() > 0:
+                if (uid_sbase_lab_df[uid_sbase_lab_df['DATE'] > sbl_row['DATE']][endpoint_lab] < plt_threshold).sum() > 0:
                     not_normal_base_lab_uids[endpoint_lab].append(uid)
                     continue
             except:
                 not_normal_base_lab_uids[endpoint_lab].append(uid)
                 continue
-            tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df[endpoint_lab] < 150)].copy()
+            tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df[endpoint_lab] < plt_threshold)].copy()
         elif endpoint_lab == 'ANC':
             sbl_rows = uid_sbase_lab_df[(~uid_sbase_lab_df[endpoint_lab].isna()) & (uid_sbase_lab_df[endpoint_lab] >= 1500)]
             # sbl_row = sbl_rows.iloc[-1]

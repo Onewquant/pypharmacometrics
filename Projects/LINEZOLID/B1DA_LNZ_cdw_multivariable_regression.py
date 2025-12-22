@@ -91,13 +91,13 @@ lab_covar_list = list(lab_col_inclusion[lab_col_inclusion >= 50].index)[2:] + ['
 lab_df = lab_df[['UID', 'DATE']+lab_covar_list].copy()
 # str(lab_covar_list).replace("', '",', ')
 
-full_result_df = list()
-count = 0
-for uid, uid_df in lab_df.groupby('UID',as_index=False): #break
-    uid_df = uid_df.fillna(method='ffill')
-    full_result_df.append(uid_df)
-lab_df = pd.concat(full_result_df)
-# list(lab_df.columns)[2:]
+# full_result_df = list()
+# count = 0
+# for uid, uid_df in lab_df.groupby('UID',as_index=False): #break
+#     uid_df = uid_df.fillna(method='ffill')
+#     full_result_df.append(uid_df)
+# lab_df = pd.concat(full_result_df)
+
 
 # Comed 처리
 
@@ -145,8 +145,8 @@ for endpoint, ep_surv_df in surv_res_df.groupby('ENDPOINT'):
         uid_comed_df = comed_df[comed_df['UID'] == uid].copy()
         for cm_inx, cm_row in uid_comed_df.iterrows(): #break
             cmdate_ser = pd.Series(cm_row['DATE_LIST'].replace("('",'').replace("')",'').split("', '"))
-            cm_at_risk = cmdate_ser[(cmdate_ser >= first_dose_date)&(cmdate_ser <= ev_date)].copy()
-            if len(cm_at_risk)==0:
+            cm_at_risk = cmdate_ser[(cmdate_ser >= first_dose_date)&(cmdate_ser < ev_date)].copy()
+            if len(cm_at_risk)>0:  # 여기가==0 으로 되어 있어서 코드 수정함
                 uid_comed_dict[cm_row['DRUG']]=1
         res_dict.update(uid_comed_dict)
 
@@ -156,14 +156,21 @@ for endpoint, ep_surv_df in surv_res_df.groupby('ENDPOINT'):
         uid_tf_df = transfusion_df[transfusion_df['UID'] == uid].copy()
         for tf_type in uniq_tf_type:
             uid_tf_type_df = uid_tf_df[uid_tf_df['TF_TYPE']==tf_type].copy()
-            tf_at_risk = uid_tf_type_df[(uid_tf_type_df['DATE'] >= first_dose_date)&(uid_tf_type_df['DATE'] <= ev_date)].copy()
-            if len(tf_at_risk)==0:
+            tf_at_risk = uid_tf_type_df[(uid_tf_type_df['DATE'] >= first_dose_date)&(uid_tf_type_df['DATE'] < ev_date)].copy()
+            if len(tf_at_risk)>0:  # 여기가 ==0 으로 되어 있어서 코드 수정함
                 uid_tf_dict[tf_type]=1
+        # uid_tf_df['TF_TYPE'].unique()
         res_dict.update(uid_tf_dict)
 
         # lab
         uid_lab_df = lab_df[lab_df['UID']==uid].copy()
-        uid_bl_lab_df = uid_lab_df[(uid_lab_df['DATE'] >= bl_date_bf1mo) & (uid_lab_df['DATE'] <= bl_date)].fillna(method='ffill')
+        # uid_lab_df
+        # raise ValueError
+        # uid_lab_df = uid_lab_df.fillna(method='ffill')
+
+        uid_bl_lab_df = uid_lab_df[(uid_lab_df['DATE'] >= bl_date_bf1mo) & (uid_lab_df['DATE'] <= bl_date)].copy()
+        uid_bl_lab_df = uid_bl_lab_df.fillna(method='ffill')
+        data_availability_dict =            ########### 여기할차례
         bl_lab_row = uid_bl_lab_df.iloc[-1]
         # col='DATE'
         for col in ['DATE']+ep_lab_covar_list:

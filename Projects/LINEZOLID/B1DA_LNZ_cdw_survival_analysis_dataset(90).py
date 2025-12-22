@@ -125,18 +125,19 @@ for endpoint_lab in ['PLT', 'ANC', 'Hb','WBC','Lactate']:
 
         # raise ValueError
         if endpoint_lab == 'PLT':
-            sbl_rows = uid_sbase_lab_df[(~uid_sbase_lab_df[endpoint_lab].isna()) & (uid_sbase_lab_df[endpoint_lab] >= 150)]
+            plt_threshold = 100
+            sbl_rows = uid_sbase_lab_df[(~uid_sbase_lab_df[endpoint_lab].isna()) & (uid_sbase_lab_df[endpoint_lab] >= plt_threshold)]
             # sbl_row = sbl_rows.iloc[-1]
             try:
                 sbl_row = sbl_rows.iloc[-1]
                 # Baseline에서 Cr이 이미 높아지는 경우 제외
-                if (uid_sbase_lab_df[uid_sbase_lab_df['DATE'] > sbl_row['DATE']][endpoint_lab] < 150).sum() > 0:
+                if (uid_sbase_lab_df[uid_sbase_lab_df['DATE'] > sbl_row['DATE']][endpoint_lab] < plt_threshold).sum() > 0:
                     not_normal_base_lab_uids[endpoint_lab].append(uid)
                     continue
             except:
                 not_normal_base_lab_uids[endpoint_lab].append(uid)
                 continue
-            tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df[endpoint_lab] < 150)].copy()
+            tar_rows = uid_sadm_lab_df[(uid_sadm_lab_df[endpoint_lab] < plt_threshold)].copy()
         elif endpoint_lab == 'ANC':
             sbl_rows = uid_sbase_lab_df[(~uid_sbase_lab_df[endpoint_lab].isna()) & (uid_sbase_lab_df[endpoint_lab] >= 1500)]
             # sbl_row = sbl_rows.iloc[-1]
@@ -380,7 +381,7 @@ ax.legend(title=None, fontsize=font_size)
 
 plt.tight_layout()
 plt.savefig(f"{output_dir}/b1da/B1DA_KM_plot(ADRs)({max_time_at_risk}).png")  # PNG 파일로 저장
-# plt.savefig(f"{output_dir}/b1da/B1DA_KM_plot(ADRs)({max_time_at_risk}).jpg",dpi=600,bbox_inches='tight')   # 선택: 주변 여백 최소화)  # PNG 파일로 저장
+plt.savefig(f"{output_dir}/b1da/B1DA_KM_plot(ADRs)({max_time_at_risk}).jpg",dpi=600,bbox_inches='tight')   # 선택: 주변 여백 최소화)  # PNG 파일로 저장
 
 # 👉 최종 발생률을 DataFrame으로 정리
 final_df = pd.DataFrame(final_rates)
@@ -394,3 +395,5 @@ if not os.path.exists(f'{output_dir}/b1da/incidence_output'):
     os.mkdir(f'{output_dir}/b1da/incidence_output')
 incidence_res_df.to_csv(f"{output_dir}/b1da/incidence_output/b1da_lnz_incidence_table({max_time_at_risk}).csv", encoding='utf-8-sig', index=False)
 # print(incidence_res_df)
+
+incidence_res_df.iloc[2]
