@@ -105,6 +105,7 @@ lab_df = lab_df[['UID', 'DATE']+lab_covar_list].copy()
 # surv_res_df.columns
 # surv_res_df['ENDPOINT'].unique()
 ep_res_dict = dict()
+bl_timedelta_df = list()
 for endpoint, ep_surv_df in surv_res_df.groupby('ENDPOINT'):
     ep_res_df = list()
 
@@ -169,8 +170,30 @@ for endpoint, ep_surv_df in surv_res_df.groupby('ENDPOINT'):
         # uid_lab_df = uid_lab_df.fillna(method='ffill')
 
         uid_bl_lab_df = uid_lab_df[(uid_lab_df['DATE'] >= bl_date_bf1mo) & (uid_lab_df['DATE'] <= bl_date)].copy()
+
+        ## 각 Lab이 first dose date 기준 몇일 전인지 기록
+
+        uid_bl_timedelta_df = ~(uid_bl_lab_df.isna())
+        # uid_bl_timedelta_df['UID'] = uid_bl_lab_df['DATE'].copy()
+        uid_bl_timedelta_df['DATE'] = uid_bl_lab_df['DATE'].copy()
+        uid_bl_timedelta_df = uid_bl_timedelta_df.sort_index(ascending=False)
+        # uid_bl_timedelta_df = uid_bl_timedelta_df.loc[:,'Hb':]
+
+        # uid_bl_timedelta_df['Hb']
+        first_false_index = (uid_bl_timedelta_df.eq(True).idxmax().where(uid_bl_timedelta_df.eq(True).any(), np.nan).to_dict())
+        bl_timedelta_dict = dict()
+        for col, bl_inx in first_false_index.items():
+            if not np.isnan(bl_inx):
+                bl_timedelta_dict[col] = (datetime.strptime(first_dose_date,'%Y-%m-%d') - datetime.strptime(uid_bl_timedelta_df.at[int(bl_inx),'DATE'],'%Y-%m-%d')).days
+            else:
+                bl_timedelta_dict[col] = np.nan
+        bl_timedelta_dict['UID'] = uid
+        bl_timedelta_dict['DATE'] = endpoint  # 뒤에서 endpoint로 이름 바뀜
+        bl_timedelta_df.append(bl_timedelta_dict)
+
+        ################# (여기까지 추가한 코드)
+
         uid_bl_lab_df = uid_bl_lab_df.fillna(method='ffill')
-        data_availability_dict =            ########### 여기할차례
         bl_lab_row = uid_bl_lab_df.iloc[-1]
         # col='DATE'
         for col in ['DATE']+ep_lab_covar_list:
@@ -251,6 +274,9 @@ for endpoint, ep_surv_df in surv_res_df.groupby('ENDPOINT'):
 
     ep_res_dict[endpoint] = ep_res_df.copy()
 
+bl_timedelta_df = pd.DataFrame(bl_timedelta_df).rename(columns={'DATE':'ENDPOINT'})
+bl_timedelta_df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_baseline_timedelta_df.csv", encoding='utf-8-sig', index=False)
+
 for endpoint in surv_res_df['ENDPOINT'].unique():
     # endpoint = 'PLT'
     # endpoint = 'Hb'
@@ -266,7 +292,7 @@ for endpoint in surv_res_df['ENDPOINT'].unique():
     if not os.path.exists(f'{output_dir}/b1da/datacheck'):
         os.mkdir(f'{output_dir}/b1da/datacheck')
     epreg_df.to_csv(f"{output_dir}/b1da/datacheck/b1da_lnz_datacheck_{endpoint}_df.csv", encoding='utf-8-sig', index=False)
-    epreg_df = epreg_df.drop(['BL_DATE','UID','ENDPOINT'],axis=1)
+    epreg_df = epreg_df.drop(['BL_DATE','ENDPOINT'],axis=1)
     epreg_df['SEX']=epreg_df['SEX'].map({'남':0,'여':1})
     epreg_df = epreg_df.fillna(epreg_df.median(numeric_only=True))
     if not os.path.exists(f'{output_dir}/b1da/mvlreg'):

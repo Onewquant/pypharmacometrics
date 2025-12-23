@@ -19,6 +19,14 @@ from statsmodels.stats.multitest import multipletests
 import os
 
 
+prj_name = 'LNZ'
+prj_dir = 'C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/LINEZOLID'
+resource_dir = f'{prj_dir}/resource'
+output_dir = f"{prj_dir}/results"
+bl_timedelta_df = pd.read_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_baseline_timedelta_df.csv")
+
+
+
 def _to_binary_series(s: pd.Series) -> pd.Series:
     """EV를 이진(0/1)으로 변환: bool, {0,1}, 임의의 2값, 문자열 2수준 지원."""
     if s.dtype == bool:
@@ -165,9 +173,6 @@ def fit_ev_logistic(df,
     # 4) 숫자/범주 분리
     num_cols = X.select_dtypes(include=[np.number]).columns.tolist()
 
-    # --- [ADD] availability 계산 (imputation 전에) ---
-    X_raw = X.copy()
-    data_available_percent = (X_raw.notna().mean() * 100).to_dict()
     # -----------------------------------------------
 
     # 5) 숫자 컬럼 정리: inf -> NaN -> median 대치
@@ -291,8 +296,7 @@ def fit_ev_logistic(df,
         "pvalue": res.pvalues.values,
     })
 
-    # --- [ADD] availability(%) 컬럼 추가 (imputation 이전 기준) ---
-    or_table["data_availability"] = or_table["feature"].map(data_available_percent)
+
 
 
     # # const는 dict에 없을 수 있으니 NaN -> 100 또는 NaN 유지 중 선택
@@ -439,9 +443,10 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
         #     raise ValueError
         # for
         df = df.drop(['clozapine','cyclophosphamide','methimazole','propofol','propylthiouracil','TF_WBLD'],axis=1)
+        df['CUM_DOSE'] = df['CUM_DOSE']/1200
 
         res, or_table, info = fit_ev_logistic(
-            df=df,
+            df=df.drop(['UID'], axis=1),
             out_csv=out_csv,
             corr_threshold=0.8,     # |r| 임계값 (보통 0.8~0.95)
             vif_threshold=10.0,     # VIF 임계값 (보통 5 또는 10)
@@ -450,6 +455,19 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
             verbose=True,
             filename_add=age_subgroup,
         )
+
+        ## Data availability 컬럼 추가
+
+        ep_bl_timedelta_df = bl_timedelta_df[(bl_timedelta_df['ENDPOINT'] == endpoint) & (bl_timedelta_df['UID'].isin(df['UID']))].copy()
+        ep_available_data_count_dict = ((~ep_bl_timedelta_df.isna()).sum())
+        ep_available_data_pct_dict = round(100*ep_available_data_count_dict/len(ep_bl_timedelta_df),1)
+        ep_data_availability_dict = {covar: f"{ep_available_data_count_dict[covar]} ({ep_available_data_pct_dict[covar]})" for covar, count in dict(ep_available_data_count_dict).items()}
+        for feature_col in or_table['feature']:
+            if feature_col in ep_data_availability_dict:
+                continue
+            else:
+                ep_data_availability_dict[feature_col] = f'{len(ep_bl_timedelta_df)} (100.0)'
+        or_table['data_availability'] = or_table['feature'].map(ep_data_availability_dict)
 
         # print(f"[Fitted with] / {endpoint} / {info['fitted_with']}")
         # print(f"\n[Model Summary ({endpoint})]")
@@ -560,7 +578,6 @@ apv_cond = (multivar_totres_df['pvalue_adj'] < 0.05)
 # multivar_totres_df.columns
 
 sig_dig = 3
-
 multivar_totres_df['EV_Count (%)'] = multivar_totres_df.apply(lambda x:f"{round(x['EVN'],sig_dig)} ({round(x['EVPct'],sig_dig)})",axis=1)
 
 multivar_totres_df['OR (95% CI)'] = multivar_totres_df.apply(lambda x:f"{round(x['uni_OR'],sig_dig)} ({round(x['uni_CI2.5%'],sig_dig)}-{round(x['uni_CI97.5%'],sig_dig)})",axis=1)
@@ -580,7 +597,6 @@ uni_res_df['pval (adj)'] = uni_res_df['pval (adj)'].replace(0,'<0.001').map(str)
 uni_res_df['pval'] = uni_res_df['pval'].replace(0,'<0.001').map(str)
 uni_res_df = uni_res_df.drop(['pval_sig'],axis=1)
 
-
 multi_res_df['pval_sig'] = (multi_res_df['pval (adj)'] < 0.05).map({True:' **',False:''})
 multi_res_df['pval (adj)'] = multi_res_df['pval (adj)'].replace(0,'<0.001').map(str) + multi_res_df['pval_sig']
 multi_res_df['pval'] = multi_res_df['pval'].replace(0,'<0.001').map(str)
@@ -593,6 +609,19 @@ multi_res_df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_multivar_r
 
 print(multi_res_df[['subgroup','endpoint','feature','aOR (95% CI)','pval (adj)']])
 # uni_res_df[uni_res_df['subgroup']=='Total_Adult'][['endpoint','feature','OR (95% CI)','pval']]
+
+## Not estimable 추가
+multivar_totres_df = multivar_totres_df.reset_index(drop=True)
+multivar_totres_df['OR (95% CI)'] = multivar_totres_df['OR (95% CI)'].map(lambda x: "Not estimable" if (('inf' in x) or ('nan' in x) or (x=='1.0 (1.0-1.0)')) else x)
+multivar_totres_df['aOR (95% CI)'] = multivar_totres_df['aOR (95% CI)'].map(lambda x: "Not estimable" if (('inf' in x) or ('nan' in x) or (x=='1.0 (1.0-1.0)')) else x)
+multivar_totres_df['pval'] = multivar_totres_df['pval'].astype(str)
+multivar_totres_df['pval (adj)'] = multivar_totres_df['pval (adj)'].astype(str)
+not_estim_univ_index_list = set(multivar_totres_df[(multivar_totres_df['OR (95% CI)']=='Not estimable')|(multivar_totres_df['aOR (95% CI)']=='Not estimable')].index)
+for ne_inx in not_estim_univ_index_list:
+    multivar_totres_df.at[ne_inx,'pval'] = '—'
+    multivar_totres_df.at[ne_inx,'pval (adj)'] = '—'
+
+########### 여기까지 추가 코드
 
 tot_res_df = multivar_totres_df.sort_values(['subgroup','endpoint','aOR'],ascending=[False,True,False])[['subgroup','endpoint','data_availability','feature','EV_Count (%)','OR (95% CI)','pval','aOR (95% CI)','pval (adj)']].reset_index(drop=True)
 # raise ValueError
@@ -620,7 +649,7 @@ tot_res_df = tot_res_df[tot_res_df['subgroup']=='Total_Adult'].copy()
 # raise ValueError
 # tot_res_df.columns
 # tot_res_df = tot_res_df[~tot_res_df['feature'].isin(['Clozapine','Methimazole'])].copy()
-tot_res_df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_total_res_table.csv", index=False, encoding='utf-8-sig')
+tot_res_df[['subgroup','endpoint','feature','EV_Count (%)','data_availability','OR (95% CI)','pval','aOR (95% CI)','pval (adj)']].to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_total_res_table.csv", index=False, encoding='utf-8-sig')
 
 # tot_res_df[tot_res_df['pval'] < 0.05][['endpoint','feature','OR (95% CI)','pval']]
 # tot_res_df[tot_res_df['pval (adj)'] < 0.05][['endpoint','feature','aOR (95% CI)','pval (adj)']]
