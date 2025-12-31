@@ -72,6 +72,23 @@ for file_path in subgroup_files: #break
         demographic_table_saving['p_value'] = demographic_table_saving['p_value'].replace(0,'<0.001')
         if not os.path.exists(f'{output_dir}/b1da/mvlreg_output/subgroup_analysis'):
             os.mkdir(f'{output_dir}/b1da/mvlreg_output/subgroup_analysis')
+        covar_name_dict = {'TF_CRYO':'Cryoprecipitate transfusion', 'TF_FFP':'FFP transfusion', 'TF_PLT':'Platelet transfusion',
+                   'TF_RBC':'RBC transfusion', 'TPRO':'Total protein', 'WBC':'WBC count (/μL)', 'ALB':'Albumin (g/dL)',
+                   'ALT':'ALT (IU/L)', 'ANC':'ANC (/μL)', 'AST':'AST (IU/L)', 'BMI':'BMI (kg/m2)', 'CRP':'CRP (mg/dL)',
+                   'CUM_DOSE':'Cumulative dose (mg)', 'DOSE24PERWT':'Weight-normalized daily dose (mg/day·kg)',
+                   'DOSE24': 'Daily dose (mg/day)', 'DOSE_INTERVAL':'Dosing interval (hour)',
+                   'DOSE_PERIOD':'Dosing period (days)', 'ELD':'Elderly', 'GLU':'Glucose (mg/dL)',
+                   'Hb':'Hemoglobin (g/dL)', 'Lactate':'Lactate (mmol/L)', 'PLT':'Platelet count (/μL)',
+                   'SCR':'Serum creatinine (mg/dL)', 'TBIL':'Total bilirubin (mg/dL)',
+                   'aspirinclopidogrel':'Aspirin/clopidogrel', 'clozapine':'Clozapine',
+                   'cyclophosphamide':'Cyclophosphamide', 'eGFR':'eGFR (mL/min/1.73 m²)',
+                   'eGFR-CKD-EPI':'eGFR-CKD-EPI (mL/min/1.73 m²)', 'heparin':'Heparin',
+                   'isoniazid':'Isoniazid', 'metformin':'Metformin', 'methimazole':'Methimazole', 'SEX':'Sex', 'pH':'pH',
+                   'piperacillintazobactam':'Piperacillin/tazobactam', 'propofol':'Propofol',
+                   'tmpsmx':'TMP/SMX', 'valproate':'Valproate','WT':'Weight (kg)',
+                   'AGE':'Age (years)', 'HT':'Height (cm)', }
+        demographic_table_saving['Covar'] = demographic_table_saving['Covar'].map(covar_name_dict)
+        demographic_table_saving = demographic_table_saving.dropna(subset=['Covar'])
         demographic_table_saving.to_csv(f"{output_dir}/b1da/mvlreg_output/subgroup_analysis/b1da_lnz_subgrpa({subset_group})({pd_endpoint})_({group_col} subgroup).csv", index=False, encoding='utf-8-sig')
         # print(demographic_table)
 
