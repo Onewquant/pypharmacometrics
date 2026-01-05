@@ -110,6 +110,14 @@ pd_res_df['BL_PD_FCAL150(BR)'] = (pd_res_df['BL_PD_FCAL']<150)*1
 pd_res_df['TG_PD_FCAL150(BR)'] = (pd_res_df['TG_PD_FCAL']<150)*1
 # pd_res_df.columns
 
+## CM 결과 정리
+cm_df1 = pd.read_csv(f"{output_dir}/cm_df(5ASA).csv")
+cm_df1['DRUGCLS'] = 'CM5ASA'
+cm_df2 = pd.read_csv(f"{output_dir}/cm_df(IM).csv")
+cm_df1['DRUGCLS'] = 'CMIM'
+cm_df3 = pd.read_csv(f"{output_dir}/cm_df(STEROID).csv")
+cm_df3['DRUGCLS'] = 'CMSTEROID'
+cm_df = pd.concat([cm_df1, cm_df2, cm_df3])
 # pd_res_df.columns
 
 # pd_sumres_df = pd.DataFrame(columns=['PD_EP','IND','MAINT'])
@@ -145,9 +153,10 @@ pd_res_df['TG_PD_FCAL150(BR)'] = (pd_res_df['TG_PD_FCAL']<150)*1
 # Exposure 비교를 위한 PK params 대표값 입력
 # pd_res_df.columns
 bl_demo_list = ['ALB', 'AGE', 'SEX', 'WT', 'HT', 'BMI', 'ADA']
+cm_list = ['CM5ASA','CMIM','CMSTEROID']
 pk_param_list = ['CL','V2','V3']
 secondary_param_list = ['CUM_AUC','AUC24','CUM_DOSE','DOSE24','CMAX','ADJ_DOSE24','CUM_DOSEpWT','DOSE24pWT','CUM_ADJ_DOSEpWT','ADJ_DOSE24pWT','OPT_PCT','DOSING_PERIOD']
-for pk_param in bl_demo_list+secondary_param_list+pk_param_list:
+for pk_param in bl_demo_list+cm_list+secondary_param_list+pk_param_list:
     pd_res_df[pk_param]=np.nan
     # uid_sim_conc_df.columns
     # pd_res_df.columns
@@ -185,6 +194,15 @@ for inx, row in pd_res_df.iterrows():
         continue
 
     print(f"({inx}) {uid} / {pname} / {drug} / {phase} / {str(start_date)} / {str(end_date)}")
+
+    partial_cm_df = cm_df[(cm_df['DATE'] >= start_date)&(cm_df['DATE'] <= end_date)].copy()
+    pd_res_df.at[inx, 'CM5ASA'] = len(partial_cm_df[partial_cm_df['DRUGCLS']=='CM5ASA'].drop_duplicates(['DATE']))
+    pd_res_df.at[inx, 'CMIM'] = len(partial_cm_df[partial_cm_df['DRUGCLS']=='CMIM'].drop_duplicates(['DATE']))
+    pd_res_df.at[inx, 'CMSTEROID'] = len(partial_cm_df[partial_cm_df['DRUGCLS']=='CMSTEROID'].drop_duplicates(['DATE']))
+
+    # if len(partial_cm_df)!=0:
+    #     raise ValueError
+
     # uid_sim_conc_df.columns
     partial_conc_df = uid_sim_conc_df[(uid_sim_conc_df['DATETIME'] >= start_date)&(uid_sim_conc_df['DATETIME'] <= end_date)].copy()
     partial_dose_df = uid_sim_dose_df[(uid_sim_dose_df['DATETIME'] >= start_date)&(uid_sim_dose_df['DATETIME'] <= end_date)].copy()
@@ -193,6 +211,7 @@ for inx, row in pd_res_df.iterrows():
 
     # total_days =
     # partial_dose_df.columns
+    # pd_res_df.columns
     pd_res_df.at[inx, 'CUM_DOSE'] = partial_dose_df['AMT'].sum()
     pd_res_df.at[inx, 'DOSE24'] = (partial_dose_df['AMT'].sum())/(delta_days)
 
@@ -221,7 +240,7 @@ for inx, row in pd_res_df.iterrows():
     # if pd_res_df.at[inx, 'AUC24'] > 120:
     #     raise ValueError
     pd_res_df.at[inx, 'CMAX'] = partial_conc_df['DV'].max()
-    pd_res_df.at[inx, 'CMAX'] = partial_conc_df['DV'].max()
+    # pd_res_df.at[inx, 'CMAX'] = partial_conc_df['DV'].max()
 
     # partial_conc_df['ADA']
     # demo_c = 'ALB'
@@ -261,16 +280,19 @@ bl_demo_res_list = bl_demo_list
 pk_param_res_list = pk_param_list + secondary_param_list
 pd_ep_res_list = [f"DELT_{c}" for c in pd_ep_list] + [f"TG_{c}" for c in pd_ep_list]
 
-total_res_cols = id_list + bl_demo_res_list + pk_param_res_list + pd_ep_res_list
+
+total_res_cols = id_list + bl_demo_res_list + cm_list + pk_param_res_list + pd_ep_res_list
 gene_res_df = pd_res_df[total_res_cols].copy()
+
+# underbar, 괄호 없애기 (hail에서 사용 불가)
+for col in gene_res_df.columns:
+    gene_res_df = gene_res_df.rename(columns={col:col.replace('_','').replace('(BR)','bin')})
 
 # pd_res_df.to_csv(f"{output_dir}/PKPD_EDA/PKvsPD_Corr_SIG/pkpd_analysis_df.csv", index=False, encoding='utf-8-sig')
 
 if not os.path.exists(f"{output_dir}/PKPD_EDA/GENOMICS"):
     os.mkdir(f"{output_dir}/PKPD_EDA/GENOMICS")
-(gene_res_df.loc[:,'DAY_DELT':].sum(axis=1)+(gene_res_df['UID']/10000))*100
-gene_res_df['ECT'] = (((gene_res_df.loc[:,'DAY_DELT':].sum(axis=1)+(gene_res_df['UID']/100000))*100).map(int))/100
+# (gene_res_df.loc[:,'DAY_DELT':].sum(axis=1)+(gene_res_df['UID']/10000))*100
+gene_res_df['ECT'] = (((gene_res_df.loc[:,'DAYDELT':].sum(axis=1)+(gene_res_df['UID']/100000))*100).map(int))/100
 gene_res_df.to_csv(f"{output_dir}/PKPD_EDA/GENOMICS/for_genomics_df(all_drugs).csv", index=False, encoding='utf-8-sig')
 
-# gene_res_df['ADA'].sum()
-# gene_res_df['UID'].drop_duplicates()
