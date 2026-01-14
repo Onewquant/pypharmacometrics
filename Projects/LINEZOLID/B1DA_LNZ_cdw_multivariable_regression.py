@@ -8,7 +8,9 @@ prj_dir = 'C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/LINEZOLID'
 resource_dir = f'{prj_dir}/resource'
 output_dir = f"{prj_dir}/results"
 
-
+# bl_timedelta_df=pd.read_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_baseline_timedelta_df.csv")
+# bl_timedelta_df = bl_timedelta_df[bl_timedelta_df['ENDPOINT']=='Lactate'].copy()
+# bl_timedelta_df.dropna(subset=['Lactate','pH'])
 
 # dose_df['DAILY_DOSE'] = dose_df['DOSE'] * 24/dose_df['INTERVAL'].map(lambda x:float(x.replace('q','').replace('h','')))
 # dose_df['DOSAGE_REGIMEN'] = (dose_df['DOSE'].astype(str)+'_'+dose_df['INTERVAL'])

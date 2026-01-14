@@ -388,6 +388,7 @@ multivar_res_df = list()
 covar_info_df = list()
 orthreshold_dict = {True: 0.5, False: 0.33}
 for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
+# for endpoint in ['Lactate',]:
 # for endpoint in ['ANC', ]:
     # endpoint = 'PLT'
     # endpoint = 'Hb'
@@ -457,7 +458,8 @@ for endpoint in ['PLT', 'Hb', 'WBC', 'ANC', 'Lactate']:
         )
 
         ## Data availability 컬럼 추가
-
+        # raise ValueError
+        # ep_bl_timedelta_df.
         ep_bl_timedelta_df = bl_timedelta_df[(bl_timedelta_df['ENDPOINT'] == endpoint) & (bl_timedelta_df['UID'].isin(df['UID']))].copy()
         ep_available_data_count_dict = ((~ep_bl_timedelta_df.isna()).sum())
         ep_available_data_pct_dict = round(100*ep_available_data_count_dict/len(ep_bl_timedelta_df),1)
@@ -567,7 +569,7 @@ for inx, row in covar_info_df_saving.iterrows():
 
 # raise ValueError
 covar_info_df_saving.to_excel(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_covar_info.xlsx", index=False, encoding='utf-8-sig')
-
+# covar_info_df_saving.iloc[-1,-1]
 
 sg_cond = (multivar_totres_df['subgroup'] == 'Total_Adult')
 uor_cond = (np.abs(multivar_totres_df['uni_OR']-1) >= ((multivar_totres_df['uni_OR']>=1).map(orthreshold_dict)))
