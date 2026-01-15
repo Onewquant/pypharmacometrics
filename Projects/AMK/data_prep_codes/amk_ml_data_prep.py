@@ -28,6 +28,7 @@ print(f"AKI cases (Filtered): {len(aki_df['UID'].drop_duplicates())}")
 modeling_df = pd.read_csv(f"{nonmem_dir}/amk_modeling_df_covar.csv")
 modeling_df['DATE'] = modeling_df['DATETIME_ORI'].map(lambda x:x.split('T')[0])
 
+# modeling_df[modeling_df['UID']==10016994]
 
 
 lab_list_df = pd.read_csv(f"{output_dir}/amk_lablist_df.csv")
@@ -205,6 +206,7 @@ for inx, row in ml_df.iterrows():
     min3_bl_date = (datetime.strptime(aki_occurrence_date, '%Y-%m-%d') - timedelta(days=3)).strftime('%Y-%m-%d')
     min_bl_date = (datetime.strptime(aki_occurrence_date, '%Y-%m-%d') - timedelta(days=3)).strftime('%Y-%m-%d')
     max_bl_date = (datetime.strptime(aki_occurrence_date, '%Y-%m-%d') - timedelta(days=1)).strftime('%Y-%m-%d')
+    max_bl_dt = (datetime.strptime(aki_occurrence_dt, '%Y-%m-%dT%H:%M') - timedelta(hours=24)).strftime('%Y-%m-%dT%H:%M')
 
     # 데이터 중간 처리
     uid_cm_df['CM_PERIOD_FROM_DATE'] = uid_cm_df['CM_PERIOD_FROM'].map(lambda x: (datetime.strptime(max_bl_date, '%Y-%m-%d') - timedelta(days=x)).strftime('%Y-%m-%d'))
@@ -222,8 +224,8 @@ for inx, row in ml_df.iterrows():
     ml_proc_df = uid_proc_df[(uid_proc_df['DATE'] >= uid_proc_df['CM_PERIOD_FROM_DATE'])&(uid_proc_df['DATE'] <= max_bl_date)].copy()
     ml_micbio_df = uid_micbio_df[(uid_micbio_df['DATE'] <= max_bl_date)&(uid_micbio_df['DATE'] >= min14_bl_date)].copy()
     uid_losmot_df = uid_micbio_df[(uid_micbio_df['DATE'] <= max_bl_date)&(uid_micbio_df['DATE'] >= min14_bl_date)].copy()
-
-    ml_dose_df = uid_dose_df[(uid_dose_df['DATE'] <= max_bl_date)].copy()
+    # uid_dose_df['AMT']
+    ml_dose_df = uid_dose_df[(uid_dose_df['DATETIME_ORI'] <= max_bl_dt)].copy()
     if len(ml_dose_df)==0:
         no_dose_pids.append(uid)
         print(f"/ No dose data")
@@ -242,15 +244,20 @@ for inx, row in ml_df.iterrows():
         ml_row_dict[c] = ml_demo_df_last_row[c]
     ml_row_dict['BMI'] = round(ml_row_dict['WT']/((ml_row_dict['HT']/100)**2),3)
 
+    # raise ValueError
+    # if uid==11428893:
+    #     raise ValueError
+
     # DOSE
     ml_row_dict['LAST_DOSE'] = ml_dose_df.iloc[-1]['AMT']
     ml_row_dict['LAST_DAILY_DOSE'] = ml_dose_df.groupby('DATE').agg({'AMT':'sum'}).iloc[-1]['AMT']
-    ml_row_dict['LAST_DOSE_perWT'] = ml_row_dict['LAST_DOSE']/ml_row_dict['WT']
-    ml_row_dict['LAST_DAILY_DOSE_perWT'] = ml_row_dict['LAST_DAILY_DOSE']/ml_row_dict['WT']
-    ml_row_dict['DURATION(DAYS)'] = (ml_dose_df.iloc[-1]['TIME'] - ml_dose_df.iloc[0]['TIME'] + 1)/24
+    ml_row_dict['LAST_DOSE_perWT'] = (ml_row_dict['LAST_DOSE']/ml_row_dict['WT']).map(lambda x:round(x,3))
+    ml_row_dict['LAST_DAILY_DOSE_perWT'] = (ml_row_dict['LAST_DAILY_DOSE']/ml_row_dict['WT']).map(lambda x:round(x,3))
+    # ml_row_dict['DURATION(DAYS)'] = (ml_dose_df.iloc[-1]['TIME'] - ml_dose_df.iloc[0]['TIME'] + 1)/24
+    ml_row_dict['DURATION(DAYS)'] = ((ml_dose_df.iloc[-1]['TIME'] - ml_dose_df.iloc[0]['TIME'])/24).map(lambda x:round(x,3))
     ml_row_dict['CUM_DOSE'] = ml_dose_df['AMT'].sum()
-    ml_row_dict['MEAN_DAILY_DOSE'] = ml_row_dict['CUM_DOSE']/ml_row_dict['DURATION(DAYS)']
-    ml_row_dict['MEAN_DAILY_DOSE_perWT'] = ml_row_dict['CUM_DOSE']/ml_row_dict['WT']
+    ml_row_dict['MEAN_DAILY_DOSE'] = (ml_row_dict['CUM_DOSE']/ml_row_dict['DURATION(DAYS)']).map(lambda x:round(x,3))
+    ml_row_dict['MEAN_DAILY_DOSE_perWT'] = (ml_row_dict['CUM_DOSE']/ml_row_dict['WT']).map(lambda x:round(x,3))
 
     # COMORBIDITY
     uid_uniq_cm_inx_list = list(ml_cm_df['CM_CATNUM'].unique())
@@ -320,11 +327,20 @@ for inx, row in ml_df.iterrows():
     # raise ValueError
 
 ml_res_df = pd.DataFrame(ml_res_df)
-ml_res_df.to_csv(f"{output_dir}/final_mlres_data.csv", index=False, encoding='utf-8-sig')
+# ml_res_df['UID']
+# ml_res_df = pd.read_csv(f"{output_dir}/final_mlres_data.csv")
+ml_res_df2 = ml_res_df[(~ml_res_df['UID'].isin(excepted_aki_ids))&(ml_res_df['DURATION(DAYS)']>=1)].copy()
+ml_res_df2.to_csv(f"{output_dir}/final_mlres_data.csv", index=False, encoding='utf-8-sig')
 # ml_res_df['AT LEAST ONE NEPHROTOXIC AGENT'].unique()
 # ml_res_df['AT LEAST ONE NEPHROTOXIC AGENT'] = ml_res_df['AT LEAST ONE NEPHROTOXIC AGENT'].map(lambda x: int(x) if not np.isnan(x) else np.nan)
 print(f"Patients without lab data: {len(no_lab_pids)} / {set(no_lab_pids)}")
 print(f"Patients without dose data: {len(no_dose_pids)} / {set(no_dose_pids)}")
+
+
+# str(set(modeling_df['UID']) - set(ml_res_df2['UID'])).replace(', ',"', '").replace('{',"[").replace('}',"]")
+
+
+
 
 # ml_res_df['AKI_OCCURRENCE'].sum()
 # uid_demo_df.columns
