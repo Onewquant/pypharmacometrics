@@ -384,7 +384,8 @@ to_be_adj2 = [
              # {'ID':377,'SEARCH_VARI':'TIME','SEARCH_VAL':179.033,'CHANGE_VAR':'TAD','PREV_VAL':12.8833333,'NEW_VAL':1},
 
              {'ID':367,'SEARCH_VARI':'TIME','SEARCH_VAL':73,'CHANGE_VAR':'TAD','PREV_VAL':12.2,'NEW_VAL':1},
-             # {'ID': 367, 'SEARCH_VARI': 'TIME', 'SEARCH_VAL': 73, 'CHANGE_VAR': 'TAD', 'PREV_VAL': 12.2, 'NEW_VAL': 1},
+             {'ID': 170, 'SEARCH_VARI': 'TIME', 'SEARCH_VAL': 408.0, 'CHANGE_VAR': 'TIME', 'PREV_VAL': 408.0, 'NEW_VAL': 418.0},
+            # {'ID': 151, 'SEARCH_VARI': 'TIME', 'SEARCH_VAL': 96, 'CHANGE_VAR': 'AMT', 'PREV_VAL': 100, 'NEW_VAL': 1000.0},
 
              {'ID':763,'SEARCH_VARI':'TIME','SEARCH_VAL':0.0,'CHANGE_VAR':'AMT','PREV_VAL':70,'NEW_VAL':700},
              {'ID':763,'SEARCH_VARI':'TIME','SEARCH_VAL':22.25,'CHANGE_VAR':'AMT','PREV_VAL':70,'NEW_VAL':700},
@@ -443,9 +444,14 @@ for row in to_be_adj2:
     #     covar_modeling_df[(covar_modeling_df['ID'] == 1679)][['ID','TIME','AMT']]
     #     covar_modeling_df[(covar_modeling_df['ID'] == row['ID'])][['ID','TIME','AMT']]
     #     raise ValueError
+    # row['SEARCH_VAL']=408.0
+    # covar_modeling_df[covar_modeling_df['ID']==row['ID']]['TIME'].iloc[-2]
     if row['CHANGE_VAR'] in ['TAD', 'TIME']:
     # covar_modeling_df[(covar_modeling_df['ID'] == row['ID']) & (covar_modeling_df[row['SEARCH_VARI']].map(lambda x:round(x,1)) == round(row['SEARCH_VAL'],1))]
-        adj2_row = covar_modeling_df[(covar_modeling_df['ID']==row['ID'])&(covar_modeling_df[row['SEARCH_VARI']].map(lambda x:round(x,1)) == round(row['SEARCH_VAL'],1))&(covar_modeling_df['DV']!='.')].copy()
+        if row['ID'] in [170]:
+            adj2_row = covar_modeling_df[(covar_modeling_df['ID'] == row['ID']) & (covar_modeling_df[row['SEARCH_VARI']].map(lambda x: round(x, 1)) == round(row['SEARCH_VAL'], 1))].copy()
+        else:
+            adj2_row = covar_modeling_df[(covar_modeling_df['ID']==row['ID'])&(covar_modeling_df[row['SEARCH_VARI']].map(lambda x:round(x,1)) == round(row['SEARCH_VAL'],1))&(covar_modeling_df['DV']!='.')].copy()
         adj2_inx = adj2_row.index[0]
         covar_modeling_df.at[adj2_inx, row['CHANGE_VAR']] = row['NEW_VAL']
     elif row['CHANGE_VAR'] in ['AMT']:
@@ -453,7 +459,7 @@ for row in to_be_adj2:
         adj2_inx = adj2_row.index[0]
         covar_modeling_df.at[adj2_inx, row['CHANGE_VAR']] = row['NEW_VAL']
         covar_modeling_df.at[adj2_inx, 'RATE'] = row['NEW_VAL']/0.5
-        # covar_modeling_df.at[adj2_inx+1, 'TIME'] - covar_modeling_df.at[adj2_inx, 'TIME']
+          # covar_modeling_df.at[adj2_inx+1, 'TIME'] - covar_modeling_df.at[adj2_inx, 'TIME']
         # covar_modeling_df.loc[adj2_inx]
         # covar_modeling_df.loc[adj2_inx+1]
         # raise ValueError

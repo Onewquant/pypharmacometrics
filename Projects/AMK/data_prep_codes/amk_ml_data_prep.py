@@ -251,13 +251,15 @@ for inx, row in ml_df.iterrows():
     # DOSE
     ml_row_dict['LAST_DOSE'] = ml_dose_df.iloc[-1]['AMT']
     ml_row_dict['LAST_DAILY_DOSE'] = ml_dose_df.groupby('DATE').agg({'AMT':'sum'}).iloc[-1]['AMT']
-    ml_row_dict['LAST_DOSE_perWT'] = (ml_row_dict['LAST_DOSE']/ml_row_dict['WT']).map(lambda x:round(x,3))
-    ml_row_dict['LAST_DAILY_DOSE_perWT'] = (ml_row_dict['LAST_DAILY_DOSE']/ml_row_dict['WT']).map(lambda x:round(x,3))
+    ml_row_dict['LAST_DOSE_perWT'] = round(ml_row_dict['LAST_DOSE']/ml_row_dict['WT'],3)
+    ml_row_dict['LAST_DAILY_DOSE_perWT'] = round(ml_row_dict['LAST_DAILY_DOSE']/ml_row_dict['WT'],3)
     # ml_row_dict['DURATION(DAYS)'] = (ml_dose_df.iloc[-1]['TIME'] - ml_dose_df.iloc[0]['TIME'] + 1)/24
-    ml_row_dict['DURATION(DAYS)'] = ((ml_dose_df.iloc[-1]['TIME'] - ml_dose_df.iloc[0]['TIME'])/24).map(lambda x:round(x,3))
+    ml_row_dict['DURATION(DAYS)'] = round((ml_dose_df.iloc[-1]['TIME'] - ml_dose_df.iloc[0]['TIME'])/24,3)
     ml_row_dict['CUM_DOSE'] = ml_dose_df['AMT'].sum()
-    ml_row_dict['MEAN_DAILY_DOSE'] = (ml_row_dict['CUM_DOSE']/ml_row_dict['DURATION(DAYS)']).map(lambda x:round(x,3))
-    ml_row_dict['MEAN_DAILY_DOSE_perWT'] = (ml_row_dict['CUM_DOSE']/ml_row_dict['WT']).map(lambda x:round(x,3))
+    ml_row_dict['MEAN_DAILY_DOSE'] = round(ml_row_dict['CUM_DOSE']/ml_row_dict['DURATION(DAYS)'],3)
+    ml_row_dict['MEAN_DAILY_DOSE_perWT'] = round(ml_row_dict['CUM_DOSE']/ml_row_dict['WT'], 3)
+
+    # raise ValueError
 
     # COMORBIDITY
     uid_uniq_cm_inx_list = list(ml_cm_df['CM_CATNUM'].unique())
