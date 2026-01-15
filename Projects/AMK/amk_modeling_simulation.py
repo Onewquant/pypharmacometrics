@@ -69,12 +69,16 @@ filt_final_sim_df['HOUR'] = filt_final_sim_df['DATETIME_ORI'].map(lambda x:int(x
 filt_final_sim_df['MINUTE'] = filt_final_sim_df['DATETIME_ORI'].map(lambda x:int(x[14:]))
 filt_final_sim_df = filt_final_sim_df[['ID', 'TIME', 'TAD', 'DV', 'MDV', 'CMT', 'AMT', 'RATE', 'UID','SEX','AGE','ALB','WT','CREATININE','CRCL','AKI_DT','YY','MM','DD','HOUR','MINUTE']].copy()
 # filt_final_sim_df.to_csv(f"{output_dir}/amk_simulation_df.csv",index=False, encoding='utf-8-sig')
+
+# filt_final_sim_df = pd.read_csv(f"{nonmem_dir}/amk_simulation_df.csv")
+filt_final_sim_df['DV'] = filt_final_sim_df['DV'].astype(str)
+filt_final_sim_df = filt_final_sim_df[~((filt_final_sim_df['TIME']==0)&(filt_final_sim_df['DV']=='0.0')&(filt_final_sim_df['MDV']==1))].copy()
 filt_final_sim_df.to_csv(f"{nonmem_dir}/amk_simulation_df.csv",index=False, encoding='utf-8')
 # filt_final_sim_df.columns
 # filt_final_sim_df[filt_final_sim_df['AKI_DT']>0][['ID','UID']].drop_duplicates()
 # aki_pt_df[(aki_pt_df['ID']==21)][['ID','UID','TIME','CREATININE','AKI_DT']]
 # filt_final_sim_df['CRCL']
-
+# filt_final_sim_df['ID'].drop_duplicates()
 # max_time_df = nonaki_pt_df.groupby('ID',as_index=False)['TIME'].agg('max')
 # sns.displot(max_time_df['TIME']/24)
 # aki_pt_df['AKI_DT'] = aki_pt_df['AKI_DT'].map()
