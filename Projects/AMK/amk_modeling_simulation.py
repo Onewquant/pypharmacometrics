@@ -47,7 +47,7 @@ nonaki_pt_df['AKI_DT'] = -1
 nonako_last_dosetime_df = nonaki_pt_df[nonaki_pt_df['MDV']>0].drop_duplicates(['UID'],keep='last')[['UID','TIME']].rename(columns={'TIME':'LASTDOSE_TIME'})
 nonaki_pt_df = nonaki_pt_df.merge(nonako_last_dosetime_df, how='left', on=['UID'])
 # nonaki_pt_df = nonaki_pt_df[nonaki_pt_df['TIME']<=(nonaki_pt_df['LASTDOSE_TIME']-24)].copy()
-nonaki_pt_df = nonaki_pt_df[nonaki_pt_df['TIME']<=nonaki_pt_df['LASTDOSE_TIME']].copy()
+nonaki_pt_df = nonaki_pt_df[nonaki_pt_df['TIME']<=(nonaki_pt_df['LASTDOSE_TIME']-24)].copy()
 
 # raise ValueError
 aki_pt_df = final_sim_df[final_sim_df['UID'].isin(aki_ids)].copy()
