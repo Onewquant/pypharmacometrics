@@ -53,6 +53,7 @@ modeling_df['DVfloat'] = modeling_df['DV'].replace('.',np.nan).map(float)
 modeling_df['DATETIME'] = modeling_df['TIME']
 modeling_df['LLOQ'] = modeling_df['LLOQ'].fillna(method='bfill').fillna(method='ffill')
 
+# modeling_df['UID'].drop_duplicates()
 
 ## 환자 수 필터링 (나이 / HD 필터링)
 
@@ -81,6 +82,7 @@ hd_df.rename(columns={'ID':'UID'})
 hd_pids = hd_df['ID'].drop_duplicates()
 
 modeling_df = modeling_df[(modeling_df['ID'].isin(adult_pids))&(~(modeling_df['ID'].isin(hd_pids)))].copy()
+# modeling_df['UID'].drop_duplicates()
 # modeling_df['UID'].iloc[0]
 # modeling_df[modeling_df['UID']==24910778]
 # modeling_df[modeling_df['AMT']==25]
@@ -108,10 +110,12 @@ mod_zero_non_dv_pids = set()
 del_zero_non_dv_pids = set()
 abnm_conc_moving_pids = set()
 abnm_conc_moving_row_count = 0
+# first
 for id, id_df in modeling_df.groupby('ID'): #break
     try:
         first_dose_dt = id_df[id_df['MDV']==1]['TIME'].iloc[0]
     except:
+        no_dose_pids.add(id)
         # raise ValueError
         # DOSING DATA가 없는 경우 해당
         continue
@@ -227,7 +231,7 @@ if not os.path.exists(modeling_datacheck_dir):
     os.mkdir(modeling_datacheck_dir)
 
 modeling_datacheck_df.to_csv(f"{modeling_datacheck_dir}/amk_modeling_datacheck.csv",index=False, encoding='utf-8-sig')
-
+# modeling_datacheck_df['UID'].drop_duplicates()
 # final_modeling_df.columns
 
 # final_modeling_df = modeling_datacheck_df[com_cols+['UID','TDM_YEAR']].drop(['NAME'],axis=1)
@@ -240,8 +244,10 @@ final_modeling_df.to_csv(f"{modeling_datacheck_dir}/amk_modeling_df.csv",index=F
 print(f"[Check Point] Modeling Dataset: {len(modeling_df['ID'].unique())} patients")
 print(f"CONC or DOSE Data 부재: {len(no_oneside_pids)} patients / NO CONC: {len(no_conc_pids)} + NO DOSE: {len(no_dose_pids)}")
 print(f"Short dosing interval: {len(short_dosing_interval_pids)} patients")
+print(f"Negative time: {len(neg_time_pids)} patients")
 print(f"Modified (Non Zero CONC at TIME=0): {len(mod_zero_non_dv_pids)} patients")
 print(f"Deleted (Non Zero CONC at TIME=0): {len(del_zero_non_dv_pids)} patients")
+
 print(f"Abnormal conc movement: {len(abnm_conc_moving_pids)} patients / {abnm_conc_moving_row_count} rows")
 print(f"[Completed] Final Modeling Dataset: {len(modeling_datacheck_df['ID'].unique())} patients / {len(final_modeling_df['ID'])} rows")
 
