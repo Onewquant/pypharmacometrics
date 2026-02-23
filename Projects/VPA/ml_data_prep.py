@@ -13,9 +13,14 @@ resource_dir = f'{prj_dir}/resource/ysy_req'
 output_dir = f"{prj_dir}/results"
 
 
-# dili_df = pd.read_csv(f"{output_dir}/vpa_dili.csv")
-# dili_df = dili_df.rename(columns={'ID':'UID'})
-# print(f"Total DILI cases: {len(dili_df['UID'].drop_duplicates())}")
+dili_df = pd.read_csv(f"{output_dir}/DILI_event(0_1).csv")
+dili_df = dili_df.rename(columns={'ID':'UID'})
+dili_df['UID'] = dili_df['UID'].astype(str)
+# dili_df = dili_df.drop_duplicates(['UID'])
+# dili_df = dili_df[dili_df['DILI'] > 0].copy()
+# dili_df[['EP_START','EP_END']]
+# dili_df.columns
+print(f"Total DILI cases: {len(dili_df['UID'].drop_duplicates())}")
 # except_dili_df = dili_df[dili_df['DILI_DT']<24].copy()
 # excepted_dili_ids = set(except_dili_df['UID'])
 # print(f"-(Patients with DILI < 24hr): {excepted_dili_ids}")
@@ -25,6 +30,9 @@ output_dir = f"{prj_dir}/results"
 
 demo_df = pd.read_csv(f"{resource_dir}/demo/VPA_DEMO_SEX,AGE.csv")
 demo_df = demo_df.rename(columns={'ID':'UID'})
+demo_df['UID'] = demo_df['UID'].astype(str)
+demo_df['SEX'] = demo_df['SEX'].map({'남':0, '여':1})
+
 
 bs_files = glob.glob(f"{resource_dir}/BS_exam/VPA_BS_*.csv")
 for finx, fpath in enumerate(bs_files): #break
@@ -36,7 +44,7 @@ for finx, fpath in enumerate(bs_files): #break
         bsize_df = pd.concat([bsize_df, fdf])
 
 bsize_df = bsize_df.rename(columns={'ID':'UID'})
-
+bsize_df['UID'] = bsize_df['UID'].astype(str)
 
 # lab_list_df = pd.read_csv(f"{output_dir}/vpa_lablist_df.csv")
 # total_lab_cols = lab_list_df['LAB'].to_list()
@@ -64,6 +72,7 @@ for finx, fpath in enumerate(lab_files): #break
         lab_df = pd.concat([lab_df, fdf])
 
 lab_df = lab_df.rename(columns={'ID':'UID'})
+lab_df['UID'] = lab_df['UID'].astype(str)
 #
 #     pid = fpath.split('(')[-1].split('_')[0]
 #     pname = fpath.split('_')[-1].split(')')[0]
@@ -101,6 +110,7 @@ lab_df = lab_df.rename(columns={'ID':'UID'})
 # comed_df['DATE_LIST'].columns
 cm_df = pd.read_csv(f"{resource_dir}/cm/VPA_CM_DIAG.csv")
 cm_df = cm_df.rename(columns={'ID':'UID'})
+cm_df['UID'] = cm_df['UID'].astype(str)
 # cm_dict = pd.read_excel(f"{resource_dir}/cm/CM_index_table.xlsx")
 # cm_dict = cm_dict.set_index('CAT_NUM')['CM_CAT']
 # cm_dict.index.name = None
@@ -108,6 +118,7 @@ cm_df = cm_df.rename(columns={'ID':'UID'})
 
 vs_df = pd.read_csv(f"{resource_dir}/VS_exam/VPA_VS.csv")
 vs_df = vs_df.rename(columns={'ID':'UID'})
+vs_df['UID'] = vs_df['UID'].astype(str)
 # vs_df = vs_df.drop_duplicates(['UID','DATE','VS_TYPE'],keep='last')
 
 # proc_df = pd.read_csv(f"{output_dir}/final_procedure_df.csv")
@@ -129,6 +140,7 @@ vs_df = vs_df.rename(columns={'ID':'UID'})
 # losmot_df = pd.read_csv(f"{output_dir}/final_locmotality_df.csv")
 dose_df = pd.read_csv(f'{resource_dir}/drug/VPA_dose_df.csv')
 dose_df = dose_df.rename(columns={'DOSE':'AMT'})
+dose_df['UID'] = dose_df['UID'].astype(str)
 
 ml_df = dose_df.drop_duplicates(['UID'])[['UID']].reset_index(drop=True)
 ml_res_df = list()
@@ -142,12 +154,15 @@ for inx, row in ml_df.iterrows(): #break
 
 
     # 개별 dataframe 로드
-    # uid_aki_rows = dili_df[dili_df['UID'] == uid].copy()
-
+    uid_dili_rows = dili_df[dili_df['UID'] == uid].copy()
+    uid_demo_df = demo_df[demo_df['UID'] == str(uid)].copy()
+    uid_bsize_df = bsize_df[(bsize_df['UID']==uid)&(~bsize_df['LAB'].isna())].copy()
 
     uid_dose_df = dose_df[dose_df['UID']==uid].copy()
     uid_dose_df['AMT'] = uid_dose_df['AMT'].astype(float)
-    # uid_demo_last_row = uid_demo_df.iloc[-1]
+
+    uid_demo_last_row = uid_demo_df.iloc[-1]
+    # uid_bsize_row = uid_bsize_df
     uid_lab_df = lab_df[lab_df['UID']==uid].copy()
     # uid_lab_df['LAB'] = uid_lab_df['검사명']
     # uid_lab_df['VALUE'] = uid_lab_df['검사결과']
@@ -202,44 +217,43 @@ for inx, row in ml_df.iterrows(): #break
     # uid_micbio_df = micbio_df[micbio_df['UID']==uid].copy()
     # uid_losmot_df = losmot_df[losmot_df['UID']==uid].copy()
 
-    # AKI 발생여부 기록
+    # DILI 발생여부 기록
 
-    # AKI 발생 한 사람 (AKI 발생 시점이 첫 dosing 24시간 이후 일때만 포함되어 있음)
-    # if len(uid_aki_rows):
-    #     aki_occurrence = 1
-    #     aki_occurrence_time = uid_aki_rows.iloc[0]['AKI_DT']
-    #     aki_occurrence_dt = uid_aki_rows.iloc[0]['AKI_DATETIME']
-    #     aki_occurrence_date = aki_occurrence_dt.split('T')[0]
-    # else:
-    #     aki_occurrence = 0
-    #     aki_occurrence_time = np.nan
-    #     aki_occurrence_dt = uid_modeling_df.iloc[-1]['DATETIME_ORI']
-    #     aki_occurrence_date = aki_occurrence_dt.split('T')[0]
-    dosing_start_date = uid_dose_df['DATE'].min()
-    dili_occurrence_date = '0000-00-00'
+    # DILI 발생 한 사람 (DILI 발생 시점이 첫 dosing 24시간 이후 일때만 포함되어 있음)
+    if len(uid_dili_rows[uid_dili_rows['DILI']>0]):
+        dili_occurrence = 1
+        dili_occurrence_date = uid_dili_rows[uid_dili_rows['DILI']>0].iloc[0]['DILI_DATE']
+    else:
+        # uid_dili_rows['N_DOSE']
+        dili_occurrence = 0
+        dili_occurrence_date = uid_dili_rows.sort_values(['N_DOSE'], ascending=False).iloc[0]['EP_END'] # DOSING 가장 오래한 CYCLE로 선정
+    # dosing_start_date = uid_dose_df['DATE'].min()
+    # dili_occurrence_date = '0000-00-00'
 
 
     # BASELINE Features 정리
-    min30_bl_date = (datetime.strptime(dosing_start_date, '%Y-%m-%d') - timedelta(days=30)).strftime('%Y-%m-%d')
-    min14_bl_date = (datetime.strptime(dosing_start_date, '%Y-%m-%d') - timedelta(days=14)).strftime('%Y-%m-%d')
-    min7_bl_date = (datetime.strptime(dosing_start_date, '%Y-%m-%d') - timedelta(days=7)).strftime('%Y-%m-%d')
-    min3_bl_date = (datetime.strptime(dosing_start_date, '%Y-%m-%d') - timedelta(days=3)).strftime('%Y-%m-%d')
+    min30_bl_date = (datetime.strptime(dili_occurrence_date, '%Y-%m-%d') - timedelta(days=30)).strftime('%Y-%m-%d')
+    min14_bl_date = (datetime.strptime(dili_occurrence_date, '%Y-%m-%d') - timedelta(days=14)).strftime('%Y-%m-%d')
+    min7_bl_date = (datetime.strptime(dili_occurrence_date, '%Y-%m-%d') - timedelta(days=7)).strftime('%Y-%m-%d')
+    min3_bl_date = (datetime.strptime(dili_occurrence_date, '%Y-%m-%d') - timedelta(days=3)).strftime('%Y-%m-%d')
     min_bl_date = (datetime.strptime(dili_occurrence_date, '%Y-%m-%d') - timedelta(days=3)).strftime('%Y-%m-%d')
     max_bl_date = (datetime.strptime(dili_occurrence_date, '%Y-%m-%d') - timedelta(days=1)).strftime('%Y-%m-%d')
     # max_bl_dt = (datetime.strptime(dosing_start_date, '%Y-%m-%dT%H:%M') - timedelta(hours=24)).strftime('%Y-%m-%dT%H:%M')
 
     # 데이터 중간 처리
-    uid_cm_df['CM_PERIOD_FROM_DATE'] = uid_cm_df['CM_PERIOD_FROM'].map(lambda x: (datetime.strptime(max_bl_date, '%Y-%m-%d') - timedelta(days=x)).strftime('%Y-%m-%d'))
+    # uid_cm_df['CM_PERIOD_FROM_DATE'] = uid_cm_df['CM_PERIOD_FROM'].map(lambda x: (datetime.strptime(max_bl_date, '%Y-%m-%d') - timedelta(days=x)).strftime('%Y-%m-%d'))
+    # uid_cm_df.columns
     # uid_proc_df['CM_PERIOD_FROM_DATE'] = uid_proc_df['PROC_PERIOD_FROM'].map(lambda x: (datetime.strptime(max_bl_date, '%Y-%m-%d') - timedelta(days=x)).strftime('%Y-%m-%d'))
 
     # ml feature 기록용 데이터 필터링
-    ml_demo_df = uid_modeling_df[(uid_modeling_df['DATE'] <= dili_occurrence_date)&(uid_modeling_df['DATE'] >= min7_bl_date)].copy()
+    ml_bsize_df = uid_bsize_df[(uid_bsize_df['DATE'] <= dili_occurrence_date)&(uid_bsize_df['DATE'] >= min7_bl_date)].copy()
+    uid_demo_df
     ml_demo_df_last_row = ml_demo_df.iloc[-1]
 
     # ml_lab_df = uid_lab_df[(uid_lab_df['DATE'] <= max_bl_date)&(uid_lab_df['DATE'] >= min_bl_date)].copy()
     ml_lab_df = uid_lab_df[(uid_lab_df['DATE'] <= max_bl_date)&(uid_lab_df['DATE'] >= min14_bl_date)].copy()
     # ml_comed_df = uid_comed_df[(uid_comed_df['DATE'] <= max_bl_date)&(uid_comed_df['DATE'] >= min_bl_date)].copy()
-    ml_cm_df = uid_cm_df[(uid_cm_df['DATE'] >= uid_cm_df['CM_PERIOD_FROM_DATE'])&(uid_cm_df['DATE'] <= max_bl_date)].copy()
+    ml_cm_df = uid_cm_df[(uid_cm_df['DATE'] >= min30_bl_date)&(uid_cm_df['DATE'] <= max_bl_date)].copy()
     ml_vs_df = uid_vs_df[(uid_vs_df['DATE'] <= max_bl_date)&(uid_vs_df['DATE'] >= min30_bl_date)].copy()
     # ml_proc_df = uid_proc_df[(uid_proc_df['DATE'] >= uid_proc_df['CM_PERIOD_FROM_DATE'])&(uid_proc_df['DATE'] <= max_bl_date)].copy()
     # ml_micbio_df = uid_micbio_df[(uid_micbio_df['DATE'] <= max_bl_date)&(uid_micbio_df['DATE'] >= min14_bl_date)].copy()

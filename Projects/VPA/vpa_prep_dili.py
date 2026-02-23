@@ -15,98 +15,132 @@ ast_lab_df = pd.read_csv(f"{resource_dir}/LAB_exam/VPA/VPA_LAB_AST.csv")
 tbil_lab_df = pd.read_csv(f"{resource_dir}/LAB_exam/VPA/VPA_LAB_T.B.csv")
 
 
+dose_df = dose_df.rename(columns={'UID':'ID'})
+alt_lab_df = alt_lab_df.rename(columns={'VALUE':'ALT'})
+ast_lab_df = ast_lab_df.rename(columns={'VALUE':'AST'})
+tbil_lab_df = tbil_lab_df.rename(columns={'VALUE':'T.B'})
 
 """
-# (1) 48h 이내에 Cr 0.3 증가
-# (2) 7일 이내에 기저치 * 1.5 이상으로 상승 
+# (1) ALT > 120 and T.B >2.4
+# (2) ALT/AST > 200
 """
+# ==== 설정 (너 데이터 컬럼명에 맞춰 바꿔) ====
+ID_COL = 'ID'
+DOSE_DATE_COL = 'DATE'   # 투약일 컬럼
+GAP_DAYS = 30            # 이보다 큰 공백이면 episode 끊기
+WASHOUT_DAYS = 30        # risk window 연장
 
-cycle_df = list()
-for inx, frag_df in dose_df.groupby('UID'):# break
-    frag_df = frag_df.sort_values(['TIME'])
-    cycle_df.append({'UID':inx, 'SDOSE_TIME':frag_df['TIME'].iloc[0], 'LDOSE_TIME':frag_df['TIME'].iloc[-1],'DOSING_COUNT':len(frag_df), 'TOTAL_DAYS':(frag_df['TIME'].iloc[-1]-frag_df['TIME'].iloc[0])/24, 'TOTAL_DOSE':frag_df['AMT'].sum()})
+# ==== 1) 투약일 episode 생성 ====
+dose = dose_df[[ID_COL, DOSE_DATE_COL]].copy()
+dose[DOSE_DATE_COL] = pd.to_datetime(dose[DOSE_DATE_COL])
+dose = dose.dropna(subset=[ID_COL, DOSE_DATE_COL]).sort_values([ID_COL, DOSE_DATE_COL])
 
-cycle_df = pd.DataFrame(cycle_df)
+dose['prev_dt'] = dose.groupby(ID_COL)[DOSE_DATE_COL].shift(1)
+dose['gap'] = (dose[DOSE_DATE_COL] - dose['prev_dt']).dt.days
 
-# def dtstr_calculation(dtstr, days, format='%Y-%m-%dT%H:%M'):
-#     return (datetime.strptime(dtstr, format) + timedelta(days=days)).strftime(format)
+# 새 episode 시작: 첫 기록이거나 gap > GAP_DAYS
+dose['new_ep'] = ((dose['prev_dt'].isna()) | (dose['gap'] > GAP_DAYS)).astype(int)
+dose['ep_no'] = dose.groupby(ID_COL)['new_ep'].cumsum()
 
-aki_df = list()
-result_cols = ['UID','COND_TYPE','BLCr_DT','BLCr_DATETIME','BLCr_RSLT','AKI_DT','AKI_DATETIME','AKI_RSLT']
-result_df = list()
-for inx, row in cycle_df.iterrows(): #break
-    # if inx[0]==148484876560382: raise ValueError
-    # if row['UID']==9:
-    #     raise ValueError
-    id_cr_df = sim_df[sim_df['UID']==row['UID']].sort_values(['TIME'])
+episode_df = (dose.groupby([ID_COL, 'ep_no'])
+              .agg(EP_START=(DOSE_DATE_COL, 'min'),
+                   EP_END=(DOSE_DATE_COL, 'max'),
+                   N_DOSE=(DOSE_DATE_COL, 'count'))
+              .reset_index())
 
-    print(f"({inx}) {row['UID']}")
+episode_df['RW_END'] = episode_df['EP_END'] + pd.Timedelta(days=WASHOUT_DAYS)
 
-    # before_month_dt = dtstr_calculation(dtstr=row['SDOSE_TIME'], days=-30)
-    # after_2days_dt = dtstr_calculation(dtstr=row['LDOSE_TIME'], days=2)
+episode_df.head()
 
-    # before_month_dt = row['SDOSE_TIME'] -
-    # after_2days_dt = (datetime.strptime(row['LDOSE_TIME'], '%Y-%m-%dT%H:%M') + timedelta(days=2)).strftime('%Y-%m-%dT%H:%M')
+LAB_ID_COL = 'ID'
+LAB_DATE_COL = 'DATE'
+ALT_COL = 'ALT'
+AST_COL = 'AST'
+TBIL_COL = 'T.B'   # 네 파일에서는 T.B.를 어떤 컬럼명으로 저장했는지에 맞춰 수정
 
-    # afterdose_df = id_lab_df[(id_lab_df['TIME'] > row['SDOSE_TIME'])].copy()
-    # recentbl_df = id_lab_df.iloc[:1,:].copy()
+alt = alt_lab_df[[LAB_ID_COL, LAB_DATE_COL, ALT_COL]].copy()
+ast = ast_lab_df[[LAB_ID_COL, LAB_DATE_COL, AST_COL]].copy()
+tbi = tbil_lab_df[[LAB_ID_COL, LAB_DATE_COL, TBIL_COL]].copy()
 
-    # id_cr_df.columns
-    # id_cr_df = pd.concat([recentbl_df, afterdose_df])
-    for cr_inx, cr_row in id_cr_df.iterrows():#break
+def normalize_id(series: pd.Series) -> pd.Series:
+    s = series.astype(str).str.strip()
+    # 10000456.0 -> 10000456
+    s = s.str.replace(r'\.0$', '', regex=True)
+    return s
 
-        bl_dt = cr_row['TIME']
-        bl_dt_ori = cr_row['DATETIME_ORI']
-        bl_cr = cr_row['CREATININE']
+dose_df[ID_COL] = normalize_id(dose_df[ID_COL])
+alt_lab_df[LAB_ID_COL] = normalize_id(alt_lab_df[LAB_ID_COL])
+ast_lab_df[LAB_ID_COL] = normalize_id(ast_lab_df[LAB_ID_COL])
+tbil_lab_df[LAB_ID_COL] = normalize_id(tbil_lab_df[LAB_ID_COL])
 
-        aki_48h_dt = cr_row['TIME'] + 24*2
-        aki_7days_dt = cr_row['TIME'] + 24*7
+for df in [alt, ast, tbi]:
+    df[LAB_DATE_COL] = pd.to_datetime(df[LAB_DATE_COL])
 
-        # aki_48h_dt = dtstr_calculation(dtstr=cr_row['DT'], days=2)
-        # aki_7days_dt = dtstr_calculation(dtstr=cr_row['DT'], days=7)
+# 같은 ID/DATE에 여러 값이 있으면 (최대값 등)으로 하나로 정리 (보수적으로 MAX 권장)
+alt = alt.groupby([LAB_ID_COL, LAB_DATE_COL], as_index=False)[ALT_COL].max()
+ast = ast.groupby([LAB_ID_COL, LAB_DATE_COL], as_index=False)[AST_COL].max()
+tbi = tbi.groupby([LAB_ID_COL, LAB_DATE_COL], as_index=False)[TBIL_COL].max()
 
-        # (1) 48h 이내에 Cr 0.3 증가
-        # (2) 7일 이내에 기저치 * 1.5 이상으로 상승
+lab_wide = alt.merge(ast, on=[LAB_ID_COL, LAB_DATE_COL], how='outer') \
+              .merge(tbi, on=[LAB_ID_COL, LAB_DATE_COL], how='outer')
 
-        if (((id_cr_df['TIME'] < aki_48h_dt) & (id_cr_df['TIME'] > bl_dt))*1).sum() > 0:
-            cond_exist_df = id_cr_df[(id_cr_df['TIME'] < aki_48h_dt) & (id_cr_df['TIME'] > bl_dt)].copy()
-            aki_exist_df = cond_exist_df[cond_exist_df['CREATININE'] >= bl_cr+0.3].copy()
-            if len(aki_exist_df)>0:
-                aki_exist_df = aki_exist_df.rename(columns={'TIME':'AKI_DT','DATETIME_ORI':'AKI_DATETIME','CREATININE':'AKI_RSLT'})
-                aki_exist_df['COND_TYPE'] = '48h'
-                aki_exist_df['BLCr_DT'] = bl_dt
-                aki_exist_df['BLCr_DATETIME'] = bl_dt_ori
-                aki_exist_df['BLCr_RSLT'] = bl_cr
-                result_df.append(aki_exist_df[result_cols].copy())
+lab_wide = lab_wide.sort_values([LAB_ID_COL, LAB_DATE_COL])
+lab_wide.head()
+lab_wide['ID'] = normalize_id(lab_wide['ID'])
 
+# 3) DILI flag 계산 (너 기준 반영)
+# =========================
+# Rule 1: ALT > 120 and TBil > 2.4
+rule1 = (lab_wide[ALT_COL] > 120) & (lab_wide[TBIL_COL] > 2.4)
 
-        if (((id_cr_df['TIME'] < aki_7days_dt) & (id_cr_df['TIME'] > bl_dt)) * 1).sum() > 0:
-            cond_exist_df = id_cr_df[(id_cr_df['TIME'] < aki_7days_dt) & (id_cr_df['TIME'] > bl_dt)].copy()
-            aki_exist_df = cond_exist_df[cond_exist_df['CREATININE'] >= bl_cr*1.5].copy()
-            if len(aki_exist_df)>0:
-                aki_exist_df = aki_exist_df.rename(columns={'TIME':'AKI_DT','DATETIME_ORI':'AKI_DATETIME','CREATININE':'AKI_RSLT'})
-                aki_exist_df['COND_TYPE'] = '7days'
-                aki_exist_df['BLCr_DT'] = bl_dt
-                aki_exist_df['BLCr_DATETIME'] = bl_dt_ori
-                aki_exist_df['BLCr_RSLT'] = bl_cr
-                result_df.append(aki_exist_df[result_cols].copy())
+# Rule 2: ALT > 200 or AST > 200
+rule2 = (lab_wide[ALT_COL] > 200) | (lab_wide[AST_COL] > 200)
 
-result_df = pd.concat(result_df)
-result_df = result_df.drop_duplicates()
-sorted_result_df = result_df.sort_values(['UID','AKI_DT']).drop_duplicates(subset=['UID'])
-filt_res_df_new = sorted_result_df[sorted_result_df['AKI_DT']>=24].copy()
-# filt_res_df = result_df[result_df['BLCr_RSLT']<=1.2].copy()
-# filt_res_df_new = filt_res_df[filt_res_df['AKI_RSLT']>1.2].copy()
+lab_wide['DILI_FLAG'] = rule1 | rule2
 
-# filt_res_df_new1 = result_df[result_df['AKI_DT']>=24].copy()
-# filt_res_df_new2 = sorted_result_df[sorted_result_df['AKI_DT']>=24].copy()
+# (선택) 어떤 규칙으로 걸렸는지 확인용
+lab_wide['DILI_RULE'] = np.select(
+    [rule1 & rule2, rule1, rule2],
+    ['RULE1+RULE2', 'RULE1', 'RULE2'],
+    default=''
+)
 
-# uids1 = set(sorted_result_df.drop_duplicates(['UID'])['UID'])
-# uids2 = set(filt_res_df_new2.drop_duplicates(['UID'])['UID'])
-# uids1 - uids2
-# len(uids1 - uids2)
-# result_df[result_df['UID']==25524226][['COND_TYPE','BLCr_DATETIME','BLCr_RSLT','AKI_DATETIME','AKI_RSLT']]
-sorted_result_df.to_csv(f'{output_dir}/amk_aki.csv', index=False, encoding='utf-8')
-# result_df.to_csv(f'{output_dir}/amk_aki.csv', index=False, encoding='utf-8')
-print(f"AKI cases: {len(result_df['UID'].drop_duplicates())}")
-print(f"AKI cases (filt): {len(filt_res_df_new['UID'].drop_duplicates())}")
+# =========================
+# 4) episode risk window 안에서 DILI 발생일(최초) 찾기
+# =========================
+episode_df[ID_COL] = normalize_id(episode_df[ID_COL])
+lab_wide[LAB_ID_COL] = normalize_id(lab_wide[LAB_ID_COL])
+tmp = episode_df.merge(lab_wide, left_on=ID_COL, right_on=LAB_ID_COL, how='left')
+
+tmp = tmp[
+    (tmp[LAB_DATE_COL] >= tmp['EP_START']) &
+    (tmp[LAB_DATE_COL] <= tmp['RW_END'])
+].copy()
+
+dili_by_ep = (tmp[tmp['DILI_FLAG']]
+              .sort_values([ID_COL, 'ep_no', LAB_DATE_COL])
+              .groupby([ID_COL, 'ep_no'], as_index=False)
+              .first()[[ID_COL, 'ep_no', LAB_DATE_COL, 'DILI_RULE']])
+
+dili_by_ep = dili_by_ep.rename(columns={LAB_DATE_COL: 'DILI_DATE'})
+
+episode_df = episode_df.merge(dili_by_ep, on=[ID_COL, 'ep_no'], how='left')
+episode_df['DILI'] = episode_df['DILI_DATE'].notna().astype(int)
+
+# =========================
+# 5) 결과 확인
+# =========================
+print(episode_df[['ID','ep_no','EP_START','EP_END','RW_END','N_DOSE','DILI','DILI_DATE','DILI_RULE']].head(30))
+
+# 환자 기준으로 "어떤 episode든 DILI 있으면 1" 요약도 필요하면:
+patient_dili = (episode_df.groupby(ID_COL, as_index=False)
+                .agg(DILI=('DILI','max'),
+                     FIRST_DILI_DATE=('DILI_DATE','min')))
+print(patient_dili.head(20))
+
+patient_dili['DILI'].mean(), patient_dili['DILI'].sum(), patient_dili.shape[0]
+# tmp = episode_df[episode_df['DILI']==1]
+# tmp['DILI_RULE'].value_counts()
+# tmp.to_csv(f'{output_dir}/DILI_event.csv', index=False, encoding='utf-8-sig')
+episode_df.to_csv(f'{output_dir}/DILI_event(0_1).csv', index=False, encoding='utf-8-sig')
+# patient_dili['DILI'].mean(), patient_dili['DILI'].sum(), patient_dili.shape[0]

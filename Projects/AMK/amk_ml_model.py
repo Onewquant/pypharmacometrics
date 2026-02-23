@@ -46,8 +46,8 @@ df = pd.read_csv(f"{output_dir}/final_mlres_data.csv")
 rid_df = pd.read_csv(f"{resource_dir}/[AMK_AKI_ML_DATA]/재식별 파일.csv")
 rid_df = rid_df.rename(columns={'Deidentification_ID':'UID','환자번호':'PID'})
 
-mot_df = pd.read_csv(f"{resource_dir}/[AMK_AKI_ML_DATA]/MORTAL.csv")
-mot_df = mot_df.rename(columns={'환자번호':'PID','사망일자':'MOT_DATE'}).merge(rid_df, on=['PID'], how='left').drop(['PID'], axis=1)
+mort_df = pd.read_csv(f"{resource_dir}/[AMK_AKI_ML_DATA]/MORTAL.csv")
+mort_df = mort_df.rename(columns={'환자번호':'PID','사망일자':'MOT_DATE'}).merge(rid_df, on=['PID'], how='left').drop(['PID'], axis=1)
 
 los_df = pd.read_csv(f"{resource_dir}/[AMK_AKI_ML_DATA]/LOS.csv")
 los_df = los_df.rename(columns={'환자번호':'PID'}).merge(rid_df, on=['PID'], how='left').drop(['PID'], axis=1)
@@ -108,5 +108,45 @@ for uid, adm_dates in uid_admdate_dict.items(): #break
 more_than_one_df = los_df[los_df['재원일수']>1].copy()
 gen_los_df=pd.concat([more_than_one_df,rest_df])
 
+# df['LOS'] = np.nan
+los_list = list()
+mort_list = list()
+for inx, row in df.iterrows():
+    uid = row['UID']
+    aki_date = row['AKI_DATE']
+    uid_los_df = gen_los_df[gen_los_df['UID']==uid].copy()
+    uid_los_row_df = uid_los_df[(uid_los_df['입원일자'] <= aki_date)&(uid_los_df['퇴원일자'] >= aki_date)].copy()
 
+    uid_mot_df = mort_df[mort_df['UID'] == uid].copy()
+
+    if len(uid_mot_df)==0:
+        mort_yn = 0
+    else:
+        if len(uid_los_row_df)==0:
+            mort_yn = 0
+        else:
+            uid_los_row = uid_los_row_df.iloc[0]
+            if (uid_los_row['입원일자'] <= uid_mot_df.iloc[0]['MOT_DATE']) and (uid_los_row['퇴원일자'] >= uid_mot_df.iloc[0]['MOT_DATE']):
+                mort_yn = 1
+            else:
+                mort_yn = 0
+
+    if len(uid_los_row_df)==0:
+        print(f'({inx}) {uid} / no row')
+        uid_los_days = np.nan
+    else:
+        print(f'({inx}) {uid} / >= 1 rows')
+        uid_los_days = uid_los_row_df.iloc[0]['재원일수']
+
+
+
+    mort_list.append(mort_yn)
+    los_list.append(uid_los_days)
+
+df['LOS'] = los_list
+df['MORTAL'] = mort_list
+
+drop_list = df.loc[:,'BL_LAB_DATE':'LAST_DOSE_DATE'].columns
+final_df = df.drop(drop_list, axis=1).rename(columns={'AKI_DATE':'DATE'})
+final_df.to_csv(f"{output_dir}/final_mlres_data5.csv", index=False, encoding='utf-8-sig')
 # (datetime.strptime('2024-03-07','%Y-%m-%d')-datetime.strptime('2020-08-19','%Y-%m-%d')).days
