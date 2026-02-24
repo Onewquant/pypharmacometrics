@@ -222,14 +222,21 @@ for inx, row in ml_df.iterrows(): #break
     # DILI 발생 한 사람 (DILI 발생 시점이 첫 dosing 24시간 이후 일때만 포함되어 있음)
     if len(uid_dili_rows[uid_dili_rows['DILI']>0]):
         dili_occurrence = 1
-        dili_occurrence_date = uid_dili_rows[uid_dili_rows['DILI']>0].iloc[0]['DILI_DATE']
+        uid_cycle_row = uid_dili_rows[uid_dili_rows['DILI']>0].iloc[0]
+        dili_occurrence_date = uid_cycle_row['DILI_DATE']
     else:
         # uid_dili_rows['N_DOSE']
         dili_occurrence = 0
-        dili_occurrence_date = uid_dili_rows.sort_values(['N_DOSE'], ascending=False).iloc[0]['EP_END'] # DOSING 가장 오래한 CYCLE로 선정
-    # dosing_start_date = uid_dose_df['DATE'].min()
-    # dili_occurrence_date = '0000-00-00'
+        uid_cycle_row = uid_dili_rows.sort_values(['N_DOSE'], ascending=False).iloc[0]
+        dili_occurrence_date = uid_cycle_row['EP_END'] # DOSING 가장 오래한 CYCLE로 선정
 
+    # DILI 발생일 (or DOSING을 가장 오래한 CYCLE의 마지막 날) 기준으로 1일 전에 DOSING 기록이 존재하는 환자만 남김
+
+    ml_dose_df = uid_dose_df[uid_dose_df['DATE'] < dili_occurrence_date].copy()
+    if len(ml_dose_df) == 0:
+        no_dose_pids.append(uid)
+        print(f"/ No dose data")
+        continue
 
     # BASELINE Features 정리
     min30_bl_date = (datetime.strptime(dili_occurrence_date, '%Y-%m-%d') - timedelta(days=30)).strftime('%Y-%m-%d')
@@ -246,9 +253,10 @@ for inx, row in ml_df.iterrows(): #break
     # uid_proc_df['CM_PERIOD_FROM_DATE'] = uid_proc_df['PROC_PERIOD_FROM'].map(lambda x: (datetime.strptime(max_bl_date, '%Y-%m-%d') - timedelta(days=x)).strftime('%Y-%m-%d'))
 
     # ml feature 기록용 데이터 필터링
-    ml_bsize_df = uid_bsize_df[(uid_bsize_df['DATE'] <= dili_occurrence_date)&(uid_bsize_df['DATE'] >= min7_bl_date)].copy()
-    uid_demo_df
-    ml_demo_df_last_row = ml_demo_df.iloc[-1]
+    ml_bsize_df = uid_bsize_df[(uid_bsize_df['DATE'] < dili_occurrence_date)&(uid_bsize_df['DATE'] >= min7_bl_date)].copy()
+    uid_demo_df['AGE'] = int((datetime.strptime(max_bl_date, '%Y-%m-%d') - datetime.strptime(uid_demo_df['BIRTHDATE'].iloc[0], '%Y-%m-%d')).total_seconds()/86400/365.25)
+    # bsize 데이터 정상화 되면 uid_demo_df에다가 WT, HT 붙여서 사용해야함
+    ml_demo_df_last_row = uid_demo_df.iloc[-1]
 
     # ml_lab_df = uid_lab_df[(uid_lab_df['DATE'] <= max_bl_date)&(uid_lab_df['DATE'] >= min_bl_date)].copy()
     ml_lab_df = uid_lab_df[(uid_lab_df['DATE'] <= max_bl_date)&(uid_lab_df['DATE'] >= min14_bl_date)].copy()
@@ -259,66 +267,52 @@ for inx, row in ml_df.iterrows(): #break
     # ml_micbio_df = uid_micbio_df[(uid_micbio_df['DATE'] <= max_bl_date)&(uid_micbio_df['DATE'] >= min14_bl_date)].copy()
     # uid_losmot_df = uid_micbio_df[(uid_micbio_df['DATE'] <= max_bl_date)&(uid_micbio_df['DATE'] >= min14_bl_date)].copy()
     # uid_dose_df['AMT']
-    ml_dose_df = uid_dose_df[(uid_dose_df['DATETIME_ORI'] <= max_bl_date)].copy()
-    if len(ml_dose_df)==0:
-        no_dose_pids.append(uid)
-        print(f"/ No dose data")
-        continue
+
 
     # first_dose_dt = ml_dose_df.iloc[0]['DATETIME_ORI']
     # last_dose_dt = ml_dose_df.iloc[-1]['DATETIME_ORI']
-    first_dose_dt = ml_dose_df.iloc[0]['DATE']
+    first_dose_dt = uid_dose_df.iloc[0]['DATE']
     last_dose_dt = ml_dose_df.iloc[-1]['DATE']
 
     ## ml feature 기록
     ml_row_dict['UID'] = uid
 
     # Demographics
-    for c in ['ID','AGE','SEX','WT','HT']:
+    # for c in ['ID','AGE','SEX','WT','HT']:
+    for c in ['UID','AGE','SEX']:
         ml_row_dict[c] = ml_demo_df_last_row[c]
-    ml_row_dict['BMI'] = round(ml_row_dict['WT']/((ml_row_dict['HT']/100)**2),3)
+    # ml_row_dict['BMI'] = round(ml_row_dict['WT']/((ml_row_dict['HT']/100)**2),3)
 
-    # raise ValueError
-    # if uid==11428893:
-    #     raise ValueError
 
-    # DOSE
+    # DOSE (현재 WT 정보가 정확치 않아서 WT 로 계산된 것은 주석처리되어 있음)
     ml_row_dict['LAST_DOSE'] = ml_dose_df.iloc[-1]['AMT']
     ml_row_dict['LAST_DAILY_DOSE'] = ml_dose_df.groupby('DATE').agg({'AMT':'sum'}).iloc[-1]['AMT']
-    ml_row_dict['LAST_DOSE_perWT'] = round(ml_row_dict['LAST_DOSE']/ml_row_dict['WT'],3)
-    ml_row_dict['LAST_DAILY_DOSE_perWT'] = round(ml_row_dict['LAST_DAILY_DOSE']/ml_row_dict['WT'],3)
+    # ml_row_dict['LAST_DOSE_perWT'] = round(ml_row_dict['LAST_DOSE']/ml_row_dict['WT'],3)
+    # ml_row_dict['LAST_DAILY_DOSE_perWT'] = round(ml_row_dict['LAST_DAILY_DOSE']/ml_row_dict['WT'],3)
     # ml_row_dict['DURATION(DAYS)'] = (ml_dose_df.iloc[-1]['TIME'] - ml_dose_df.iloc[0]['TIME'] + 1)/24
-    ml_row_dict['DURATION(DAYS)'] = round((ml_dose_df.iloc[-1]['TIME'] - ml_dose_df.iloc[0]['TIME'])/24,3)
+    ml_row_dict['DURATION(DAYS)'] = round((datetime.strptime(ml_dose_df.iloc[-1]['DT_DOSE'].split(':')[0], '%Y-%m-%dT%H') - datetime.strptime(ml_dose_df.iloc[0]['DT_DOSE'].split(':')[0], '%Y-%m-%dT%H')).total_seconds()/86400,3)
     ml_row_dict['CUM_DOSE'] = ml_dose_df['AMT'].sum()
     ml_row_dict['MEAN_DAILY_DOSE'] = round(ml_row_dict['CUM_DOSE']/ml_row_dict['DURATION(DAYS)'],3)
-    ml_row_dict['MEAN_DAILY_DOSE_perWT'] = round(ml_row_dict['CUM_DOSE']/ml_row_dict['WT'], 3)
+    # ml_row_dict['MEAN_DAILY_DOSE_perWT'] = round(ml_row_dict['CUM_DOSE']/ml_row_dict['WT'], 3)
 
-    # raise ValueError
 
-    # COMORBIDITY
-    uid_uniq_cm_inx_list = list(ml_cm_df['CM_CATNUM'].unique())
-    for cm_inx, cm_name in cm_dict.items():
-        if cm_inx in uid_uniq_cm_inx_list:
-            ml_row_dict[cm_name] = 1
-        else:
-            ml_row_dict[cm_name] = 0
+    ## COMORBIDITY
+    ml_row_dict['CM_COUNT'] = len(ml_cm_df.drop_duplicates(['DIAGNOSIS']))
 
-    # CONCOMITANT MEDICATION
-    # raise ValueError
-    # ml_comed_df.columns
-    uid_uniq_comed_inx_list = list(ml_comed_df['CCM_CATNUM'].unique())
-    for comed_inx, comed_name in comed_dict.items():
-        if comed_inx in uid_uniq_comed_inx_list:
-            ml_row_dict[comed_name] = 1
-        else:
-            ml_row_dict[comed_name] = 0
+    ## CONCOMITANT MEDICATION
+    # uid_uniq_comed_inx_list = list(ml_comed_df['CCM_CATNUM'].unique())
+    # for comed_inx, comed_name in comed_dict.items():
+    #     if comed_inx in uid_uniq_comed_inx_list:
+    #         ml_row_dict[comed_name] = 1
+    #     else:
+    #         ml_row_dict[comed_name] = 0
+    #
+    # if len(ml_comed_df)==0:
+    #     ml_row_dict['AT LEAST ONE NEPHROTOXIC AGENT'] = 0
+    # else:
+    #     ml_row_dict['AT LEAST ONE NEPHROTOXIC AGENT'] = int(ml_comed_df['NEPHTOX_DRUG_YN'].max())
 
-    if len(ml_comed_df)==0:
-        ml_row_dict['AT LEAST ONE NEPHROTOXIC AGENT'] = 0
-    else:
-        ml_row_dict['AT LEAST ONE NEPHROTOXIC AGENT'] = int(ml_comed_df['NEPHTOX_DRUG_YN'].max())
-
-    # LAB
+    ## LAB
     try:
         uid_last_lab_row = ml_lab_df.fillna(method='ffill').fillna(method='bfill').iloc[-1]
     except:
@@ -352,8 +346,8 @@ for inx, row in ml_df.iterrows(): #break
     #         ml_row_dict[micbio_name] = 0
 
     # OUTCOME
-    ml_row_dict['AKI_OCCURRENCE'] = aki_occurrence
-    ml_row_dict['AKI_DATE'] = aki_occurrence_date
+    ml_row_dict['AKI_OCCURRENCE'] = dili_occurrence
+    ml_row_dict['AKI_DATE'] = dili_occurrence_date
     ml_row_dict['BL_LAB_DATE'] = uid_last_lab_row['DATE']
     ml_row_dict['FIRST_DOSE_DATE'] = first_dose_dt
     ml_row_dict['LAST_DOSE_DATE'] = last_dose_dt
@@ -365,7 +359,7 @@ for inx, row in ml_df.iterrows(): #break
 ml_res_df = pd.DataFrame(ml_res_df)
 # ml_res_df['UID']
 # ml_res_df = pd.read_csv(f"{output_dir}/final_mlres_data.csv")
-ml_res_df2 = ml_res_df[(~ml_res_df['UID'].isin(excepted_aki_ids))&(ml_res_df['DURATION(DAYS)']>=1)].copy()
+ml_res_df2 = ml_res_df[(ml_res_df['DURATION(DAYS)']>=1)].copy()
 ml_res_df2.to_csv(f"{output_dir}/final_mlres_data.csv", index=False, encoding='utf-8-sig')
 # ml_res_df['AT LEAST ONE NEPHROTOXIC AGENT'].unique()
 # ml_res_df['AT LEAST ONE NEPHROTOXIC AGENT'] = ml_res_df['AT LEAST ONE NEPHROTOXIC AGENT'].map(lambda x: int(x) if not np.isnan(x) else np.nan)
