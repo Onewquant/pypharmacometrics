@@ -32,19 +32,67 @@ demo_df = pd.read_csv(f"{resource_dir}/demo/VPA_DEMO_SEX,AGE.csv")
 demo_df = demo_df.rename(columns={'ID':'UID'})
 demo_df['UID'] = demo_df['UID'].astype(str)
 demo_df['SEX'] = demo_df['SEX'].map({'남':0, '여':1})
+#
+# uid_df_dict = {}
+#
+# for i in range(1,5):
+#     res_filename = f'251202_재식별 파일_DILI_{i}.csv'
+#     uid_df_dict[i] = pd.read_csv(f'{resource_dir}/re_identification/{res_filename}')
+#     uid_df_dict[i] = uid_df_dict[i].rename(columns={'Deidentification_ID':'UID','환자번호':'ID'})
+#     uid_df_dict[i]['ID'] = uid_df_dict[i]['ID'].map(lambda x:x.split('-')[0])
+#     uid_df_dict[i] = uid_df_dict[i][['ID','UID']].copy()
+#
+# fdf.columns
+# fdf = fdf.rename(columns={'항목명':'LAB','항목값':'VALUE','환자번호':'ID','간호기록 작성일자':'DATE'})[['ID','DATE', 'LAB','VALUE']]
+# # fdf = fdf.rename(columns={'BS':'LAB',})[['ID','DATE', 'LAB','VALUE']]
+# # lab_df = pd.read_csv(lab_file)
+# fdf['ID'] = fdf['ID'].map(lambda x:x.split('-')[0])
+#
+# for i in range(1,5):
+#     # i = 2
+#     fdf_test = fdf.merge(uid_df_dict[i], on=['ID'], how='left')
+#     uid_pct = ((~(fdf_test['UID'].isna())).sum()) / len(fdf_test)
+#     print(uid_pct)
+#     if uid_pct > 0.7:
+#         # raise ValueError
+#         # lab_df_test
+#         fdf_test['ID'] = fdf_test['UID']
+#         fdf_test = fdf_test.drop(['UID'], axis=1)
+#         fdf_test.to_csv(f"{resource_dir}/BS_exam/VPA_BS_HT.csv", index=False, encoding='utf-8-sig')
+#         print(f"파일 치환 완료 | {resource_dir}/BS_exam/VPA_BS_HT.csv")
+#         break
+#     else:
+#         continue
+#
+# fdf = pd.read_csv(f"{resource_dir}/BS_exam/VPA_BS_HT.csv")
 
 
 bs_files = glob.glob(f"{resource_dir}/BS_exam/VPA_BS_*.csv")
 for finx, fpath in enumerate(bs_files): #break
     print(f"({finx}) Append / {fpath} ")
     fdf = pd.read_csv(fpath)
+    if type(fdf['ID'].iloc[0])==float:
+        fdf['ID']=fdf['ID'].map(lambda x:str(x).split('.')[0])
     if finx==0:
         bsize_df = fdf.copy()
     else:
         bsize_df = pd.concat([bsize_df, fdf])
 
+# bsize_df[bsize_df['LAB']=='WT']
 bsize_df = bsize_df.rename(columns={'ID':'UID'})
+bsize_df['LAB'] = bsize_df['LAB'].map({'BMI':'BMI','몸무게':'WT','키':'HT'})
 bsize_df['UID'] = bsize_df['UID'].astype(str)
+bsize_df = bsize_df.reset_index(drop=True)
+for inx, row in bsize_df.iterrows():
+    wt_value = str(row['VALUE']).split('(')[0]
+    try:
+        wt_value = float(wt_value)
+    except:
+        wt_value = np.nan
+    bsize_df.at[inx,'VALUE'] = wt_value
+bsize_df['VALUE'] = bsize_df['VALUE'].astype(float)
+bsize_df = bsize_df.dropna(subset=['VALUE'])
+# bsize_df['VALUE'].map(lambda x:str(x).split('(')[0])
 
 # lab_list_df = pd.read_csv(f"{output_dir}/vpa_lablist_df.csv")
 # total_lab_cols = lab_list_df['LAB'].to_list()
@@ -146,12 +194,12 @@ ml_df = dose_df.drop_duplicates(['UID'])[['UID']].reset_index(drop=True)
 ml_res_df = list()
 no_lab_pids = list()
 no_dose_pids = list()
+no_demo_pids = list()
 for inx, row in ml_df.iterrows(): #break
     # raise ValueError
     ml_row_dict = dict()
     uid = row['UID']
     print(f"({inx}) {uid}")
-
 
     # 개별 dataframe 로드
     uid_dili_rows = dili_df[dili_df['UID'] == uid].copy()
@@ -254,12 +302,28 @@ for inx, row in ml_df.iterrows(): #break
 
     # ml feature 기록용 데이터 필터링
     ml_bsize_df = uid_bsize_df[(uid_bsize_df['DATE'] < dili_occurrence_date)&(uid_bsize_df['DATE'] >= min7_bl_date)].copy()
+
     uid_demo_df['AGE'] = int((datetime.strptime(max_bl_date, '%Y-%m-%d') - datetime.strptime(uid_demo_df['BIRTHDATE'].iloc[0], '%Y-%m-%d')).total_seconds()/86400/365.25)
+    if len(uid_demo_df)==0:
+        no_demo_pids.append(uid)
+        print(f"/ No demo data")
+        continue
+
+    # raise ValueError
     # bsize 데이터 정상화 되면 uid_demo_df에다가 WT, HT 붙여서 사용해야함
     ml_demo_df_last_row = uid_demo_df.iloc[-1]
+    if len(ml_bsize_df[ml_bsize_df['LAB']=='WT'])>0:
+        ml_demo_df_last_row['WT'] = ml_bsize_df[ml_bsize_df['LAB']=='WT']['VALUE'].iloc[-1]
+    elif (len(ml_bsize_df[ml_bsize_df['LAB']=='HT'])>0) and (len(ml_bsize_df[ml_bsize_df['LAB']=='BMI'])>0):
+        bmi = ml_bsize_df[ml_bsize_df['LAB'] == 'BMI']['VALUE'].iloc[-1]
+        ht = ml_bsize_df[ml_bsize_df['LAB'] == 'HT']['VALUE'].iloc[-1]
+        ml_demo_df_last_row['WT'] = bmi * (ht/100)**2
+    else:
+        ml_demo_df_last_row['WT'] = np.nan
 
-    # ml_lab_df = uid_lab_df[(uid_lab_df['DATE'] <= max_bl_date)&(uid_lab_df['DATE'] >= min_bl_date)].copy()
-    ml_lab_df = uid_lab_df[(uid_lab_df['DATE'] <= max_bl_date)&(uid_lab_df['DATE'] >= min14_bl_date)].copy()
+        # ml_lab_df = uid_lab_df[(uid_lab_df['DATE'] <= max_bl_date)&(uid_lab_df['DATE'] >= min_bl_date)].copy()
+    ml_lab_df = uid_lab_df[(uid_lab_df['DATE'] <= max_bl_date)&(uid_lab_df['DATE'] >= min30_bl_date)].copy()
+    # raise ValueError
     # ml_comed_df = uid_comed_df[(uid_comed_df['DATE'] <= max_bl_date)&(uid_comed_df['DATE'] >= min_bl_date)].copy()
     ml_cm_df = uid_cm_df[(uid_cm_df['DATE'] >= min30_bl_date)&(uid_cm_df['DATE'] <= max_bl_date)].copy()
     ml_vs_df = uid_vs_df[(uid_vs_df['DATE'] <= max_bl_date)&(uid_vs_df['DATE'] >= min30_bl_date)].copy()
@@ -279,7 +343,7 @@ for inx, row in ml_df.iterrows(): #break
 
     # Demographics
     # for c in ['ID','AGE','SEX','WT','HT']:
-    for c in ['UID','AGE','SEX']:
+    for c in ['UID','AGE','SEX','WT']:
         ml_row_dict[c] = ml_demo_df_last_row[c]
     # ml_row_dict['BMI'] = round(ml_row_dict['WT']/((ml_row_dict['HT']/100)**2),3)
 
@@ -287,13 +351,13 @@ for inx, row in ml_df.iterrows(): #break
     # DOSE (현재 WT 정보가 정확치 않아서 WT 로 계산된 것은 주석처리되어 있음)
     ml_row_dict['LAST_DOSE'] = ml_dose_df.iloc[-1]['AMT']
     ml_row_dict['LAST_DAILY_DOSE'] = ml_dose_df.groupby('DATE').agg({'AMT':'sum'}).iloc[-1]['AMT']
-    # ml_row_dict['LAST_DOSE_perWT'] = round(ml_row_dict['LAST_DOSE']/ml_row_dict['WT'],3)
-    # ml_row_dict['LAST_DAILY_DOSE_perWT'] = round(ml_row_dict['LAST_DAILY_DOSE']/ml_row_dict['WT'],3)
+    ml_row_dict['LAST_DOSE_perWT'] = round(ml_row_dict['LAST_DOSE']/ml_row_dict['WT'],3)
+    ml_row_dict['LAST_DAILY_DOSE_perWT'] = round(ml_row_dict['LAST_DAILY_DOSE']/ml_row_dict['WT'],3)
     # ml_row_dict['DURATION(DAYS)'] = (ml_dose_df.iloc[-1]['TIME'] - ml_dose_df.iloc[0]['TIME'] + 1)/24
     ml_row_dict['DURATION(DAYS)'] = round((datetime.strptime(ml_dose_df.iloc[-1]['DT_DOSE'].split(':')[0], '%Y-%m-%dT%H') - datetime.strptime(ml_dose_df.iloc[0]['DT_DOSE'].split(':')[0], '%Y-%m-%dT%H')).total_seconds()/86400,3)
     ml_row_dict['CUM_DOSE'] = ml_dose_df['AMT'].sum()
     ml_row_dict['MEAN_DAILY_DOSE'] = round(ml_row_dict['CUM_DOSE']/ml_row_dict['DURATION(DAYS)'],3)
-    # ml_row_dict['MEAN_DAILY_DOSE_perWT'] = round(ml_row_dict['CUM_DOSE']/ml_row_dict['WT'], 3)
+    ml_row_dict['MEAN_DAILY_DOSE_perWT'] = round(ml_row_dict['CUM_DOSE']/ml_row_dict['WT'], 3)
 
 
     ## COMORBIDITY
