@@ -582,29 +582,49 @@ apv_cond = (multivar_totres_df['pvalue_adj'] < 0.05)
 sig_dig = 3
 multivar_totres_df['EV_Count (%)'] = multivar_totres_df.apply(lambda x:f"{round(x['EVN'],sig_dig)} ({round(x['EVPct'],sig_dig)})",axis=1)
 
-multivar_totres_df['OR (95% CI)'] = multivar_totres_df.apply(lambda x:f"{round(x['uni_OR'],sig_dig)} ({round(x['uni_CI2.5%'],sig_dig)}-{round(x['uni_CI97.5%'],sig_dig)})",axis=1)
-multivar_totres_df['pval'] = multivar_totres_df['uni_pvalue'].map(lambda x:round(x,sig_dig))
+# multivar_totres_df['OR (95% CI)'] = multivar_totres_df.apply(lambda x:f"{round(x['uni_OR'],sig_dig)} ({round(x['uni_CI2.5%'],sig_dig)}-{round(x['uni_CI97.5%'],sig_dig)})",axis=1)
+# multivar_totres_df['pval'] = multivar_totres_df['uni_pvalue'].map(lambda x:round(x,sig_dig))
+# multivar_totres_df['aOR (95% CI)'] = multivar_totres_df.apply(lambda x:f"{round(x['aOR'],sig_dig)} ({round(x['aOR CI2.5%'],sig_dig)}-{round(x['aOR CI97.5%'],sig_dig)})",axis=1)
+# multivar_totres_df['pval (adj)'] = multivar_totres_df['pvalue_adj'].map(lambda x:round(x,sig_dig))
 
-multivar_totres_df['aOR (95% CI)'] = multivar_totres_df.apply(lambda x:f"{round(x['aOR'],sig_dig)} ({round(x['aOR CI2.5%'],sig_dig)}-{round(x['aOR CI97.5%'],sig_dig)})",axis=1)
-multivar_totres_df['pval (adj)'] = multivar_totres_df['pvalue_adj'].map(lambda x:round(x,sig_dig))
+multivar_totres_df['OR (95% CI)'] = multivar_totres_df.apply(lambda x:f"{x['uni_OR']:.{sig_dig}f} "
+                                                                      f"({x['uni_CI2.5%']:.{sig_dig}f}-"
+                                                                      f"{x['uni_CI97.5%']:.{sig_dig}f})",axis=1)
+multivar_totres_df['pval'] = multivar_totres_df['uni_pvalue'].map(lambda x:f"{x:.{sig_dig}f}")
+multivar_totres_df['aOR (95% CI)'] = multivar_totres_df.apply(lambda x:f"{x['aOR']:.{sig_dig}f} "
+                                                                      f"({x['aOR CI2.5%']:.{sig_dig}f}-"
+                                                                      f"{x['aOR CI97.5%']:.{sig_dig}f})",axis=1)
+multivar_totres_df['pval (adj)'] = multivar_totres_df['pvalue_adj'].map(lambda x:f"{x:.{sig_dig}f}")
+
 
 # multivar_totres_df[(multivar_totres_df['subgroup']=='Total_Adult')&(multivar_totres_df['endpoint']=='ANC')&(multivar_totres_df['feature']=='SEX')][['OR (95% CI)','pval','aOR (95% CI)','pval (adj)']]
 # multivar_totres_df[upv_cond&uor_cond]
 # multivar_totres_df['pval']
 uni_res_df = multivar_totres_df[upv_cond&uor_cond].sort_values(['subgroup','endpoint','aOR'],ascending=[False,True,False])[['subgroup','endpoint','feature','EV_Count (%)','OR (95% CI)','pval','aOR (95% CI)','pval (adj)']].reset_index(drop=True)
 multi_res_df = multivar_totres_df[apv_cond&aor_cond].sort_values(['subgroup','endpoint','aOR'],ascending=[False,True,False])[['subgroup','endpoint','feature','EV_Count (%)','OR (95% CI)','pval','aOR (95% CI)','pval (adj)']].reset_index(drop=True)
-# uni_res_df = uni_res_df.sort_values([''])
-uni_res_df['pval_sig'] = (uni_res_df['pval (adj)'] < 0.05).map({True:' **',False:''})
-uni_res_df['pval (adj)'] = uni_res_df['pval (adj)'].replace(0,'<0.001').map(str) + uni_res_df['pval_sig']
-uni_res_df['pval'] = uni_res_df['pval'].replace(0,'<0.001').map(str)
-uni_res_df = uni_res_df.drop(['pval_sig'],axis=1)
 
-multi_res_df['pval_sig'] = (multi_res_df['pval (adj)'] < 0.05).map({True:' **',False:''})
-multi_res_df['pval (adj)'] = multi_res_df['pval (adj)'].replace(0,'<0.001').map(str) + multi_res_df['pval_sig']
-multi_res_df['pval'] = multi_res_df['pval'].replace(0,'<0.001').map(str)
-multi_res_df = multi_res_df.drop(['pval_sig'],axis=1)
-# multi_res_df['pval'] = multi_res_df['pval'].replace(0,'<0.001')
-# multi_res_df['pval (adj)'] = multi_res_df['pval (adj)'].replace(0,'<0.001')
+
+# uni_res_df['pval_sig'] = (uni_res_df['pval (adj)'] < 0.05).map({True:' **',False:''})
+# uni_res_df['pval (adj)'] = uni_res_df['pval (adj)'].replace(0,'<0.001').map(str) + uni_res_df['pval_sig']
+# uni_res_df['pval'] = uni_res_df['pval'].replace(0,'<0.001').map(str)
+# uni_res_df = uni_res_df.drop(['pval_sig'],axis=1)
+#
+# multi_res_df['pval_sig'] = (multi_res_df['pval (adj)'] < 0.05).map({True:' **',False:''})
+# multi_res_df['pval (adj)'] = multi_res_df['pval (adj)'].replace(0,'<0.001').map(str) + multi_res_df['pval_sig']
+# multi_res_df['pval'] = multi_res_df['pval'].replace(0,'<0.001').map(str)
+# multi_res_df = multi_res_df.drop(['pval_sig'],axis=1)
+
+
+
+# uni_res_df['pval_sig'] = (uni_res_df['pval (adj)'] < 0.05).map({True:' **',False:''})
+uni_res_df['pval (adj)'] = uni_res_df['pval (adj)'].replace('0.000','<0.001').replace('0','<0.001').map(str)
+uni_res_df['pval'] = uni_res_df['pval'].replace('0.000','<0.001').replace('0','<0.001').map(str)
+# uni_res_df = uni_res_df.drop(['pval_sig'],axis=1)
+
+# multi_res_df['pval_sig'] = (multi_res_df['pval (adj)'] < 0.05).map({True:' **',False:''})
+multi_res_df['pval (adj)'] = multi_res_df['pval (adj)'].replace('0.000','<0.001').replace('0','<0.001').map(str)
+multi_res_df['pval'] = multi_res_df['pval'].replace('0.000','<0.001').replace('0','<0.001').map(str)
+# multi_res_df = multi_res_df.drop(['pval_sig'],axis=1)
 
 uni_res_df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_univar_res_table.csv", index=False, encoding='utf-8-sig')
 multi_res_df.to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_multivar_res_table.csv", index=False, encoding='utf-8-sig')
@@ -614,10 +634,10 @@ print(multi_res_df[['subgroup','endpoint','feature','aOR (95% CI)','pval (adj)']
 
 ## Not estimable 추가
 multivar_totres_df = multivar_totres_df.reset_index(drop=True)
-multivar_totres_df['OR (95% CI)'] = multivar_totres_df['OR (95% CI)'].map(lambda x: "Not estimable" if (('inf' in x) or ('nan' in x) or (x=='1.0 (1.0-1.0)')) else x)
-multivar_totres_df['aOR (95% CI)'] = multivar_totres_df['aOR (95% CI)'].map(lambda x: "Not estimable" if (('inf' in x) or ('nan' in x) or (x=='1.0 (1.0-1.0)')) else x)
-multivar_totres_df['pval'] = multivar_totres_df['pval'].astype(str)
-multivar_totres_df['pval (adj)'] = multivar_totres_df['pval (adj)'].astype(str)
+multivar_totres_df['OR (95% CI)'] = multivar_totres_df['OR (95% CI)'].map(lambda x: "Not estimable" if (('inf' in x) or ('nan' in x) or (x=='1.000 (1.000-1.000)')) else x)
+multivar_totres_df['aOR (95% CI)'] = multivar_totres_df['aOR (95% CI)'].map(lambda x: "Not estimable" if (('inf' in x) or ('nan' in x) or (x=='1.000 (1.000-1.000)')) else x)
+multivar_totres_df['pval'] = multivar_totres_df['pval'].replace('0.000','<0.001').replace('0','<0.001').astype(str)
+multivar_totres_df['pval (adj)'] = multivar_totres_df['pval (adj)'].replace('0.000','<0.001').replace('0','<0.001').astype(str)
 not_estim_univ_index_list = set(multivar_totres_df[(multivar_totres_df['OR (95% CI)']=='Not estimable')|(multivar_totres_df['aOR (95% CI)']=='Not estimable')].index)
 for ne_inx in not_estim_univ_index_list:
     multivar_totres_df.at[ne_inx,'pval'] = '—'
@@ -652,7 +672,7 @@ tot_res_df = tot_res_df[tot_res_df['subgroup']=='Total_Adult'].copy()
 # tot_res_df.columns
 # tot_res_df = tot_res_df[~tot_res_df['feature'].isin(['Clozapine','Methimazole'])].copy()
 tot_res_df[['subgroup','endpoint','feature','EV_Count (%)','data_availability','OR (95% CI)','pval','aOR (95% CI)','pval (adj)']].to_csv(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_total_res_table.csv", index=False, encoding='utf-8-sig')
-
+tot_res_df[['subgroup','endpoint','feature','EV_Count (%)','data_availability','OR (95% CI)','pval','aOR (95% CI)','pval (adj)']].to_excel(f"{output_dir}/b1da/mvlreg_output/b1da_lnz_mvlreg_total_res_table.xlsx", index=False)
 # tot_res_df[tot_res_df['pval'] < 0.05][['endpoint','feature','OR (95% CI)','pval']]
 # tot_res_df[tot_res_df['pval (adj)'] < 0.05][['endpoint','feature','aOR (95% CI)','pval (adj)']]
 
@@ -674,7 +694,7 @@ tot_res_df[['subgroup','endpoint','feature','EV_Count (%)','data_availability','
 # sns.relplot(data=df_ori, x='TBIL', y='DOSE_PERIOD(TOTAL)')
 # sns.relplot(data=df_ori, x='AST', y='DOSE_PERIOD(TOTAL)')
 # sns.relplot(data=df_ori, x='eGFR', y='DOSE_PERIOD(TOTAL)')
-# # sns.relplot(data=df_ori, x='TBIL', y='DOSE_PERIOD(TOTAL)')
+# sns.relplot(data=df_ori, x='TBIL', y='DOSE_PERIOD(TOTAL)')
 # sns.relplot(data=df_ori, x='AGE', y='DOSE_PERIOD(TOTAL)')
 # sns.distplot(df_ori['DOSE_PERIOD(TOTAL)'])
 # df_ori['DOSE_PERIOD(TOTAL)']

@@ -209,10 +209,14 @@ for inx, row in ml_df.iterrows(): #break
     uid_dose_df = dose_df[dose_df['UID']==uid].copy()
     uid_dose_df['AMT'] = uid_dose_df['AMT'].astype(float)
 
+    if len(uid_demo_df)==0:
+        no_demo_pids.append(uid)
+        print(f"/ No demo data")
+        continue
     uid_demo_last_row = uid_demo_df.iloc[-1]
     # uid_bsize_row = uid_bsize_df
     uid_lab_df = lab_df[lab_df['UID']==uid].copy()
-    # uid_lab_df['LAB'] = uid_lab_df['검사명']
+    # uid_lab_df['LAB'] = uid_lab_df['검사명']Z
     # uid_lab_df['VALUE'] = uid_lab_df['검사결과']
     # uid_lab_df['VALUE'] = pd.to_numeric(uid_lab_df['VALUE'], errors='coerce')  # 숫자 아닌 랩은 NAN으로 변환
     uid_lab_df = uid_lab_df.drop_duplicates(['DATE', 'LAB'], keep='last', ignore_index=True)
@@ -304,10 +308,7 @@ for inx, row in ml_df.iterrows(): #break
     ml_bsize_df = uid_bsize_df[(uid_bsize_df['DATE'] < dili_occurrence_date)&(uid_bsize_df['DATE'] >= min7_bl_date)].copy()
 
     uid_demo_df['AGE'] = int((datetime.strptime(max_bl_date, '%Y-%m-%d') - datetime.strptime(uid_demo_df['BIRTHDATE'].iloc[0], '%Y-%m-%d')).total_seconds()/86400/365.25)
-    if len(uid_demo_df)==0:
-        no_demo_pids.append(uid)
-        print(f"/ No demo data")
-        continue
+
 
     # raise ValueError
     # bsize 데이터 정상화 되면 uid_demo_df에다가 WT, HT 붙여서 사용해야함
