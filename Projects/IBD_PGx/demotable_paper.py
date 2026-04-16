@@ -9,7 +9,7 @@ output_dir = f"{prj_dir}/results"
 nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
 
 demo_res_table = list()
-for drug in ['infliximab', 'adalimumab']:
+for drug in ['infliximab', ]:
     # drug = 'infliximab'
     added_filename_str = '(for pda)'
     vacant_df = pd.DataFrame()
@@ -17,11 +17,11 @@ for drug in ['infliximab', 'adalimumab']:
     # md_demo_dict = {'integrated':vacant_df,'induction':vacant_df, 'maintenance':vacant_df}
     md_dict = {'integrated':vacant_df,}
     md_demo_dict = {'integrated':vacant_df,}
-    total_patients = 140
+    total_patients = len(md_df['ID'].unique())
 
     for mode_str in md_dict.keys():
-        md_df = pd.read_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df.csv')
-        # md_df = pd.read_csv(f'{nonmem_dir}/{drug}_{mode_str}_modeling_df_dayscale{added_filename_str}.csv')
+        # md_df = pd.read_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df.csv')
+        md_df = pd.read_csv(f'{nonmem_dir}/{drug}_{mode_str}_modeling_df_dayscale{added_filename_str}.csv')
         # raise ValueError
         # md_df = pd.read_csv(f'{output_dir}/{drug}_{mode_str}_datacheck.csv')
         md_dict[mode_str] = md_df.copy()
@@ -32,8 +32,9 @@ for drug in ['infliximab', 'adalimumab']:
 
         mddemo_dict['Data spec, n (%)'] = ""
         mddemo_dict['Subtotal(Dosing Hx and TL exists)'] = f"{len(md_df['ID'].unique())} ({round(100 * len(md_df['ID'].unique())/total_patients,2)})"
+        # raise ValueError
         # if mode_str=='integrated':
-        induction_df = pd.read_csv(f'{output_dir}/{drug}_induction_modeling_df.csv')
+        induction_df = md_df[(md_df['MDV']==0)&(md_df['TIME']==0)&(~md_df['DV'].isin(['0.0','.']))]
         subtotal_n = len(md_df['ID'].unique())
         induction_n = len(induction_df['ID'].unique())
         mddemo_dict['Whole phases'] = f"{induction_n} ({round(100 * induction_n/subtotal_n,2)})"
