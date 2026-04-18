@@ -9,7 +9,7 @@ output_dir = f"{prj_dir}/results"
 nonmem_dir = f'C:/Users/ilma0/NONMEMProjects/{prj_name}'
 
 demo_res_table = list()
-for drug in ['infliximab', ]:
+for drug in ['infliximab', 'adalimumab']:
     # drug = 'infliximab'
     added_filename_str = '(for pda)'
     vacant_df = pd.DataFrame()
@@ -17,7 +17,7 @@ for drug in ['infliximab', ]:
     # md_demo_dict = {'integrated':vacant_df,'induction':vacant_df, 'maintenance':vacant_df}
     md_dict = {'integrated':vacant_df,}
     md_demo_dict = {'integrated':vacant_df,}
-    total_patients = len(md_df['ID'].unique())
+    total_patients = 140
 
     for mode_str in md_dict.keys():
         # md_df = pd.read_csv(f'{output_dir}/{drug}_{mode_str}_modeling_df.csv')
@@ -34,7 +34,8 @@ for drug in ['infliximab', ]:
         mddemo_dict['Subtotal(Dosing Hx and TL exists)'] = f"{len(md_df['ID'].unique())} ({round(100 * len(md_df['ID'].unique())/total_patients,2)})"
         # raise ValueError
         # if mode_str=='integrated':
-        induction_df = md_df[(md_df['MDV']==0)&(md_df['TIME']==0)&(~md_df['DV'].isin(['0.0','.']))]
+        maintenance_only_ids = md_df[(md_df['MDV']==0)&(md_df['TIME']==0)&(~md_df['DV'].isin(['0.0','.']))]['ID']
+        induction_df = md_df[~md_df['ID'].isin(maintenance_only_ids)].copy()
         subtotal_n = len(md_df['ID'].unique())
         induction_n = len(induction_df['ID'].unique())
         mddemo_dict['Whole phases'] = f"{induction_n} ({round(100 * induction_n/subtotal_n,2)})"
@@ -45,7 +46,7 @@ for drug in ['infliximab', ]:
         mddemo_dict['AGE at the 1st Dose, mean (SD)'] = f"{round(np.mean(age_series), 2)} ({round(np.std(age_series), 2)})"
 
         sex_series = md_df.drop_duplicates(['ID'])['SEX'].copy()
-        mddemo_dict['Female, n (%)'] = f"{(sex_series==2).sum()} ({round(((sex_series==2).sum()) * 100 /len(sex_series), 2)})"
+        mddemo_dict['Female, n (%)'] = f"{(sex_series==1).sum()} ({round(((sex_series==1).sum()) * 100 /len(sex_series), 2)})"
 
         height_series = md_df.drop_duplicates(['ID'])['HT'].copy()
         mddemo_dict['Height(recent), mean (SD)'] = f"{round(np.mean(height_series), 2)} ({round(np.std(height_series), 2)})"
@@ -53,10 +54,29 @@ for drug in ['infliximab', ]:
         weight_series = md_df.drop_duplicates(['ID'])['WT'].copy()
         mddemo_dict['Weight(recent), mean (SD)'] = f"{round(np.mean(weight_series), 2)} ({round(np.std(weight_series), 2)})"
 
+        ## LAB findings
+
+        mddemo_dict['Laboratory test, mean (SD)'] = ""
+        cols = ['ALB', 'AST', 'ALT', 'CRP', 'FCAL', 'CREATININE']
+        first_md_df = md_df.drop_duplicates(subset=['ID'])
+        for col in cols:
+            mean_val = first_md_df[col].mean()
+            sd_val = first_md_df[col].std()
+
+            # 소수점 자리수는 필요에 따라 조절 (여기선 2자리)
+            value_str = f"{mean_val:.2f} ({sd_val:.2f})"
+
+            key = f"{col}, mean (SD)"
+            mddemo_dict[key] = value_str
+
+        # print(mddemo_dict)
+
+        ## Diagnosis
+
         ibdtype_series = md_df.drop_duplicates(['ID'])['IBD_TYPE'].copy()
         mddemo_dict['Diagnosis, n (%)'] = ""
-        mddemo_dict['CD'] = f"{(ibdtype_series == 1).sum()} ({round(((ibdtype_series == 1).sum()) * 100 / len(ibdtype_series), 2)})"
-        mddemo_dict['UC'] = f"{(ibdtype_series == 2).sum()} ({round(((ibdtype_series == 2).sum()) * 100 / len(ibdtype_series), 2)})"
+        mddemo_dict['CD'] = f"{(ibdtype_series == 0).sum()} ({round(((ibdtype_series == 0).sum()) * 100 / len(ibdtype_series), 2)})"
+        mddemo_dict['UC'] = f"{(ibdtype_series == 1).sum()} ({round(((ibdtype_series == 1).sum()) * 100 / len(ibdtype_series), 2)})"
 
         ## Sampling
         mddemo_dict['Blood Sampling'] = ""
@@ -71,16 +91,16 @@ for drug in ['infliximab', ]:
 
         mddemo_dict['ATI'] = ""
         # not_na_ati_df = md_df[~md_df['INFATI'].isna()].copy()
-        not_na_ati_df = md_df[~md_df['INFATI'].isna()].copy()
+        not_na_ati_df = md_df[md_df['ADA']!=0].copy()
         not_na_ati_ids = not_na_ati_df.drop_duplicates(['ID'])['ID'].reset_index(drop=True)
-        ati_series = md_df.sort_values(['ID', 'INFATI'], ascending=[True, False]).drop_duplicates(['ID'])['INFATI'].copy()
+        ati_series = md_df.sort_values(['ID', 'ADA'], ascending=[True, False]).drop_duplicates(['ID'])['ADA'].copy()
         mddemo_dict['Patients with measured ATI, n (%)'] = f"{len(not_na_ati_ids)} ({round(len(not_na_ati_ids) * 100 / subtotal_n, 2)})"
-        mddemo_dict['Patients with ATI positive, n (%)'] = f"{(ati_series >= 10).sum()} ({round(((ati_series >= 10).sum()) * 100 / len(not_na_ati_ids), 2)})"
-
-        mddemo_dict['total ATI samples, n (%)'] = f"{len(not_na_ati_df)} ({round(100, 2)})"
-        mddemo_dict['high ATI samples, n (%)'] = f"{(not_na_ati_df['INFATI'] >= 10).sum()} ({round(((not_na_ati_df['INFATI'] >= 10).sum()) * 100 / len(not_na_ati_df), 2)})"
-        mddemo_dict['intermediate ATI samples, n (%)'] = f"{((not_na_ati_df['INFATI'] < 10)&(not_na_ati_df['INFATI'] > 2.5)).sum()} ({round(((not_na_ati_df['INFATI'] < 10)&(not_na_ati_df['INFATI'] > 2.5)).sum() * 100 / len(not_na_ati_df), 2)})"
-        mddemo_dict['LLOQ ATI samples, n (%)'] = f"{(not_na_ati_df['INFATI'] <= 2.5).sum()} ({round(((not_na_ati_df['INFATI'] <= 2.5).sum()) * 100 / len(not_na_ati_df), 2)})"
+        # mddemo_dict['Patients with ATI positive, n (%)'] = f"{(ati_series >= 10).sum()} ({round(((ati_series >= 10).sum()) * 100 / len(not_na_ati_ids), 2)})"
+        #
+        # mddemo_dict['total ATI samples, n (%)'] = f"{len(not_na_ati_df)} ({round(100, 2)})"
+        # mddemo_dict['high ATI samples, n (%)'] = f"{(not_na_ati_df['INFATI'] >= 10).sum()} ({round(((not_na_ati_df['INFATI'] >= 10).sum()) * 100 / len(not_na_ati_df), 2)})"
+        # mddemo_dict['intermediate ATI samples, n (%)'] = f"{((not_na_ati_df['INFATI'] < 10)&(not_na_ati_df['INFATI'] > 2.5)).sum()} ({round(((not_na_ati_df['INFATI'] < 10)&(not_na_ati_df['INFATI'] > 2.5)).sum() * 100 / len(not_na_ati_df), 2)})"
+        # mddemo_dict['LLOQ ATI samples, n (%)'] = f"{(not_na_ati_df['INFATI'] <= 2.5).sum()} ({round(((not_na_ati_df['INFATI'] <= 2.5).sum()) * 100 / len(not_na_ati_df), 2)})"
 
         # not_na_ati_df[(not_na_ati_df['INFATI'] < 10)&(not_na_ati_df['INFATI'] > 2.5)][['ID','INFATI']]
         # raise ValueError
@@ -121,4 +141,4 @@ for drug in ['infliximab', ]:
         demo_res_table.append(res_df)
 
 demo_res_table = demo_res_table[0].merge(demo_res_table[1], on=['Characteristics'], how='left')
-demo_res_table.to_csv(f'{output_dir}/demographic_table.csv',index=False, encoding='utf-8-sig')
+demo_res_table.to_csv(f'{output_dir}/demographic_table(paper).csv',index=False, encoding='utf-8-sig')
