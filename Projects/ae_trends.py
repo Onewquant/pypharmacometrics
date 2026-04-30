@@ -16,6 +16,10 @@ df = pd.DataFrame({
 
 sns.set_theme(style="whitegrid")
 
+# Windows 한글 폰트 설정
+plt.rcParams["font.family"] = "Malgun Gothic"
+plt.rcParams["axes.unicode_minus"] = False
+
 # blue gradient
 cmap = mcolors.LinearSegmentedColormap.from_list(
     "blue_gradient",
@@ -46,10 +50,14 @@ ax.set_ylabel("")
 ax.grid(axis="y", color="#E5E7EB", linewidth=0.8)
 ax.grid(axis="x", visible=False)
 
+# x, y label
+ax.set_xlabel("연도 (year)", fontsize=12, color="#374151", labelpad=10)
+ax.set_ylabel("이상반응 발생 건 수", fontsize=12, color="#374151", labelpad=10)
+
 sns.despine(left=True, bottom=True)
 
-plt.xticks(rotation=45, color="#6B7280", fontsize=10)
-plt.yticks(color="#9CA3AF", fontsize=10)
+plt.xticks( color="#6B7280", fontsize=12)
+plt.yticks(color="#9CA3AF", fontsize=12)
 
 plt.tight_layout()
 
