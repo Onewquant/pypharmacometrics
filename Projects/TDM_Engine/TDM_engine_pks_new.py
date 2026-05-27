@@ -161,6 +161,23 @@ print(f"Beta: {round(beta,3)}")
 print(f"Vdss: {round(Vdss_ind,3)}")
 print(f"Half-life: {round(T_half,3)}")
 
+# rEBE['WSS']
+# rEBE['PARAM_PENALTY']
+
+
+# cl_grid = np.linspace(0.90,1.05,40)
+#
+# objs = []
+#
+# for cls in cl_grid:
+#
+#     P = P_best.copy()
+#     P[1] = cls
+#
+#     objs.append(obj_P(P))
+#
+# plt.plot(cl_grid,objs)
+# plt.show()
 
 # x0 = np.array([
 #     0.05,  # CL coef

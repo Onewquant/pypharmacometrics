@@ -586,9 +586,12 @@ def residualP(P):
     P_cv = _get_cv_from_omega(e.OM)
 
     param_sigma = P_pop * P_cv
-    # param_sigma = P_cv
-    param_sigma = np.maximum(param_sigma, 1e-12)
 
+    # param_sigma = np.array([0.01, 0.248, 0.042, 0.28, 0.12])
+    # param_sigma = np.maximum(param_sigma, 1e-12)
+    # param_resid = (P - P_pop) / param_sigma
+
+    param_sigma = np.maximum(param_sigma, 1e-12)
     param_resid = (P - P_pop) / param_sigma
 
     return np.concatenate([obs_resid, param_resid])
@@ -643,6 +646,7 @@ def EBEpks(PRED, DATAi, TH, OM, SG, x0=None):
 
     P_cv = _get_cv_from_omega(OM)
     param_sigma = P_pop * P_cv
+    # param_sigma = np.array([0.01, 0.248, 0.042, 0.28, 0.12])
     PARAM_PENALTY = np.sum(((P_ind - P_pop) / param_sigma) ** 2)
 
     BAYES_SS = WSS + PARAM_PENALTY
