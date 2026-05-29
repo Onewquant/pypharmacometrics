@@ -52,7 +52,6 @@ def mGrad(func, x, nRec):
         gr[:, i] = (ga[:, 1] * 64 - ga[:, 0]) / 63
     return gr
 
-
 def objEta(ETAi):
     DV = e.DATAi.loc[~e.DATAi['DV'].isna(), 'DV'].values
     pred = e.PRED(e.TH, ETAi, e.DATAi)
@@ -678,7 +677,7 @@ def EBEpks(PRED, DATAi, TH, OM, SG, x0=None):
     }
 
 ###################################
-
+## Parameter에 직접 penalty 가하는 방법이라고함...
 # def obj_P(P):
 #     if np.any(P <= 0):
 #         return 1e12
