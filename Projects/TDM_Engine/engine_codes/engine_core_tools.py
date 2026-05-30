@@ -10,7 +10,6 @@ def crcl_cockroft_gault(sex, age, wt, scr):
     crcl = (sex_coef * (140-age) * wt / (72*scr))
     return crcl
 
-
 ######## EBE 수행 관련 ######## 
 
 class EBEEnvironment:

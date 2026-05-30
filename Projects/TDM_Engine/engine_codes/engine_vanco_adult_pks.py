@@ -19,8 +19,13 @@ def _get_cv_from_omega(OM):
     return np.sqrt(np.exp(np.diag(OM)) - 1)
 
 
+def get_param_sigma(TH, OM):
+    P_pop = _get_pop_params(TH)
+    P_cv = _get_cv_from_omega(OM)
+    return P_pop * P_cv
+
+
 def residualP(P):
-    # negative parameter 방지
     if np.any(P <= 0):
         return np.ones(100) * 1e6
 
@@ -35,24 +40,195 @@ def residualP(P):
     CV_assay = e.SG[0, 0]
     S_assay = e.SG[1, 1]
 
+
     sigma = CV_assay * Fi + S_assay
     sigma = np.maximum(sigma, 1e-12)
 
     obs_resid = (DV - Fi) / sigma
 
+
+
     P_pop = _get_pop_params(e.TH)
-    P_cv = _get_cv_from_omega(e.OM)
-
-    param_sigma = P_pop * P_cv
-
-    # param_sigma = np.array([0.01, 0.248, 0.042, 0.28, 0.12])
-    # param_sigma = np.maximum(param_sigma, 1e-12)
-    # param_resid = (P - P_pop) / param_sigma
-
+    param_sigma = get_param_sigma(e.TH, e.OM)
     param_sigma = np.maximum(param_sigma, 1e-12)
+
     param_resid = (P - P_pop) / param_sigma
 
     return np.concatenate([obs_resid, param_resid])
+
+
+def residualP(P):
+    if np.any(P <= 0):
+        return np.ones(100) * 1e6
+
+    P_pop = _get_pop_params(e.TH)
+    ETA = np.log(P / P_pop)
+
+    obs_mask = ~e.DATAi["DV"].isna()
+    DV = e.DATAi.loc[obs_mask, "DV"].values
+
+    pred = e.PRED(e.TH, ETA, e.DATAi)
+    Fi = pred[obs_mask]
+
+    CV_assay = e.SG[0, 0]
+    S_assay = e.SG[1, 1]
+
+    # PKS에 가까운 residual error
+    sigma = np.sqrt((CV_assay * Fi) ** 2 + S_assay ** 2)
+    sigma = np.maximum(sigma, 1e-12)
+
+    obs_resid = (DV - Fi) / sigma
+
+    # PKS에 가까운 ETA penalty
+    eta_sd = np.sqrt(np.diag(e.OM))
+    eta_sd = np.maximum(eta_sd, 1e-12)
+
+    param_resid = ETA / eta_sd
+
+    return np.concatenate([obs_resid, param_resid])
+
+def round_P_like_pks(P):
+    return np.array([
+        round(P[0], 4),  # CLcoef
+        round(P[1], 3),  # CLslope
+        round(P[2], 3),  # Vccoef
+        round(P[3], 3),  # k12
+        round(P[4], 3),  # k21
+    ])
+
+
+def pks_lm_from_residual_with_rounding(
+    x0,
+    residual_func,
+    max_iter=25,
+    conv=1e-3,
+    lam0=1.0,
+    lam_up=10.0,
+    lam_down=0.1,
+    fd_eps=1e-4
+):
+    x = np.asarray(x0, dtype=float).copy()
+    lam = lam0
+    hist = []
+
+    for it in range(1, max_iter + 1):
+        r = residual_func(x)
+        obj = np.sum(r ** 2)
+
+        n = len(x)
+        m = len(r)
+        J = np.zeros((m, n))
+
+        for j in range(n):
+            h = fd_eps * max(abs(x[j]), 1.0)
+            xp = x.copy()
+            xm = x.copy()
+            xp[j] += h
+            xm[j] -= h
+            J[:, j] = (residual_func(xp) - residual_func(xm)) / (2 * h)
+
+        A = J.T @ J
+        g = J.T @ r
+
+        accepted = False
+
+        for _ in range(20):
+            A_mod = A.copy()
+            for j in range(n):
+                A_mod[j, j] = A[j, j] * (1 + lam)
+
+            try:
+                step = np.linalg.solve(A_mod, -g)
+            except np.linalg.LinAlgError:
+                lam *= lam_up
+                continue
+
+            x_next = x + step
+
+            if np.any(x_next <= 0):
+                lam *= lam_up
+                continue
+
+            # PKS-like rounding test
+            x_next = round_P_like_pks(x_next)
+
+            r_next = residual_func(x_next)
+            obj_next = np.sum(r_next ** 2)
+
+            if obj_next < obj:
+                p_delta = np.abs((x - x_next) / x_next)
+
+                hist.append({
+                    "iter": it,
+                    "obj": obj_next,
+                    "lambda": lam,
+                    "P": x_next.copy(),
+                    "p_delta": p_delta,
+                    "max_delta": np.max(p_delta),
+                    "accepted": True
+                })
+
+                x = x_next
+                lam *= lam_down
+                accepted = True
+
+                if np.all(p_delta < conv):
+                    return x, hist
+
+                break
+
+            lam *= lam_up
+
+        if not accepted:
+            hist.append({
+                "iter": it,
+                "obj": obj,
+                "lambda": lam,
+                "P": x.copy(),
+                "p_delta": np.full(n, np.nan),
+                "max_delta": np.nan,
+                "accepted": False
+            })
+
+    return x, hist
+
+
+
+#
+# def residualP(P):
+#     # negative parameter 방지
+#     if np.any(P <= 0):
+#         return np.ones(100) * 1e6
+#
+#     ETA = _p_to_eta(P, e.TH)
+#
+#     obs_mask = ~e.DATAi["DV"].isna()
+#     DV = e.DATAi.loc[obs_mask, "DV"].values
+#
+#     pred = e.PRED(e.TH, ETA, e.DATAi)
+#     Fi = pred[obs_mask]
+#
+#     CV_assay = e.SG[0, 0]
+#     S_assay = e.SG[1, 1]
+#
+#     sigma = CV_assay * Fi + S_assay
+#     sigma = np.maximum(sigma, 1e-12)
+#
+#     obs_resid = (DV - Fi) / sigma
+#
+#     P_pop = _get_pop_params(e.TH)
+#     P_cv = _get_cv_from_omega(e.OM)
+#
+#     param_sigma = P_pop * P_cv
+#
+#     # param_sigma = np.array([0.01, 0.248, 0.042, 0.28, 0.12])
+#     # param_sigma = np.maximum(param_sigma, 1e-12)
+#     # param_resid = (P - P_pop) / param_sigma
+#
+#     param_sigma = np.maximum(param_sigma, 1e-12)
+#     param_resid = (P - P_pop) / param_sigma
+#
+#     return np.concatenate([obs_resid, param_resid])
 
 
 def PredVanco_PKS(TH, ETA, DATAi):
@@ -267,6 +443,19 @@ def pks_lm_from_residual(
                 "accepted": False
             })
 
+        # for h in hist:
+        #     P = h["P"]
+        #     print(
+        #         h["iter"],
+        #         "OBJ", round(h["obj"], 4),
+        #         "max_delta", h["max_delta"],
+        #         "CLcoef", round(P[0], 4),
+        #         "CLslope", round(P[1], 3),
+        #         "Vccoef", round(P[2], 3),
+        #         "k12", round(P[3], 3),
+        #         "k21", round(P[4], 3),
+        #     )
+
     return x, hist
 
 def EBE(PRED, DATAi, TH, OM, SG, x0=None):
@@ -309,11 +498,26 @@ def EBE(PRED, DATAi, TH, OM, SG, x0=None):
         residual_func=residualP,
         max_iter=25,
         conv=1e-3,
+        # conv=0,
         lam0=1.0,
         lam_up=10.0,
         lam_down=0.1,
         fd_eps=1e-4
     )
+
+    # P_ind, hist = pks_lm_from_residual_with_rounding(
+    #     x0=_get_pop_params(TH),
+    #     residual_func=residualP,
+    #     max_iter=25,
+    #     conv=1e-3,
+    #     lam0=1.0,
+    #     lam_up=10.0,
+    #     lam_down=0.1,
+    #     fd_eps=1e-4
+    # )
+
+    # print_summary("rounding test", P_ind)
+    # print(eval_prediction_at_P(P_ind).round(6))
 
 
     EBEi = _p_to_eta(P_ind, TH)
@@ -324,20 +528,35 @@ def EBE(PRED, DATAi, TH, OM, SG, x0=None):
     DV = DATAi.loc[obs_mask, "DV"].values
     IPRED_obs = Fi[obs_mask]
 
+    # Ri = DV - IPRED_obs
+    #
+    # CV_assay = SG[0, 0]
+    # S_assay = SG[1, 1]
+    #
+    # sigma = CV_assay * IPRED_obs + S_assay
+    # sigma = np.maximum(sigma, 1e-12)
+    #
+    # WSS = np.sum((Ri / sigma) ** 2)
+    #
+    # param_sigma = get_param_sigma(TH, OM)
+    # PARAM_PENALTY = np.sum(((P_ind - P_pop) / param_sigma) ** 2)
+    #
+    # BAYES_SS = WSS + PARAM_PENALTY
+
     Ri = DV - IPRED_obs
 
     CV_assay = SG[0, 0]
     S_assay = SG[1, 1]
 
-    sigma = CV_assay * IPRED_obs + S_assay
+    sigma = np.sqrt((CV_assay * IPRED_obs) ** 2 + S_assay ** 2)
     sigma = np.maximum(sigma, 1e-12)
 
     WSS = np.sum((Ri / sigma) ** 2)
 
-    P_cv = _get_cv_from_omega(OM)
-    param_sigma = P_pop * P_cv
-    # param_sigma = np.array([0.01, 0.248, 0.042, 0.28, 0.12])
-    PARAM_PENALTY = np.sum(((P_ind - P_pop) / param_sigma) ** 2)
+    eta_sd = np.sqrt(np.diag(OM))
+    eta_sd = np.maximum(eta_sd, 1e-12)
+
+    PARAM_PENALTY = np.sum((EBEi / eta_sd) ** 2)
 
     BAYES_SS = WSS + PARAM_PENALTY
 
@@ -370,7 +589,7 @@ def EBE(PRED, DATAi, TH, OM, SG, x0=None):
     }
 
 ###################################
-## Parameter에 직접 penalty 가하는 방법이라고함 (이걸로 쓰려면 EBE 함수도 다시 구현해야)
+# Parameter에 직접 penalty 가하는 방법이라고함 (이걸로 쓰려면 EBE 함수도 다시 구현해야)
 # def obj_P(P):
 #     if np.any(P <= 0):
 #         return 1e12
@@ -530,6 +749,53 @@ def EBE(PRED, DATAi, TH, OM, SG, x0=None):
 #
 #     return x, hist
 
+def summarize_pks_params(P, TH, DATAi):
+    """
+    P = [CLcoef, CLslope, Vccoef, k12, k21]
+    """
+
+    CLcoef_ind = P[0]
+    CLslope_ind = P[1]
+    Vccoef_ind = P[2]
+    k12_ind = P[3]
+    k21_ind = P[4]
+
+    WT = DATAi["BWT"].dropna().iloc[-1]
+    CLCR = DATAi["CLCR"].dropna().iloc[-1]
+
+    CL_ind = (CLcoef_ind * WT + CLslope_ind * CLCR) * 0.06
+    Vc_ind = Vccoef_ind * WT + TH[3] * CLCR
+
+    Q_ind = k12_ind * Vc_ind
+    Vp_ind = Q_ind / k21_ind
+
+    k10_ind = CL_ind / Vc_ind
+    Vdss_ind = Vc_ind + Vp_ind
+
+    S = k10_ind + k12_ind + k21_ind
+    D = np.sqrt(S**2 - 4 * k21_ind * k10_ind)
+
+    alpha = (S + D) / 2
+    beta = (S - D) / 2
+    half_life = 0.693 / beta
+
+    return {
+        "CLcoef": CLcoef_ind,
+        "CLslope": CLslope_ind,
+        "Vccoef": Vccoef_ind,
+        "K12": k12_ind,
+        "K21": k21_ind,
+        "Total_CL": CL_ind,
+        "Total_Vc": Vc_ind,
+        "K10": k10_ind,
+        "Alpha": alpha,
+        "Beta": beta,
+        "Vdss": Vdss_ind,
+        "Half_life": half_life,
+    }
+
+
+
 
 ## INPUT DATA (AGE, SEX, WT, HT, SCR)
 
@@ -636,16 +902,63 @@ beta = (S-D)/2
 T_half = 0.693/beta
 """
 
+# ETA = rEBE["EBEi"]
+#
+# CL_coef_ind = TH[0] * np.exp(ETA[0])
+# CLslope_ind = TH[1] * np.exp(ETA[1])
+# Vc_coef_ind = TH[2] * np.exp(ETA[2])
+# k12_ind = TH[4] * np.exp(ETA[3])
+# k21_ind = TH[5] * np.exp(ETA[4])
+#
+# CL_ind = (CL_coef_ind * WT + CLslope_ind * CLCR) * 0.06
+# Vc_ind = Vc_coef_ind * WT + TH[3] * CLCR
+#
+# Q_ind = k12_ind * Vc_ind
+# Vp_ind = Q_ind / k21_ind
+#
+# k10_ind = CL_ind / Vc_ind
+# Vdss_ind = Vc_ind + Vp_ind
+#
+# S = k10_ind + k12_ind + k21_ind
+# D = np.sqrt(S**2 - 4 * k21_ind * k10_ind)
+#
+# alpha = (S + D) / 2
+# beta = (S - D) / 2
+# T_half = 0.693 / beta
+#
+# print("Iteration:", rEBE["ITERATION"])
+# print("Sum of squares:", round(rEBE["SUM_OF_SQUARES"],4))
+# print(f"Vc coef: {round(Vc_ind/WT,3)}")
+# print(f"Cl coef: {round(CL_coef_ind,4)}")
+# print(f"Renal Cl (slope): {round(CLslope_ind,3)}")
+# print(f"K12: {round(k12_ind,3)}")
+# print(f"K21: {round(k21_ind,3)}")
+# print(f"Total Vc: {round(Vc_ind,3)}")
+# print(f"Total Cl: {round(CL_ind,3)}")
+# print(f"K10: {round(k10_ind,3)}")
+# print(f"Alpha: {round(alpha,3)}")
+# print(f"Beta: {round(beta,3)}")
+# print(f"Vdss: {round(Vdss_ind,3)}")
+# print(f"Half-life: {round(T_half,3)}")
+
+
+
 ETA = rEBE["EBEi"]
 
+# Individual parameters
 CL_coef_ind = TH[0] * np.exp(ETA[0])
 CLslope_ind = TH[1] * np.exp(ETA[1])
 Vc_coef_ind = TH[2] * np.exp(ETA[2])
 k12_ind = TH[4] * np.exp(ETA[3])
 k21_ind = TH[5] * np.exp(ETA[4])
 
-CL_ind = (CL_coef_ind * WT + CLslope_ind * CLCR) * 0.06
-Vc_ind = Vc_coef_ind * WT + TH[3] * CLCR
+# Summary 기준값 명시
+WT_summary = DATAi["BWT"].dropna().iloc[0]
+CLCR_summary = DATAi["CLCR"].dropna().iloc[0]
+
+# Derived PK parameters
+CL_ind = (CL_coef_ind * WT_summary + CLslope_ind * CLCR_summary) * 0.06
+Vc_ind = Vc_coef_ind * WT_summary + TH[3] * CLCR_summary
 
 Q_ind = k12_ind * Vc_ind
 Vp_ind = Q_ind / k21_ind
@@ -661,277 +974,844 @@ beta = (S - D) / 2
 T_half = 0.693 / beta
 
 print("Iteration:", rEBE["ITERATION"])
-print("Sum of squares:", round(rEBE["SUM_OF_SQUARES"],4))
-print(f"Vc coef: {round(Vc_ind/WT,3)}")
-print(f"Cl coef: {round(CL_coef_ind,4)}")
-print(f"Renal Cl (slope): {round(CLslope_ind,3)}")
-# print(f"Cl coef: {round(CL_ind*1000/60/WT,3)} ")
-# print(f"Renal Cl (slope):  ")
-print(f"K12: {round(k12_ind,3)}")
-print(f"K21: {round(k21_ind,3)}")
-print(f"Total Vc: {round(Vc_ind,3)}")
-print(f"Total Cl: {round(CL_ind,3)}")
-print(f"K10: {round(k10_ind,3)}")
-print(f"Alpha: {round(alpha,3)}")
-print(f"Beta: {round(beta,3)}")
-print(f"Vdss: {round(Vdss_ind,3)}")
-print(f"Half-life: {round(T_half,3)}")
+print("Sum of squares:", round(rEBE["SUM_OF_SQUARES"], 4))
+print(f"Vc coef: {round(Vc_coef_ind, 3)}")
+print(f"Cl coef: {round(CL_coef_ind, 4)}")
+print(f"Renal Cl (slope): {round(CLslope_ind, 3)}")
+print(f"K12: {round(k12_ind, 3)}")
+print(f"K21: {round(k21_ind, 3)}")
+print(f"Total Vc: {round(Vc_ind, 3)}")
+print(f"Total Cl: {round(CL_ind, 3)}")
+print(f"K10: {round(k10_ind, 3)}")
+print(f"Alpha: {round(alpha, 3)}")
+print(f"Beta: {round(beta, 3)}")
+print(f"Vdss: {round(Vdss_ind, 3)}")
+print(f"Half-life: {round(T_half, 3)}")
 
-# rEBE['WSS']
-# rEBE['PARAM_PENALTY']
+# def experiment_best_scenario_detail():
+#     scenarios = [
+#         ("linear_P", "linear", "P_linear"),
+#         ("linear_ETA", "linear", "ETA"),
+#         ("sqrt_P", "sqrt", "P_linear"),
+#         ("sqrt_ETA", "sqrt", "ETA"),
+#     ]
+#
+#     rows = []
+#
+#     for name, sigma_mode, penalty_mode in scenarios:
+#         resfun = make_residual_func(
+#             sigma_mode=sigma_mode,
+#             penalty_mode=penalty_mode
+#         )
+#
+#         P_fit, hist = fit_with_residual(resfun)
+#         pred_df = eval_prediction_at_P(P_fit)
+#
+#         rows.append({
+#             "scenario": name,
+#             "OBJ_fit": objective_at(P_fit, resfun),
+#             "OBJ_PKS": objective_at(P_PKS, resfun),
+#             "CLcoef": P_fit[0],
+#             "CLslope": P_fit[1],
+#             "Vccoef": P_fit[2],
+#             "k12": P_fit[3],
+#             "k21": P_fit[4],
+#             "IPRED_trough": pred_df["IPRED"].iloc[0],
+#             "IPRED_peak": pred_df["IPRED"].iloc[1],
+#             "dist_to_PKS": np.linalg.norm((P_fit - P_PKS) / P_PKS),
+#         })
+#
+#     df = pd.DataFrame(rows)
+#     print(df.round(6))
+#
+#
+# experiment_best_scenario_detail()
 
 
-# cl_grid = np.linspace(0.90,1.05,40)
 #
-# objs = []
+# # ============================================================
+# # 0. PKS target parameter
+# # ============================================================
 #
-# for cls in cl_grid:
-#
-#     P = P_best.copy()
-#     P[1] = cls
-#
-#     objs.append(obj_P(P))
-#
-# plt.plot(cl_grid,objs)
-# plt.show()
-
-# x0 = np.array([
-#     0.05,  # CL coef
-#     0.75,  # Renal CL slope
-#     0.21,  # Vc coef
-#     1.12,  # k12
-#     0.48   # k21
+# P_PKS = np.array([
+#     0.0502,  # CLcoef
+#     0.978,   # CLslope
+#     0.196,   # Vccoef
+#     1.04,    # k12
+#     0.521    # k21
 # ])
 #
-# for n in [5, 8, 10, 12, 15, 19, 25]:
-#     res = least_squares(
-#         residualP,
-#         x0=x0,
-#         method="lm",
-#         max_nfev=n,
-#         xtol=1e-3,
-#         ftol=1e-3,
-#         gtol=1e-3
-#     )
 #
-#     P = res.x
-#     print(
-#         n,
-#         "CLcoef", round(P[0], 4),
-#         "CLslope", round(P[1], 3),
-#         "Vccoef", round(P[2], 3),
-#         "k12", round(P[3], 3),
-#         "k21", round(P[4], 3),
-#     )
+# # ============================================================
+# # 1. 공통 helper
+# # ============================================================
 #
-# ETA_pks = np.array([
-#     np.log(0.0502 / 0.05),
-#     np.log(0.978  / 0.75),
-#     np.log(0.196  / 0.21),
-#     np.log(1.04   / 1.12),
-#     np.log(0.521  / 0.48),
-# ])
+# def eval_prediction_at_P(P, DATAi_test=None):
+#     """
+#     특정 P에서 관측 농도 row의 IPRED 확인
+#     """
+#     if DATAi_test is None:
+#         DATAi_test = DATAi
 #
-# pred = PredVanco_PKS(TH, ETA_pks, DATAi)
-# print(pd.DataFrame({
-#     "TIME": DATAi.loc[DATAi["DV"].notna(), "TIME"],
-#     "DV": DATAi.loc[DATAi["DV"].notna(), "DV"],
-#     "IPRED": pred[DATAi["DV"].notna()]
-# }))
-
-
-# x0 = np.array([
-#     0.05,  # CL coef
-#     0.75,  # Renal CL slope
-#     0.21,  # Vc coef
-#     1.12,  # k12
-#     0.48   # k21
-# ])
+#     ETA = _p_to_eta(P, TH)
+#     pred = PredVanco_PKS(TH, ETA, DATAi_test)
 #
-# P_ind, hist = pks_marquardt_levenberg(
-#     obj_P,
-#     x0=x0,
-#     max_iter=25,
-#     conv=0.001,
-#     lambda0=1.0,
-#     eps=1e-4
-# )
-#
-# for h in hist:
-#     P = h["P"]
-#     print(
-#         h["iter"],
-#         "OBJ", round(h["obj"], 4),
-#         "lambda", round(h["lambda"], 6),
-#         "max_delta", h["max_delta"],
-#         "CLcoef", round(P[0], 4),
-#         "CLslope", round(P[1], 3),
-#         "Vccoef", round(P[2], 3),
-#         "k12", round(P[3], 3),
-#         "k21", round(P[4], 3),
-#     )
-
-
-# TVCL
-#
-# ## Estimation 쪽 문제인지 / Prediction 쪽 문제인지
-#
-# ETA_pks = np.array([
-#     np.log(0.0502 / 0.05),   # CLcoef
-#     np.log(0.978 / 0.75),   # CLslope
-#     np.log(0.196 / 0.21),   # Vccoef
-#     np.log(1.04 / 1.12),   # k12
-#     np.log(0.521 / 0.48),   # k21
-# ])
-#
-# pred = PredVanco_PKS_new(TH, ETA_pks, DATAi)
-#
-# obs = DATAi["DV"].notna()
-#
-# print(
-#     pd.DataFrame({
-#         "TIME": DATAi.loc[obs, "TIME"],
-#         "DV": DATAi.loc[obs, "DV"],
-#         "IPRED": pred[obs]
-#     })
-# )
-#
-# ## Peak 쪽 문제인지 / Trough쪽 문제인지 확인
-#
-# dose_rows = DATAi[DATAi["AMT"].notna()].copy()
-#
-# for t in [45.833333, 49.333333]:
-#     prev_dose = dose_rows[dose_rows["TIME"] <= t]["TIME"].max()
-#     print(
-#         "obs", t,
-#         "prev dose", prev_dose,
-#         "delta", t - prev_dose
-#     )
-#
-
-# ETA_pks = np.array([
-#     np.log(0.0502 / 0.05),
-#     np.log(0.978  / 0.75),
-#     np.log(0.196  / 0.21),
-#     np.log(1.04   / 1.12),
-#     np.log(0.521  / 0.48),
-# ])
-#
-# for dur in [0.5, 1, 1.5, 2, 3]:
-#     DATAi_test = DATAi.copy()
-#     dose_mask = DATAi_test["AMT"].notna() & (DATAi_test["AMT"] > 0)
-#
-#     # duration = AMT / RATE 이므로 RATE = AMT / duration
-#     DATAi_test.loc[dose_mask, "RATE"] = DATAi_test.loc[dose_mask, "AMT"] / dur
-#
-#     pred = PredVanco_PKS_new(TH, ETA_pks, DATAi_test)
 #     obs = DATAi_test["DV"].notna()
 #
-#     print("\nDUR =", dur)
-#     print(pd.DataFrame({
+#     return pd.DataFrame({
 #         "TIME": DATAi_test.loc[obs, "TIME"].values,
 #         "DV": DATAi_test.loc[obs, "DV"].values,
-#         "IPRED": pred[obs]
-#     }))
+#         "IPRED": pred[obs],
+#         "RESID": DATAi_test.loc[obs, "DV"].values - pred[obs]
+#     })
 #
 #
-# ETA_pks = np.array([
-#     np.log(0.0502 / 0.05),
-#     np.log(0.978  / 0.75),
-#     np.log(0.196  / 0.21),
-#     np.log(1.04   / 1.12),
-#     np.log(0.521  / 0.48),
-# ])
+# def summarize_P(P, DATAi_test=None):
+#     """
+#     특정 P를 PKS output 형태로 요약
+#     """
+#     if DATAi_test is None:
+#         DATAi_test = DATAi
 #
-# obs_idx = DATAi[DATAi["DV"].notna()].index
+#     WT = DATAi_test["BWT"].dropna().iloc[-1]
+#     CLCR = DATAi_test["CLCR"].dropna().iloc[-1]
 #
-# for shift in [-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1]:
-#     DATAi_test = DATAi.copy()
-#     DATAi_test.loc[obs_idx[1], "TIME"] += shift
+#     CLcoef, CLslope, Vccoef, k12, k21 = P
 #
-#     pred = PredVanco_PKS_new(TH, ETA_pks, DATAi_test)
+#     CL = (CLcoef * WT + CLslope * CLCR) * 0.06
+#     Vc = Vccoef * WT + TH[3] * CLCR
 #
-#     print(
-#         shift,
-#         round(pred[obs_idx[0]], 3),
-#         round(pred[obs_idx[1]], 3)
+#     Q = k12 * Vc
+#     Vp = Q / k21
+#
+#     k10 = CL / Vc
+#     Vdss = Vc + Vp
+#
+#     S = k10 + k12 + k21
+#     D = np.sqrt(S**2 - 4 * k21 * k10)
+#
+#     alpha = (S + D) / 2
+#     beta = (S - D) / 2
+#     half_life = 0.693 / beta
+#
+#     return {
+#         "CLcoef": CLcoef,
+#         "CLslope": CLslope,
+#         "Vccoef": Vccoef,
+#         "k12": k12,
+#         "k21": k21,
+#         "Total_CL": CL,
+#         "Total_Vc": Vc,
+#         "k10": k10,
+#         "Alpha": alpha,
+#         "Beta": beta,
+#         "Vdss": Vdss,
+#         "Half_life": half_life
+#     }
+#
+#
+# def print_summary(label, P, DATAi_test=None):
+#     s = summarize_P(P, DATAi_test)
+#
+#     print("\n===", label, "===")
+#     print(f"CLcoef      {s['CLcoef']:.4f}")
+#     print(f"CLslope     {s['CLslope']:.3f}")
+#     print(f"Vccoef      {s['Vccoef']:.3f}")
+#     print(f"k12         {s['k12']:.3f}")
+#     print(f"k21         {s['k21']:.3f}")
+#     print(f"Total_CL    {s['Total_CL']:.3f}")
+#     print(f"Total_Vc    {s['Total_Vc']:.3f}")
+#     print(f"k10         {s['k10']:.3f}")
+#     print(f"Alpha       {s['Alpha']:.3f}")
+#     print(f"Beta        {s['Beta']:.3f}")
+#     print(f"Vdss        {s['Vdss']:.3f}")
+#     print(f"Half-life   {s['Half_life']:.3f}")
+#
+#
+# # ============================================================
+# # 2. 가설별 residual function 생성기
+# # ============================================================
+#
+# def make_residual_func(
+#     sigma_mode="linear",          # "linear", "sqrt"
+#     penalty_mode="P_linear",      # "P_linear", "ETA"
+#     param_cv_scale=1.0,           # penalty 강도 조절
+#     data_for_fit=None
+# ):
+#     """
+#     현재 코드는 건드리지 않고, 실험용 residual function만 생성.
+#
+#     sigma_mode:
+#         linear: sigma = CV*F + SD
+#         sqrt  : sigma = sqrt((CV*F)^2 + SD^2)
+#
+#     penalty_mode:
+#         P_linear: (P - Ppop)/(Ppop*CV)
+#         ETA     : log(P/Ppop)/sqrt(OMEGA_diag)
+#
+#     param_cv_scale:
+#         >1이면 penalty 약화
+#         <1이면 penalty 강화
+#     """
+#
+#     if data_for_fit is None:
+#         data_for_fit = DATAi
+#
+#     def residual_exp(P):
+#         if np.any(P <= 0):
+#             return np.ones(100) * 1e6
+#
+#         P_pop = _get_pop_params(TH)
+#         ETA = np.log(P / P_pop)
+#
+#         obs_mask = data_for_fit["DV"].notna()
+#         DV = data_for_fit.loc[obs_mask, "DV"].values
+#
+#         pred = PredVanco_PKS(TH, ETA, data_for_fit)
+#         Fi = pred[obs_mask]
+#
+#         CV_assay = SG[0, 0]
+#         S_assay = SG[1, 1]
+#
+#         if sigma_mode == "linear":
+#             sigma = CV_assay * Fi + S_assay
+#         elif sigma_mode == "sqrt":
+#             sigma = np.sqrt((CV_assay * Fi) ** 2 + S_assay ** 2)
+#         else:
+#             raise ValueError("Unknown sigma_mode")
+#
+#         sigma = np.maximum(sigma, 1e-12)
+#         obs_resid = (DV - Fi) / sigma
+#
+#         if penalty_mode == "P_linear":
+#             P_cv = _get_cv_from_omega(OM)
+#             param_sigma = P_pop * P_cv * param_cv_scale
+#             param_sigma = np.maximum(param_sigma, 1e-12)
+#             param_resid = (P - P_pop) / param_sigma
+#
+#         elif penalty_mode == "ETA":
+#             eta_sd = np.sqrt(np.diag(OM)) * param_cv_scale
+#             eta_sd = np.maximum(eta_sd, 1e-12)
+#             param_resid = ETA / eta_sd
+#
+#         else:
+#             raise ValueError("Unknown penalty_mode")
+#
+#         return np.concatenate([obs_resid, param_resid])
+#
+#     return residual_exp
+#
+#
+# def objective_at(P, residual_func):
+#     r = residual_func(P)
+#     return np.sum(r ** 2)
+#
+#
+# def fit_with_residual(residual_func, x0=None, max_iter=25, conv=1e-3):
+#     if x0 is None:
+#         x0 = _get_pop_params(TH)
+#
+#     P_fit, hist = pks_lm_from_residual(
+#         x0=x0,
+#         residual_func=residual_func,
+#         max_iter=max_iter,
+#         conv=conv,
+#         lam0=1.0,
+#         lam_up=10.0,
+#         lam_down=0.1,
+#         fd_eps=1e-4
 #     )
 #
-# print(raw_data[['DATE','TIME','DV']])
+#     return P_fit, hist
 #
 #
+# # ============================================================
+# # 3. 실험 1: 현재 objective에서 PKS P vs 현재 최적값 비교
+# # ============================================================
 #
-# DATAi_test = DATAi.copy()
+# def experiment_obj_current_vs_pks():
+#     print("\n\n### Experiment 1: current residualP 기준 OBJ 비교")
 #
-# dose_idx = DATAi_test[DATAi_test["AMT"].notna() & (DATAi_test["AMT"] > 0)].index
+#     P_now = rEBE["P_ind"]
 #
-# # 첫 dose 기준 q12h로 강제
-# first_dose_time = DATAi_test.loc[dose_idx[0], "TIME"]
-# DATAi_test.loc[dose_idx, "TIME"] = first_dose_time + np.arange(len(dose_idx)) * 12
+#     obj_now = np.sum(residualP(P_now) ** 2)
+#     obj_pks = np.sum(residualP(P_PKS) ** 2)
 #
-# ETA_pks = np.array([
-#     np.log(0.0502 / 0.05),
-#     np.log(0.978  / 0.75),
-#     np.log(0.196  / 0.21),
-#     np.log(1.04   / 1.12),
-#     np.log(0.521  / 0.48),
-# ])
+#     print("OBJ current fit:", round(obj_now, 6))
+#     print("OBJ PKS P      :", round(obj_pks, 6))
+#     print("OBJ difference :", round(obj_pks - obj_now, 6))
 #
-# pred = PredVanco_PKS_new(TH, ETA_pks, DATAi_test)
+#     print_summary("Current fit", P_now)
+#     print_summary("PKS target", P_PKS)
 #
-# obs = DATAi_test["DV"].notna()
+#     print("\nPrediction at current fit")
+#     print(eval_prediction_at_P(P_now).round(6))
 #
-# print(DATAi_test[["TIME", "AMT", "RATE", "DV"]])
+#     print("\nPrediction at PKS target")
+#     print(eval_prediction_at_P(P_PKS).round(6))
 #
-# print(pd.DataFrame({
-#     "TIME": DATAi_test.loc[obs, "TIME"],
-#     "DV": DATAi_test.loc[obs, "DV"],
-#     "IPRED": pred[obs]
-# }))
-
-
 #
-# # 7. 예측 인터벌 계산
-# PI = calcTDM(PredVanco, DATAi, TH, SG, rEBE, TIME=50, AMT=1000, RATE=1000, II=12, ADDL=10)
+# # ============================================================
+# # 4. 실험 2: sigma 식 바꾸기
+# # ============================================================
 #
-# # 8. TDM 작성에 필수적인 결과정리
-# # PI['y']
+# def experiment_sigma_modes():
+#     print("\n\n### Experiment 2: sigma_mode 비교")
 #
-# # 9. 시각화
+#     rows = []
 #
-# # 스타일 지정 (선택)
-# sns.set(style="whitegrid")
+#     for sigma_mode in ["linear", "sqrt"]:
+#         resfun = make_residual_func(
+#             sigma_mode=sigma_mode,
+#             penalty_mode="P_linear"
+#         )
 #
-# # 그래프 그리기
-# plt.figure(figsize=(10, 6))
+#         P_fit, hist = fit_with_residual(resfun)
 #
-# # 관측치
-# mask_obs = ~PI["y"].isna()
-# sns.scatterplot(x=PI["x"][mask_obs], y=PI["y"][mask_obs], color='black', s=40, label='Observed')
+#         rows.append({
+#             "scenario": f"sigma={sigma_mode}, penalty=P_linear",
+#             "OBJ_fit": objective_at(P_fit, resfun),
+#             "OBJ_PKS": objective_at(P_PKS, resfun),
+#             "iter": len([h for h in hist if h.get("accepted", True)]),
+#             "CLcoef": P_fit[0],
+#             "CLslope": P_fit[1],
+#             "Vccoef": P_fit[2],
+#             "k12": P_fit[3],
+#             "k21": P_fit[4],
+#         })
 #
-# # 예측치 및 신뢰구간
-# sns.lineplot(x="x", y="y2", data=PI, color='dimgrey', label='Prediction (mean)', linewidth=2, alpha=0.5)
-# sns.lineplot(x="x", y="yciLL", data=PI, linestyle='--', color='indianred', label='95% CI lower', alpha=0.5)
-# sns.lineplot(x="x", y="yciUL", data=PI, linestyle='--', color='indianred', label='95% CI upper', alpha=0.5)
-# sns.lineplot(x="x", y="ypiLL", data=PI, linestyle=':', color='royalblue', label='95% PI lower', alpha=0.5)
-# sns.lineplot(x="x", y="ypiUL", data=PI, linestyle=':', color='royalblue', label='95% PI upper', alpha=0.5)
+#     df = pd.DataFrame(rows)
+#     print(df.round(6))
 #
-# # 기준선
-# for y in [5, 15, 25, 35]:
-#     plt.axhline(y=y, linestyle='--', color='gray', linewidth=0.8)
 #
-# # 축 및 레이블 설정
-# plt.xlim(PI["x"].min(), PI["x"].max())
-# plt.ylim([PI["ypiLL"].min(), PI["ypiUL"].max()])
-# plt.xlabel("Time")
-# plt.ylabel("Concentration ± 2SD")
-# plt.title("Vancomycin Concentration Prediction ± 2SD")
-# plt.legend()
-# plt.tight_layout()
-# plt.show()
+# # ============================================================
+# # 5. 실험 3: penalty mode 바꾸기
+# # ============================================================
+#
+# def experiment_penalty_modes():
+#     print("\n\n### Experiment 3: penalty_mode 비교")
+#
+#     rows = []
+#
+#     for penalty_mode in ["P_linear", "ETA"]:
+#         resfun = make_residual_func(
+#             sigma_mode="linear",
+#             penalty_mode=penalty_mode
+#         )
+#
+#         P_fit, hist = fit_with_residual(resfun)
+#
+#         rows.append({
+#             "scenario": f"sigma=linear, penalty={penalty_mode}",
+#             "OBJ_fit": objective_at(P_fit, resfun),
+#             "OBJ_PKS": objective_at(P_PKS, resfun),
+#             "iter": len([h for h in hist if h.get("accepted", True)]),
+#             "CLcoef": P_fit[0],
+#             "CLslope": P_fit[1],
+#             "Vccoef": P_fit[2],
+#             "k12": P_fit[3],
+#             "k21": P_fit[4],
+#         })
+#
+#     df = pd.DataFrame(rows)
+#     print(df.round(6))
+#
+#
+# # ============================================================
+# # 6. 실험 4: sigma + penalty 조합 전체 비교
+# # ============================================================
+#
+# def experiment_grid_sigma_penalty():
+#     print("\n\n### Experiment 4: sigma/penalty 조합 grid")
+#
+#     rows = []
+#
+#     for sigma_mode in ["linear", "sqrt"]:
+#         for penalty_mode in ["P_linear", "ETA"]:
+#
+#             resfun = make_residual_func(
+#                 sigma_mode=sigma_mode,
+#                 penalty_mode=penalty_mode
+#             )
+#
+#             P_fit, hist = fit_with_residual(resfun)
+#
+#             rows.append({
+#                 "sigma": sigma_mode,
+#                 "penalty": penalty_mode,
+#                 "OBJ_fit": objective_at(P_fit, resfun),
+#                 "OBJ_PKS": objective_at(P_PKS, resfun),
+#                 "OBJ_PKS_minus_fit": objective_at(P_PKS, resfun) - objective_at(P_fit, resfun),
+#                 "CLcoef": P_fit[0],
+#                 "CLslope": P_fit[1],
+#                 "Vccoef": P_fit[2],
+#                 "k12": P_fit[3],
+#                 "k21": P_fit[4],
+#                 "dist_to_PKS": np.linalg.norm((P_fit - P_PKS) / P_PKS),
+#             })
+#
+#     df = pd.DataFrame(rows)
+#     print(df.round(6))
+#
+#
+# # ============================================================
+# # 7. 실험 5: penalty 강도 변화
+# # ============================================================
+#
+# def experiment_penalty_strength():
+#     print("\n\n### Experiment 5: penalty strength 변화")
+#
+#     rows = []
+#
+#     for scale in [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0]:
+#         resfun = make_residual_func(
+#             sigma_mode="linear",
+#             penalty_mode="P_linear",
+#             param_cv_scale=scale
+#         )
+#
+#         P_fit, hist = fit_with_residual(resfun)
+#
+#         rows.append({
+#             "param_cv_scale": scale,
+#             "OBJ_fit": objective_at(P_fit, resfun),
+#             "OBJ_PKS": objective_at(P_PKS, resfun),
+#             "CLcoef": P_fit[0],
+#             "CLslope": P_fit[1],
+#             "Vccoef": P_fit[2],
+#             "k12": P_fit[3],
+#             "k21": P_fit[4],
+#             "dist_to_PKS": np.linalg.norm((P_fit - P_PKS) / P_PKS),
+#         })
+#
+#     df = pd.DataFrame(rows)
+#     print(df.round(6))
+#
+#
+# # ============================================================
+# # 8. 실험 6: finite difference step 변화
+# # ============================================================
+#
+# def fit_with_fd_eps(residual_func, fd_eps, x0=None, max_iter=25, conv=1e-3):
+#     if x0 is None:
+#         x0 = _get_pop_params(TH)
+#
+#     P_fit, hist = pks_lm_from_residual(
+#         x0=x0,
+#         residual_func=residual_func,
+#         max_iter=max_iter,
+#         conv=conv,
+#         lam0=1.0,
+#         lam_up=10.0,
+#         lam_down=0.1,
+#         fd_eps=fd_eps
+#     )
+#
+#     return P_fit, hist
+#
+#
+# def experiment_fd_eps():
+#     print("\n\n### Experiment 6: finite difference step 변화")
+#
+#     rows = []
+#
+#     resfun = make_residual_func(
+#         sigma_mode="linear",
+#         penalty_mode="P_linear"
+#     )
+#
+#     for fd_eps in [1e-2, 1e-3, 1e-4, 1e-5, 1e-6]:
+#         P_fit, hist = fit_with_fd_eps(resfun, fd_eps=fd_eps)
+#
+#         rows.append({
+#             "fd_eps": fd_eps,
+#             "OBJ_fit": objective_at(P_fit, resfun),
+#             "CLcoef": P_fit[0],
+#             "CLslope": P_fit[1],
+#             "Vccoef": P_fit[2],
+#             "k12": P_fit[3],
+#             "k21": P_fit[4],
+#             "dist_to_PKS": np.linalg.norm((P_fit - P_PKS) / P_PKS),
+#         })
+#
+#     df = pd.DataFrame(rows)
+#     print(df.round(8))
+#
+#
+# # ============================================================
+# # 9. 전체 실행
+# # ============================================================
+#
+# def run_all_pks_experiments():
+#     experiment_obj_current_vs_pks()
+#     experiment_sigma_modes()
+#     experiment_penalty_modes()
+#     experiment_grid_sigma_penalty()
+#     experiment_penalty_strength()
+#     experiment_fd_eps()
+#
+#
+# # 실행
+# run_all_pks_experiments()
+#
+# # rEBE['WSS']
+# # rEBE['PARAM_PENALTY']
+#
+#
+# # print(
+# #     obj_P(np.array([
+# #         0.0502,
+# #         0.978,
+# #         0.196,
+# #         1.04,
+# #         0.521
+# #     ]))
+# # )
+#
+#
+# # P_pks = np.array([0.0502, 0.978, 0.196, 1.04, 0.521])
 # #
-# # (CL_ind-CLnonrenal)/(CLCR * 0.06)
+# # ETA_pks = np.log(P_pks / _get_pop_params(TH))
+# # pred = PredVanco_PKS(TH, ETA_pks, DATAi)
 # #
-# # Cl_coef = CL_nonrenal * 1000 / 60 / WT
-# # Renal_CL_slope = (Total_CL - CL_nonrenal) / (CLCR * 0.06)
+# # print(pd.DataFrame({
+# #     "TIME": DATAi.loc[DATAi["DV"].notna(), "TIME"],
+# #     "DV": DATAi.loc[DATAi["DV"].notna(), "DV"],
+# #     "IPRED": pred[DATAi["DV"].notna()]
+# # }))
+#
+# # x0 = np.array([
+# #     0.05,  # CL coef
+# #     0.75,  # Renal CL slope
+# #     0.21,  # Vc coef
+# #     1.12,  # k12
+# #     0.48   # k21
+# # ])
 # #
+# # results = []
+# #
+# # for n_iter in [1, 2, 3, 4, 5]:
+# #     P_ind, hist = pks_marquardt_levenberg(
+# #         obj_P,
+# #         x0=x0,
+# #         max_iter=n_iter,
+# #         conv=0,          # 강제로 n_iter까지 돌리기 위해 수렴 중단 비활성화
+# #         lambda0=1.0,
+# #         lambda_up=10.0,
+# #         lambda_down=0.1,
+# #         eps=1e-4
+# #     )
+# #
+# #     pk = summarize_pks_params(P_ind, TH, DATAi)
+# #
+# #     results.append({
+# #         "max_iter": n_iter,
+# #         "actual_iter": len([h for h in hist if not np.isnan(h["max_delta"])]),
+# #         "OBJ": obj_P(P_ind),
+# #         "CLcoef": pk["CLcoef"],
+# #         "CLslope": pk["CLslope"],
+# #         "Vccoef": pk["Vccoef"],
+# #         "K12": pk["K12"],
+# #         "K21": pk["K21"],
+# #         "Total_CL": pk["Total_CL"],
+# #         "Total_Vc": pk["Total_Vc"],
+# #         "K10": pk["K10"],
+# #         "Alpha": pk["Alpha"],
+# #         "Beta": pk["Beta"],
+# #         "Vdss": pk["Vdss"],
+# #         "Half_life": pk["Half_life"],
+# #     })
+# #
+# # result_df = pd.DataFrame(results)
+# #
+# # print(
+# #     result_df.round({
+# #         "OBJ": 4,
+# #         "CLcoef": 4,
+# #         "CLslope": 3,
+# #         "Vccoef": 3,
+# #         "K12": 3,
+# #         "K21": 3,
+# #         "Total_CL": 3,
+# #         "Total_Vc": 3,
+# #         "K10": 3,
+# #         "Alpha": 3,
+# #         "Beta": 3,
+# #         "Vdss": 3,
+# #         "Half_life": 3,
+# #     })[['Vc']]
+# # )
+#
+#
+#
+# # cl_grid = np.linspace(0.90,1.05,40)
+# #
+# # objs = []
+# #
+# # for cls in cl_grid:
+# #
+# #     P = P_best.copy()
+# #     P[1] = cls
+# #
+# #     objs.append(obj_P(P))
+# #
+# # plt.plot(cl_grid,objs)
+# # plt.show()
+#
+# # x0 = np.array([
+# #     0.05,  # CL coef
+# #     0.75,  # Renal CL slope
+# #     0.21,  # Vc coef
+# #     1.12,  # k12
+# #     0.48   # k21
+# # ])
+# #
+# # for n in [5, 8, 10, 12, 15, 19, 25]:
+# #     res = least_squares(
+# #         residualP,
+# #         x0=x0,
+# #         method="lm",
+# #         max_nfev=n,
+# #         xtol=1e-3,
+# #         ftol=1e-3,
+# #         gtol=1e-3
+# #     )
+# #
+# #     P = res.x
+# #     print(
+# #         n,
+# #         "CLcoef", round(P[0], 4),
+# #         "CLslope", round(P[1], 3),
+# #         "Vccoef", round(P[2], 3),
+# #         "k12", round(P[3], 3),
+# #         "k21", round(P[4], 3),
+# #     )
+# #
+# # ETA_pks = np.array([
+# #     np.log(0.0502 / 0.05),
+# #     np.log(0.978  / 0.75),
+# #     np.log(0.196  / 0.21),
+# #     np.log(1.04   / 1.12),
+# #     np.log(0.521  / 0.48),
+# # ])
+# #
+# # pred = PredVanco_PKS(TH, ETA_pks, DATAi)
+# # print(pd.DataFrame({
+# #     "TIME": DATAi.loc[DATAi["DV"].notna(), "TIME"],
+# #     "DV": DATAi.loc[DATAi["DV"].notna(), "DV"],
+# #     "IPRED": pred[DATAi["DV"].notna()]
+# # }))
+#
+#
+# # x0 = np.array([
+# #     0.05,  # CL coef
+# #     0.75,  # Renal CL slope
+# #     0.21,  # Vc coef
+# #     1.12,  # k12
+# #     0.48   # k21
+# # ])
+# #
+# # P_ind, hist = pks_marquardt_levenberg(
+# #     obj_P,
+# #     x0=x0,
+# #     max_iter=25,
+# #     conv=0.001,
+# #     lambda0=1.0,
+# #     eps=1e-4
+# # )
+# #
+# # for h in hist:
+# #     P = h["P"]
+# #     print(
+# #         h["iter"],
+# #         "OBJ", round(h["obj"], 4),
+# #         "lambda", round(h["lambda"], 6),
+# #         "max_delta", h["max_delta"],
+# #         "CLcoef", round(P[0], 4),
+# #         "CLslope", round(P[1], 3),
+# #         "Vccoef", round(P[2], 3),
+# #         "k12", round(P[3], 3),
+# #         "k21", round(P[4], 3),
+# #     )
+#
+#
+# # TVCL
+# #
+# # ## Estimation 쪽 문제인지 / Prediction 쪽 문제인지
+# #
+# # ETA_pks = np.array([
+# #     np.log(0.0502 / 0.05),   # CLcoef
+# #     np.log(0.978 / 0.75),   # CLslope
+# #     np.log(0.196 / 0.21),   # Vccoef
+# #     np.log(1.04 / 1.12),   # k12
+# #     np.log(0.521 / 0.48),   # k21
+# # ])
+# #
+# # pred = PredVanco_PKS_new(TH, ETA_pks, DATAi)
+# #
+# # obs = DATAi["DV"].notna()
+# #
+# # print(
+# #     pd.DataFrame({
+# #         "TIME": DATAi.loc[obs, "TIME"],
+# #         "DV": DATAi.loc[obs, "DV"],
+# #         "IPRED": pred[obs]
+# #     })
+# # )
+# #
+# # ## Peak 쪽 문제인지 / Trough쪽 문제인지 확인
+# #
+# # dose_rows = DATAi[DATAi["AMT"].notna()].copy()
+# #
+# # for t in [45.833333, 49.333333]:
+# #     prev_dose = dose_rows[dose_rows["TIME"] <= t]["TIME"].max()
+# #     print(
+# #         "obs", t,
+# #         "prev dose", prev_dose,
+# #         "delta", t - prev_dose
+# #     )
+# #
+#
+# # ETA_pks = np.array([
+# #     np.log(0.0502 / 0.05),
+# #     np.log(0.978  / 0.75),
+# #     np.log(0.196  / 0.21),
+# #     np.log(1.04   / 1.12),
+# #     np.log(0.521  / 0.48),
+# # ])
+# #
+# # for dur in [0.5, 1, 1.5, 2, 3]:
+# #     DATAi_test = DATAi.copy()
+# #     dose_mask = DATAi_test["AMT"].notna() & (DATAi_test["AMT"] > 0)
+# #
+# #     # duration = AMT / RATE 이므로 RATE = AMT / duration
+# #     DATAi_test.loc[dose_mask, "RATE"] = DATAi_test.loc[dose_mask, "AMT"] / dur
+# #
+# #     pred = PredVanco_PKS_new(TH, ETA_pks, DATAi_test)
+# #     obs = DATAi_test["DV"].notna()
+# #
+# #     print("\nDUR =", dur)
+# #     print(pd.DataFrame({
+# #         "TIME": DATAi_test.loc[obs, "TIME"].values,
+# #         "DV": DATAi_test.loc[obs, "DV"].values,
+# #         "IPRED": pred[obs]
+# #     }))
+# #
+# #
+# # ETA_pks = np.array([
+# #     np.log(0.0502 / 0.05),
+# #     np.log(0.978  / 0.75),
+# #     np.log(0.196  / 0.21),
+# #     np.log(1.04   / 1.12),
+# #     np.log(0.521  / 0.48),
+# # ])
+# #
+# # obs_idx = DATAi[DATAi["DV"].notna()].index
+# #
+# # for shift in [-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1]:
+# #     DATAi_test = DATAi.copy()
+# #     DATAi_test.loc[obs_idx[1], "TIME"] += shift
+# #
+# #     pred = PredVanco_PKS_new(TH, ETA_pks, DATAi_test)
+# #
+# #     print(
+# #         shift,
+# #         round(pred[obs_idx[0]], 3),
+# #         round(pred[obs_idx[1]], 3)
+# #     )
+# #
+# # print(raw_data[['DATE','TIME','DV']])
+# #
+# #
+# #
+# # DATAi_test = DATAi.copy()
+# #
+# # dose_idx = DATAi_test[DATAi_test["AMT"].notna() & (DATAi_test["AMT"] > 0)].index
+# #
+# # # 첫 dose 기준 q12h로 강제
+# # first_dose_time = DATAi_test.loc[dose_idx[0], "TIME"]
+# # DATAi_test.loc[dose_idx, "TIME"] = first_dose_time + np.arange(len(dose_idx)) * 12
+# #
+# # ETA_pks = np.array([
+# #     np.log(0.0502 / 0.05),
+# #     np.log(0.978  / 0.75),
+# #     np.log(0.196  / 0.21),
+# #     np.log(1.04   / 1.12),
+# #     np.log(0.521  / 0.48),
+# # ])
+# #
+# # pred = PredVanco_PKS_new(TH, ETA_pks, DATAi_test)
+# #
+# # obs = DATAi_test["DV"].notna()
+# #
+# # print(DATAi_test[["TIME", "AMT", "RATE", "DV"]])
+# #
+# # print(pd.DataFrame({
+# #     "TIME": DATAi_test.loc[obs, "TIME"],
+# #     "DV": DATAi_test.loc[obs, "DV"],
+# #     "IPRED": pred[obs]
+# # }))
+#
+#
+# #
+# # # 7. 예측 인터벌 계산
+# # PI = calcTDM(PredVanco, DATAi, TH, SG, rEBE, TIME=50, AMT=1000, RATE=1000, II=12, ADDL=10)
+# #
+# # # 8. TDM 작성에 필수적인 결과정리
+# # # PI['y']
+# #
+# # # 9. 시각화
+# #
+# # # 스타일 지정 (선택)
+# # sns.set(style="whitegrid")
+# #
+# # # 그래프 그리기
+# # plt.figure(figsize=(10, 6))
+# #
+# # # 관측치
+# # mask_obs = ~PI["y"].isna()
+# # sns.scatterplot(x=PI["x"][mask_obs], y=PI["y"][mask_obs], color='black', s=40, label='Observed')
+# #
+# # # 예측치 및 신뢰구간
+# # sns.lineplot(x="x", y="y2", data=PI, color='dimgrey', label='Prediction (mean)', linewidth=2, alpha=0.5)
+# # sns.lineplot(x="x", y="yciLL", data=PI, linestyle='--', color='indianred', label='95% CI lower', alpha=0.5)
+# # sns.lineplot(x="x", y="yciUL", data=PI, linestyle='--', color='indianred', label='95% CI upper', alpha=0.5)
+# # sns.lineplot(x="x", y="ypiLL", data=PI, linestyle=':', color='royalblue', label='95% PI lower', alpha=0.5)
+# # sns.lineplot(x="x", y="ypiUL", data=PI, linestyle=':', color='royalblue', label='95% PI upper', alpha=0.5)
+# #
+# # # 기준선
+# # for y in [5, 15, 25, 35]:
+# #     plt.axhline(y=y, linestyle='--', color='gray', linewidth=0.8)
+# #
+# # # 축 및 레이블 설정
+# # plt.xlim(PI["x"].min(), PI["x"].max())
+# # plt.ylim([PI["ypiLL"].min(), PI["ypiUL"].max()])
+# # plt.xlabel("Time")
+# # plt.ylabel("Concentration ± 2SD")
+# # plt.title("Vancomycin Concentration Prediction ± 2SD")
+# # plt.legend()
+# # plt.tight_layout()
+# # plt.show()
+# # #
+# # # (CL_ind-CLnonrenal)/(CLCR * 0.06)
+# # #
+# # # Cl_coef = CL_nonrenal * 1000 / 60 / WT
+# # # Renal_CL_slope = (Total_CL - CL_nonrenal) / (CLCR * 0.06)
+# # #
+#
+#
+# # resfun = make_residual_func(
+# #     sigma_mode="sqrt",
+# #     penalty_mode="ETA"
+# # )
+# #
+# # P_fit, hist = fit_with_residual(resfun)
+# #
+# # print_summary("sqrt_ETA fit", P_fit)
+# #
+# # print(eval_prediction_at_P(P_fit).round(6))
+# # print("OBJ fit:", objective_at(P_fit, resfun))
+# # print("OBJ PKS:", objective_at(P_PKS, resfun))
+# # print("P_fit:", P_fit)
+# # print("P_PKS :", P_PKS)
+# # print("diff :", P_fit - P_PKS)
