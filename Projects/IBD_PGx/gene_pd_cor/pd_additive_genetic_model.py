@@ -38,6 +38,12 @@ def fdr_adjust(pvals):
     return adj
 
 
+def round_or_nan(x, digits=4):
+    if pd.isna(x):
+        return np.nan
+    return round(float(x), digits)
+
+
 def fmt_mean_ci(x):
     x = pd.Series(x).dropna()
     n = len(x)
@@ -49,10 +55,7 @@ def fmt_mean_ci(x):
     se = x.std(ddof=1) / np.sqrt(n) if n > 1 else np.nan
 
     if n > 1:
-        lcl = mean - 1.96 * se
-        ucl = mean + 1.96 * se
-        return f"{mean:.3f} ({lcl:.3f}-{ucl:.3f}), n={n}"
-
+        return f"{mean:.3f} ({mean - 1.96 * se:.3f}-{mean + 1.96 * se:.3f}), n={n}"
     return f"{mean:.3f}, n={n}"
 
 
@@ -64,28 +67,45 @@ def fmt_binary_count(x):
         return "NA"
 
     count = int((x == 1).sum())
-    pct = count / n * 100
-
-    return f"{count}/{n} ({pct:.1f}%)"
+    return f"{count}/{n} ({count / n * 100:.1f}%)"
 
 
-def round_or_nan(x, digits=4):
-    if pd.isna(x):
-        return np.nan
-    return round(float(x), digits)
+def fmt_dosage_distribution(df, y_col):
+    result = {}
+
+    for dosage in [0, 1, 2]:
+        frag = df.loc[df["GENOTYPE_DOSAGE"] == dosage, y_col]
+
+        if len(frag.dropna()) == 0:
+            result[dosage] = "NA"
+            continue
+
+        valid_values = frag.dropna().unique()
+
+        if set(valid_values).issubset({0, 1, 0.0, 1.0}):
+            result[dosage] = fmt_binary_count(frag)
+        else:
+            result[dosage] = fmt_mean_ci(frag)
+
+    return result
 
 
-def get_model_result(df, y_col, x_cols, endpoint_type, group_col, alpha=0.05):
+def get_model_result(df, y_col, x_cols, endpoint_type, genotype_col, alpha=0.05):
     model_df = df[[y_col] + x_cols].dropna().copy()
 
+    fail_effect_name = (
+        "OR_PER_ALLELE" if endpoint_type == "binary"
+        else "BETA_PER_ALLELE"
+    )
+
     if len(model_df) < len(x_cols) + 2:
-        return np.nan, np.nan, np.nan, np.nan, np.nan, len(model_df), {}
+        return fail_effect_name, np.nan, np.nan, np.nan, np.nan, np.nan, len(model_df), {}
 
     if model_df[y_col].nunique() < 2:
-        return np.nan, np.nan, np.nan, np.nan, np.nan, len(model_df), {}
+        return fail_effect_name, np.nan, np.nan, np.nan, np.nan, np.nan, len(model_df), {}
 
-    if model_df[group_col].nunique() < 2:
-        return np.nan, np.nan, np.nan, np.nan, np.nan, len(model_df), {}
+    if model_df[genotype_col].nunique() < 2:
+        return fail_effect_name, np.nan, np.nan, np.nan, np.nan, np.nan, len(model_df), {}
 
     X = sm.add_constant(model_df[x_cols], has_constant="add")
     y = model_df[y_col]
@@ -94,10 +114,11 @@ def get_model_result(df, y_col, x_cols, endpoint_type, group_col, alpha=0.05):
         if endpoint_type == "binary":
             fit = sm.Logit(y, X).fit(disp=False)
 
-            beta = fit.params.get(group_col, np.nan)
-            se = fit.bse.get(group_col, np.nan)
-            pval = fit.pvalues.get(group_col, np.nan)
+            beta = fit.params.get(genotype_col, np.nan)
+            se = fit.bse.get(genotype_col, np.nan)
+            pval = fit.pvalues.get(genotype_col, np.nan)
 
+            effect_name = "OR_PER_ALLELE"
             effect = np.exp(beta)
             ci_lower = np.exp(beta - 1.96 * se)
             ci_upper = np.exp(beta + 1.96 * se)
@@ -105,10 +126,11 @@ def get_model_result(df, y_col, x_cols, endpoint_type, group_col, alpha=0.05):
         else:
             fit = sm.OLS(y, X).fit()
 
-            beta = fit.params.get(group_col, np.nan)
-            se = fit.bse.get(group_col, np.nan)
-            pval = fit.pvalues.get(group_col, np.nan)
+            beta = fit.params.get(genotype_col, np.nan)
+            se = fit.bse.get(genotype_col, np.nan)
+            pval = fit.pvalues.get(genotype_col, np.nan)
 
+            effect_name = "BETA_PER_ALLELE"
             effect = beta
             ci_lower = beta - 1.96 * se
             ci_upper = beta + 1.96 * se
@@ -116,7 +138,7 @@ def get_model_result(df, y_col, x_cols, endpoint_type, group_col, alpha=0.05):
         sig_covar = {}
 
         for term in x_cols:
-            if term == group_col:
+            if term == genotype_col:
                 continue
 
             term_beta = fit.params.get(term, np.nan)
@@ -127,18 +149,18 @@ def get_model_result(df, y_col, x_cols, endpoint_type, group_col, alpha=0.05):
                 continue
 
             if endpoint_type == "binary":
+                term_effect_type = "OR"
                 term_effect = np.exp(term_beta)
                 term_ci_lower = np.exp(term_beta - 1.96 * term_se)
                 term_ci_upper = np.exp(term_beta + 1.96 * term_se)
-                effect_type = "OR"
             else:
+                term_effect_type = "BETA"
                 term_effect = term_beta
                 term_ci_lower = term_beta - 1.96 * term_se
                 term_ci_upper = term_beta + 1.96 * term_se
-                effect_type = "BETA"
 
             sig_covar[term] = {
-                "effect_type": effect_type,
+                "effect_type": term_effect_type,
                 "effect": round_or_nan(term_effect, 4),
                 "ci": (
                     round_or_nan(term_ci_lower, 4),
@@ -147,10 +169,19 @@ def get_model_result(df, y_col, x_cols, endpoint_type, group_col, alpha=0.05):
                 "p": round_or_nan(term_p, 5),
             }
 
-        return effect, se, ci_lower, ci_upper, pval, len(model_df), sig_covar
+        return (
+            effect_name,
+            effect,
+            se,
+            ci_lower,
+            ci_upper,
+            pval,
+            len(model_df),
+            sig_covar,
+        )
 
     except Exception:
-        return np.nan, np.nan, np.nan, np.nan, np.nan, len(model_df), {}
+        return fail_effect_name, np.nan, np.nan, np.nan, np.nan, np.nan, len(model_df), {}
 
 
 prj_dir = "C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/IBD_PGx"
@@ -176,7 +207,7 @@ if "ALB" in ep_df.columns and "ALBUMIN" not in ep_df.columns:
 
 result_rows = []
 
-group_col = "HOM_GROUP"
+genotype_col = "GENOTYPE_DOSAGE"
 
 for drug in ["infliximab", "adalimumab"]:
     for phase in ["IND", "MAINT", "ALL"]:
@@ -205,16 +236,14 @@ for drug in ["infliximab", "adalimumab"]:
         for rsid in rsid_list:
 
             geno_df = rsid_df[["UID", rsid]].copy()
-            geno_df = geno_df.rename(columns={rsid: "GENOTYPE_DOSAGE"})
-
-            geno_df[group_col] = np.where(
-                geno_df["GENOTYPE_DOSAGE"] == 2,
-                1,
-                np.where(geno_df["GENOTYPE_DOSAGE"].isin([0, 1]), 0, np.nan)
+            geno_df = geno_df.rename(columns={rsid: genotype_col})
+            geno_df[genotype_col] = pd.to_numeric(
+                geno_df[genotype_col],
+                errors="coerce"
             )
 
             analysis_df = uid_ep_df.merge(
-                geno_df[["UID", group_col]],
+                geno_df[["UID", genotype_col]],
                 on="UID",
                 how="inner"
             )
@@ -229,14 +258,21 @@ for drug in ["infliximab", "adalimumab"]:
             for ep_col in endpoint_list:
 
                 tmp_df = analysis_df.dropna(
-                    subset=["UID", group_col, ep_col]
+                    subset=["UID", genotype_col, ep_col]
                 ).copy()
 
-                group_counts = tmp_df[group_col].value_counts()
-                hom_n = group_counts.get(1, 0)
-                other_n = group_counts.get(0, 0)
+                dosage_counts = tmp_df[genotype_col].value_counts().to_dict()
 
-                if hom_n < 8 or other_n < 8:
+                dosage0_n = int(dosage_counts.get(0, 0))
+                dosage1_n = int(dosage_counts.get(1, 0))
+                dosage2_n = int(dosage_counts.get(2, 0))
+
+                # Additive model 최소 조건:
+                # 전체 model n >= 16, genotype dosage가 최소 2개 이상 존재
+                if tmp_df[genotype_col].nunique() < 2:
+                    continue
+
+                if len(tmp_df) < 16:
                     continue
 
                 available_n = tmp_df["UID"].nunique()
@@ -247,30 +283,16 @@ for drug in ["infliximab", "adalimumab"]:
                 )
 
                 valid_values = tmp_df[ep_col].dropna().unique()
+
                 if len(valid_values) == 0:
                     continue
 
                 if set(valid_values).issubset({0, 1, 0.0, 1.0}):
                     endpoint_type = "binary"
-                    effect_name = "OR"
-
-                    hom_est = fmt_binary_count(
-                        tmp_df.loc[tmp_df[group_col] == 1, ep_col]
-                    )
-                    other_est = fmt_binary_count(
-                        tmp_df.loc[tmp_df[group_col] == 0, ep_col]
-                    )
-
                 else:
                     endpoint_type = "continuous"
-                    effect_name = "BETA"
 
-                    hom_est = fmt_mean_ci(
-                        tmp_df.loc[tmp_df[group_col] == 1, ep_col]
-                    )
-                    other_est = fmt_mean_ci(
-                        tmp_df.loc[tmp_df[group_col] == 0, ep_col]
-                    )
+                dosage_estimates = fmt_dosage_distribution(tmp_df, ep_col)
 
                 if ep_col == "ADA":
                     covariates = ["SEX", "WEIGHT", "ALBUMIN"]
@@ -279,9 +301,10 @@ for drug in ["infliximab", "adalimumab"]:
                 else:
                     covariates = ["SEX", "WEIGHT", "ALBUMIN", "ADA"]
 
-                x_cols = [group_col] + covariates
+                x_cols = [genotype_col] + covariates
 
                 (
+                    effect_name,
                     effect,
                     se,
                     ci_lower,
@@ -294,7 +317,7 @@ for drug in ["infliximab", "adalimumab"]:
                     y_col=ep_col,
                     x_cols=x_cols,
                     endpoint_type=endpoint_type,
-                    group_col=group_col,
+                    genotype_col=genotype_col,
                     alpha=0.05,
                 )
 
@@ -306,8 +329,9 @@ for drug in ["infliximab", "adalimumab"]:
                     "END_POINT": ep_col,
                     "ENDPOINT_TYPE": endpoint_type,
                     "DATA_AVAILABILITY": data_availability,
-                    "HOM_ESTIMATE": hom_est,
-                    "OTHER_ESTIMATE": other_est,
+                    "DOSAGE_0_ESTIMATE": dosage_estimates.get(0, "NA"),
+                    "DOSAGE_1_ESTIMATE": dosage_estimates.get(1, "NA"),
+                    "DOSAGE_2_ESTIMATE": dosage_estimates.get(2, "NA"),
                     "EFFECT_NAME": effect_name,
                     "EFFECT": effect,
                     "SE": se,
@@ -318,8 +342,9 @@ for drug in ["infliximab", "adalimumab"]:
                     "COVARIATES": ", ".join(covariates),
                     "SIG_COVAR": sig_covar,
                     "MODEL_N": model_n,
-                    "HOM_N": hom_n,
-                    "OTHER_N": other_n,
+                    "DOSAGE_0_N": dosage0_n,
+                    "DOSAGE_1_N": dosage1_n,
+                    "DOSAGE_2_N": dosage2_n,
                 })
 
 
@@ -340,8 +365,9 @@ if len(result_df) > 0:
             "END_POINT",
             "ENDPOINT_TYPE",
             "DATA_AVAILABILITY",
-            "HOM_ESTIMATE",
-            "OTHER_ESTIMATE",
+            "DOSAGE_0_ESTIMATE",
+            "DOSAGE_1_ESTIMATE",
+            "DOSAGE_2_ESTIMATE",
             "EFFECT_NAME",
             "EFFECT",
             "SE",
@@ -352,8 +378,9 @@ if len(result_df) > 0:
             "COVARIATES",
             "SIG_COVAR",
             "MODEL_N",
-            "HOM_N",
-            "OTHER_N",
+            "DOSAGE_0_N",
+            "DOSAGE_1_N",
+            "DOSAGE_2_N",
         ]
     ]
 
@@ -363,7 +390,7 @@ if len(result_df) > 0:
     )
 
 result_df.to_csv(
-    f"{output_dir}/pgx_homozygote_vs_others_effect_size_min8_sigcovar_results.csv",
+    f"{output_dir}/pgx_additive_genetic_model_effect_size_results.csv",
     index=False,
     encoding="utf-8-sig"
 )

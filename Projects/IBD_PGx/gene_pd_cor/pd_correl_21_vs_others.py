@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
-
 import statsmodels.api as sm
+
 from statsmodels.stats.multitest import multipletests
 
 
@@ -52,8 +52,8 @@ def fmt_mean_ci(x):
         lcl = mean - 1.96 * se
         ucl = mean + 1.96 * se
         return f"{mean:.3f} ({lcl:.3f}-{ucl:.3f}), n={n}"
-    else:
-        return f"{mean:.3f}, n={n}"
+
+    return f"{mean:.3f}, n={n}"
 
 
 def fmt_binary_count(x):
@@ -69,17 +69,23 @@ def fmt_binary_count(x):
     return f"{count}/{n} ({pct:.1f}%)"
 
 
-def get_model_result(df, y_col, x_cols, endpoint_type, group_col):
+def round_or_nan(x, digits=4):
+    if pd.isna(x):
+        return np.nan
+    return round(float(x), digits)
+
+
+def get_model_result(df, y_col, x_cols, endpoint_type, group_col, alpha=0.05):
     model_df = df[[y_col] + x_cols].dropna().copy()
 
     if len(model_df) < len(x_cols) + 2:
-        return np.nan, np.nan, np.nan, np.nan, np.nan, len(model_df)
+        return np.nan, np.nan, np.nan, np.nan, np.nan, len(model_df), {}
 
     if model_df[y_col].nunique() < 2:
-        return np.nan, np.nan, np.nan, np.nan, np.nan, len(model_df)
+        return np.nan, np.nan, np.nan, np.nan, np.nan, len(model_df), {}
 
     if model_df[group_col].nunique() < 2:
-        return np.nan, np.nan, np.nan, np.nan, np.nan, len(model_df)
+        return np.nan, np.nan, np.nan, np.nan, np.nan, len(model_df), {}
 
     X = sm.add_constant(model_df[x_cols], has_constant="add")
     y = model_df[y_col]
@@ -99,17 +105,52 @@ def get_model_result(df, y_col, x_cols, endpoint_type, group_col):
         else:
             fit = sm.OLS(y, X).fit()
 
-            effect = fit.params.get(group_col, np.nan)
+            beta = fit.params.get(group_col, np.nan)
             se = fit.bse.get(group_col, np.nan)
             pval = fit.pvalues.get(group_col, np.nan)
 
-            ci_lower = effect - 1.96 * se
-            ci_upper = effect + 1.96 * se
+            effect = beta
+            ci_lower = beta - 1.96 * se
+            ci_upper = beta + 1.96 * se
 
-        return effect, se, ci_lower, ci_upper, pval, len(model_df)
+        sig_covar = {}
+
+        for term in x_cols:
+            if term == group_col:
+                continue
+
+            term_beta = fit.params.get(term, np.nan)
+            term_se = fit.bse.get(term, np.nan)
+            term_p = fit.pvalues.get(term, np.nan)
+
+            if pd.isna(term_p) or term_p >= alpha:
+                continue
+
+            if endpoint_type == "binary":
+                term_effect_type = "OR"
+                term_effect = np.exp(term_beta)
+                term_ci_lower = np.exp(term_beta - 1.96 * term_se)
+                term_ci_upper = np.exp(term_beta + 1.96 * term_se)
+            else:
+                term_effect_type = "BETA"
+                term_effect = term_beta
+                term_ci_lower = term_beta - 1.96 * term_se
+                term_ci_upper = term_beta + 1.96 * term_se
+
+            sig_covar[term] = {
+                "effect_type": term_effect_type,
+                "effect": round_or_nan(term_effect, 4),
+                "ci": (
+                    round_or_nan(term_ci_lower, 4),
+                    round_or_nan(term_ci_upper, 4),
+                ),
+                "p": round_or_nan(term_p, 5),
+            }
+
+        return effect, se, ci_lower, ci_upper, pval, len(model_df), sig_covar
 
     except Exception:
-        return np.nan, np.nan, np.nan, np.nan, np.nan, len(model_df)
+        return np.nan, np.nan, np.nan, np.nan, np.nan, len(model_df), {}
 
 
 prj_dir = "C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/IBD_PGx"
@@ -131,6 +172,7 @@ if "WT" in ep_df.columns and "WEIGHT" not in ep_df.columns:
 
 if "ALB" in ep_df.columns and "ALBUMIN" not in ep_df.columns:
     ep_df["ALBUMIN"] = ep_df["ALB"]
+
 
 result_rows = []
 
@@ -165,6 +207,8 @@ for drug in ["infliximab", "adalimumab"]:
             geno_df = rsid_df[["UID", rsid]].copy()
             geno_df = geno_df.rename(columns={rsid: "GENOTYPE_DOSAGE"})
 
+            # carrier: dosage == 1 or 2
+            # non-carrier: dosage == 0
             geno_df[group_col] = np.where(
                 geno_df["GENOTYPE_DOSAGE"].isin([1, 2]),
                 1,
@@ -179,9 +223,8 @@ for drug in ["infliximab", "adalimumab"]:
 
             total_n = analysis_df["UID"].nunique()
 
-            # Drug별 endpoint 설정
             if drug == "adalimumab":
-                endpoint_list = ["CL"]  # ADA 분석 제외
+                endpoint_list = ["CL"]
             else:
                 endpoint_list = ["ADA", "CL"]
 
@@ -191,7 +234,6 @@ for drug in ["infliximab", "adalimumab"]:
                     subset=["UID", group_col, ep_col]
                 ).copy()
 
-                # 각 그룹 n >= 8 필터
                 group_counts = tmp_df[group_col].value_counts()
                 carrier_n = group_counts.get(1, 0)
                 non_carrier_n = group_counts.get(0, 0)
@@ -235,17 +277,28 @@ for drug in ["infliximab", "adalimumab"]:
 
                 if ep_col == "ADA":
                     covariates = ["SEX", "WEIGHT", "ALBUMIN"]
+                elif drug == "adalimumab":
+                    covariates = ["SEX", "WEIGHT", "ALBUMIN"]
                 else:
                     covariates = ["SEX", "WEIGHT", "ALBUMIN", "ADA"]
 
                 x_cols = [group_col] + covariates
 
-                effect, se, ci_lower, ci_upper, p_value, model_n = get_model_result(
+                (
+                    effect,
+                    se,
+                    ci_lower,
+                    ci_upper,
+                    p_value,
+                    model_n,
+                    sig_covar,
+                ) = get_model_result(
                     tmp_df,
                     y_col=ep_col,
                     x_cols=x_cols,
                     endpoint_type=endpoint_type,
-                    group_col=group_col
+                    group_col=group_col,
+                    alpha=0.05,
                 )
 
                 result_rows.append({
@@ -266,6 +319,7 @@ for drug in ["infliximab", "adalimumab"]:
                     "P_VALUE": p_value,
                     "P_VALUE_FDR": np.nan,
                     "COVARIATES": ", ".join(covariates),
+                    "SIG_COVAR": sig_covar,
                     "MODEL_N": model_n,
                     "CARRIER_N": carrier_n,
                     "NON_CARRIER_N": non_carrier_n,
@@ -299,6 +353,7 @@ if len(result_df) > 0:
             "P_VALUE",
             "P_VALUE_FDR",
             "COVARIATES",
+            "SIG_COVAR",
             "MODEL_N",
             "CARRIER_N",
             "NON_CARRIER_N",
@@ -311,7 +366,7 @@ if len(result_df) > 0:
     )
 
 result_df.to_csv(
-    f"{output_dir}/pgx_carrier_vs_noncarrier_effect_size_min8_results.csv",
+    f"{output_dir}/pgx_carrier_vs_noncarrier_effect_size_min8_sigcovar_results.csv",
     index=False,
     encoding="utf-8-sig"
 )

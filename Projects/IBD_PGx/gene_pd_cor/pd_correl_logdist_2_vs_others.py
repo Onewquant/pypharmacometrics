@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
-
 from statsmodels.stats.multitest import multipletests
 
 
@@ -38,22 +37,32 @@ def fdr_adjust(pvals):
     return adj
 
 
-def fmt_mean_ci(x):
+def round_or_nan(x, digits=4):
+    if pd.isna(x):
+        return np.nan
+    return round(float(x), digits)
+
+
+def fmt_geomean_ci(x):
     x = pd.Series(x).dropna()
+    x = x[x > 0]
     n = len(x)
 
     if n == 0:
         return "NA"
 
-    mean = x.mean()
-    se = x.std(ddof=1) / np.sqrt(n) if n > 1 else np.nan
+    log_x = np.log(x)
+    mean_log = log_x.mean()
+    se_log = log_x.std(ddof=1) / np.sqrt(n) if n > 1 else np.nan
+
+    gmean = np.exp(mean_log)
 
     if n > 1:
-        lcl = mean - 1.96 * se
-        ucl = mean + 1.96 * se
-        return f"{mean:.3f} ({lcl:.3f}-{ucl:.3f}), n={n}"
+        lcl = np.exp(mean_log - 1.96 * se_log)
+        ucl = np.exp(mean_log + 1.96 * se_log)
+        return f"{gmean:.3f} ({lcl:.3f}-{ucl:.3f}), n={n}"
 
-    return f"{mean:.3f}, n={n}"
+    return f"{gmean:.3f}, n={n}"
 
 
 def fmt_binary_count(x):
@@ -65,14 +74,7 @@ def fmt_binary_count(x):
 
     count = int((x == 1).sum())
     pct = count / n * 100
-
     return f"{count}/{n} ({pct:.1f}%)"
-
-
-def round_or_nan(x, digits=4):
-    if pd.isna(x):
-        return np.nan
-    return round(float(x), digits)
 
 
 def get_model_result(df, y_col, x_cols, endpoint_type, group_col, alpha=0.05):
@@ -103,15 +105,16 @@ def get_model_result(df, y_col, x_cols, endpoint_type, group_col, alpha=0.05):
             ci_upper = np.exp(beta + 1.96 * se)
 
         else:
-            fit = sm.OLS(y, X).fit()
+            fit = sm.OLS(y, X).fit(cov_type="HC3")
 
             beta = fit.params.get(group_col, np.nan)
             se = fit.bse.get(group_col, np.nan)
             pval = fit.pvalues.get(group_col, np.nan)
 
-            effect = beta
-            ci_lower = beta - 1.96 * se
-            ci_upper = beta + 1.96 * se
+            # log(CL) model → GMR
+            effect = np.exp(beta)
+            ci_lower = np.exp(beta - 1.96 * se)
+            ci_upper = np.exp(beta + 1.96 * se)
 
         sig_covar = {}
 
@@ -127,19 +130,20 @@ def get_model_result(df, y_col, x_cols, endpoint_type, group_col, alpha=0.05):
                 continue
 
             if endpoint_type == "binary":
+                term_effect_type = "OR"
                 term_effect = np.exp(term_beta)
                 term_ci_lower = np.exp(term_beta - 1.96 * term_se)
                 term_ci_upper = np.exp(term_beta + 1.96 * term_se)
-                effect_type = "OR"
             else:
-                term_effect = term_beta
-                term_ci_lower = term_beta - 1.96 * term_se
-                term_ci_upper = term_beta + 1.96 * term_se
-                effect_type = "BETA"
+                term_effect_type = "GMR"
+                term_effect = np.exp(term_beta)
+                term_ci_lower = np.exp(term_beta - 1.96 * term_se)
+                term_ci_upper = np.exp(term_beta + 1.96 * term_se)
 
             sig_covar[term] = {
-                "effect_type": effect_type,
+                "effect_type": term_effect_type,
                 "effect": round_or_nan(term_effect, 4),
+                "percent_change": round_or_nan((term_effect - 1) * 100, 2),
                 "ci": (
                     round_or_nan(term_ci_lower, 4),
                     round_or_nan(term_ci_upper, 4),
@@ -173,7 +177,6 @@ if "WT" in ep_df.columns and "WEIGHT" not in ep_df.columns:
 if "ALB" in ep_df.columns and "ALBUMIN" not in ep_df.columns:
     ep_df["ALBUMIN"] = ep_df["ALB"]
 
-
 result_rows = []
 
 group_col = "HOM_GROUP"
@@ -186,9 +189,7 @@ for drug in ["infliximab", "adalimumab"]:
         else:
             phase_cond = ep_df["PHASE"] == phase
 
-        med_ep_df = ep_df[
-            (ep_df["DRUG"] == drug) & phase_cond
-        ].copy()
+        med_ep_df = ep_df[(ep_df["DRUG"] == drug) & phase_cond].copy()
 
         uid_ep_df = (
             med_ep_df
@@ -202,11 +203,16 @@ for drug in ["infliximab", "adalimumab"]:
             )
         )
 
+        uid_ep_df = uid_ep_df[uid_ep_df["CL"].isna() | (uid_ep_df["CL"] > 0)].copy()
+        uid_ep_df["LOG_CL"] = np.log(uid_ep_df["CL"])
+
         for rsid in rsid_list:
 
             geno_df = rsid_df[["UID", rsid]].copy()
             geno_df = geno_df.rename(columns={rsid: "GENOTYPE_DOSAGE"})
 
+            # homozygote variant: dosage == 2
+            # others: dosage == 0 or 1
             geno_df[group_col] = np.where(
                 geno_df["GENOTYPE_DOSAGE"] == 2,
                 1,
@@ -221,15 +227,14 @@ for drug in ["infliximab", "adalimumab"]:
 
             total_n = analysis_df["UID"].nunique()
 
-            if drug == "adalimumab":
-                endpoint_list = ["CL"]
-            else:
-                endpoint_list = ["ADA", "CL"]
+            endpoint_list = ["CL"] if drug == "adalimumab" else ["ADA", "CL"]
 
             for ep_col in endpoint_list:
 
+                y_col = "LOG_CL" if ep_col == "CL" else "ADA"
+
                 tmp_df = analysis_df.dropna(
-                    subset=["UID", group_col, ep_col]
+                    subset=["UID", group_col, y_col]
                 ).copy()
 
                 group_counts = tmp_df[group_col].value_counts()
@@ -240,44 +245,39 @@ for drug in ["infliximab", "adalimumab"]:
                     continue
 
                 available_n = tmp_df["UID"].nunique()
-
                 data_availability = (
                     f"{available_n}/{total_n} ({available_n / total_n * 100:.1f}%)"
                     if total_n > 0 else "0/0 (NA)"
                 )
 
-                valid_values = tmp_df[ep_col].dropna().unique()
-                if len(valid_values) == 0:
-                    continue
-
-                if set(valid_values).issubset({0, 1, 0.0, 1.0}):
+                if ep_col == "ADA":
                     endpoint_type = "binary"
                     effect_name = "OR"
 
                     hom_est = fmt_binary_count(
-                        tmp_df.loc[tmp_df[group_col] == 1, ep_col]
+                        tmp_df.loc[tmp_df[group_col] == 1, "ADA"]
                     )
                     other_est = fmt_binary_count(
-                        tmp_df.loc[tmp_df[group_col] == 0, ep_col]
+                        tmp_df.loc[tmp_df[group_col] == 0, "ADA"]
                     )
+
+                    covariates = ["SEX", "WEIGHT", "ALBUMIN"]
 
                 else:
-                    endpoint_type = "continuous"
-                    effect_name = "BETA"
+                    endpoint_type = "continuous_log"
+                    effect_name = "GMR"
 
-                    hom_est = fmt_mean_ci(
-                        tmp_df.loc[tmp_df[group_col] == 1, ep_col]
+                    hom_est = fmt_geomean_ci(
+                        tmp_df.loc[tmp_df[group_col] == 1, "CL"]
                     )
-                    other_est = fmt_mean_ci(
-                        tmp_df.loc[tmp_df[group_col] == 0, ep_col]
+                    other_est = fmt_geomean_ci(
+                        tmp_df.loc[tmp_df[group_col] == 0, "CL"]
                     )
 
-                if ep_col == "ADA":
-                    covariates = ["SEX", "WEIGHT", "ALBUMIN"]
-                elif drug == "adalimumab":
-                    covariates = ["SEX", "WEIGHT", "ALBUMIN"]
-                else:
-                    covariates = ["SEX", "WEIGHT", "ALBUMIN", "ADA"]
+                    if drug == "adalimumab":
+                        covariates = ["SEX", "WEIGHT", "ALBUMIN"]
+                    else:
+                        covariates = ["SEX", "WEIGHT", "ALBUMIN", "ADA"]
 
                 x_cols = [group_col] + covariates
 
@@ -291,11 +291,17 @@ for drug in ["infliximab", "adalimumab"]:
                     sig_covar,
                 ) = get_model_result(
                     tmp_df,
-                    y_col=ep_col,
+                    y_col=y_col,
                     x_cols=x_cols,
-                    endpoint_type=endpoint_type,
+                    endpoint_type="binary" if ep_col == "ADA" else "continuous_log",
                     group_col=group_col,
                     alpha=0.05,
+                )
+
+                percent_change = (
+                    (effect - 1) * 100
+                    if pd.notna(effect) and ep_col == "CL"
+                    else np.nan
                 )
 
                 result_rows.append({
@@ -310,6 +316,7 @@ for drug in ["infliximab", "adalimumab"]:
                     "OTHER_ESTIMATE": other_est,
                     "EFFECT_NAME": effect_name,
                     "EFFECT": effect,
+                    "PERCENT_CHANGE": percent_change,
                     "SE": se,
                     "CI_LOWER": ci_lower,
                     "CI_UPPER": ci_upper,
@@ -344,6 +351,7 @@ if len(result_df) > 0:
             "OTHER_ESTIMATE",
             "EFFECT_NAME",
             "EFFECT",
+            "PERCENT_CHANGE",
             "SE",
             "CI_LOWER",
             "CI_UPPER",
@@ -363,7 +371,7 @@ if len(result_df) > 0:
     )
 
 result_df.to_csv(
-    f"{output_dir}/pgx_homozygote_vs_others_effect_size_min8_sigcovar_results.csv",
+    f"{output_dir}/pgx_homozygote_vs_others_logCL_GMR_min8_sigcovar_results.csv",
     index=False,
     encoding="utf-8-sig"
 )

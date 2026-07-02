@@ -112,7 +112,7 @@ def pairwise_posthoc(df, ep_col, endpoint_type):
     return summary
 
 
-prj_dir = 'C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/IBD_PGx'
+prj_dir = '/Projects/IBD_PGx'
 resource_dir = f'{prj_dir}/gene_pd_cor'
 output_dir = f"{prj_dir}/gene_pd_cor"
 
