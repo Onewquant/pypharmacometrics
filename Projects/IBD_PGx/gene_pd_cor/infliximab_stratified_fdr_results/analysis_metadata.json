@@ -1,0 +1,28 @@
+{
+  "genotype_file": "/mnt/data/rsid_dosage_matrix_with_alleles(4).csv",
+  "endpoint_file": "/mnt/data/for_genomics_df(all_drugs)(3).csv",
+  "output_directory": "/mnt/data/infliximab_stratified_fdr_results",
+  "drug": "infliximab",
+  "phases": [
+    "IND",
+    "MAINT",
+    "ALL"
+  ],
+  "endpoints": [
+    "CL",
+    "ADA"
+  ],
+  "genetic_models": [
+    "additive",
+    "dominant",
+    "recessive"
+  ],
+  "fdr_family_definition": "Separate BH-FDR within each PHASE x END_POINT x GENETIC_MODEL across candidate rsIDs with valid p-values",
+  "cl_model": "log(CL) ~ genotype + SEX + WEIGHT + ALBUMIN + ADA",
+  "ada_model": "ADA ~ genotype + SEX + WEIGHT + ALBUMIN (maximum-likelihood logistic regression; unstable/separated fits excluded from FDR)",
+  "all_phase_definition": "Patient-level mean CL/continuous covariates and maximum ADA across IND and MAINT; not a repeated-measures interaction model",
+  "minimum_binary_group_n": 8,
+  "minimum_additive_observed_level_n": 8,
+  "minimum_total_n": 16,
+  "fdr_alpha": 0.05
+}
