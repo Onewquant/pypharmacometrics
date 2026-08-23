@@ -7,7 +7,8 @@ from statsmodels.stats.multitest import multipletests
 
 # Analysis frame (per professor's comments):
 #   - infliximab only (adalimumab excluded; no PK model data)
-#   - data split into phase subgroups: IND / MAINT / ALL (IND+MAINT pooled)
+#   - data split into phase subgroups: IND / MAINT / OVERALL
+#     (OVERALL = IND+MAINT pooled, labeled "overall treatment" in the paper)
 #   - within each subgroup, genotype effect on each endpoint is tested with
 #     ANCOVA (CL) or logistic regression (ADA):
 #       ADA ~ GROUP + SEX + WEIGHT + ALBUMIN
@@ -42,8 +43,14 @@ rsid_gene_dict = {
     "rs776813259": "SLCO2A1",
 }
 
+MAF_MIN = 0.05
+HWE_P_MIN = 0.05
+
 GROUP_COL = "GENO_GROUP"
-MIN_GROUP_N = 8
+# no minimum group-size filter (decision 2026-08): every variant with both
+# genotype groups non-empty is tested, so the FDR family includes all
+# estimable contrasts
+MIN_GROUP_N = 1
 
 COMPARISONS = {
     "HOM_vs_OTHERS": {
@@ -59,6 +66,64 @@ COMPARISONS = {
         "reference_label": "NONCARRIER(0)",
     },
 }
+
+
+def hwe_exact_p(n_het, n_hom_rare, n_hom_common):
+    """SNP-HWE exact test (Wigginton, Cutler & Abecasis, 2005)."""
+    n_het = int(n_het)
+    rare = 2 * int(n_hom_rare) + n_het
+    n = int(n_het + n_hom_rare + n_hom_common)
+
+    if n == 0 or rare == 0:
+        return np.nan
+
+    probs = np.zeros(rare + 1)
+    mid = rare * (2 * n - rare) // (2 * n)
+    if mid % 2 != rare % 2:
+        mid += 1
+    probs[mid] = 1.0
+
+    het, hom_r, hom_c = mid, (rare - mid) // 2, n - mid - (rare - mid) // 2
+    while het > 1:
+        probs[het - 2] = (
+            probs[het] * het * (het - 1.0)
+            / (4.0 * (hom_r + 1.0) * (hom_c + 1.0))
+        )
+        het -= 2
+        hom_r += 1
+        hom_c += 1
+
+    het, hom_r, hom_c = mid, (rare - mid) // 2, n - mid - (rare - mid) // 2
+    while het <= rare - 2:
+        probs[het + 2] = (
+            probs[het] * 4.0 * hom_r * hom_c / ((het + 2.0) * (het + 1.0))
+        )
+        het += 2
+        hom_r -= 1
+        hom_c -= 1
+
+    probs /= probs.sum()
+    return float(min(1.0, probs[probs <= probs[n_het] * (1 + 1e-9)].sum()))
+
+
+def variant_qc(dosages):
+    """MAF and HWE exact p for one variant (dosage 0/1/2 series)."""
+    dos = pd.Series(dosages).dropna()
+    dos = dos[dos.isin([0, 1, 2])]
+    n = len(dos)
+    if n == 0:
+        return np.nan, np.nan
+
+    n0 = int((dos == 0).sum())
+    n1 = int((dos == 1).sum())
+    n2 = int((dos == 2).sum())
+
+    af = (n1 + 2 * n2) / (2 * n)
+    maf = min(af, 1 - af)
+    hwe_p = (
+        hwe_exact_p(n1, n2, n0) if af <= 0.5 else hwe_exact_p(n1, n0, n2)
+    )
+    return maf, hwe_p
 
 
 def fdr_adjust(pvals):
@@ -255,11 +320,58 @@ if "ALB" in ep_df.columns and "ALBUMIN" not in ep_df.columns:
     ep_df["ALBUMIN"] = ep_df["ALB"]
 
 
+# ---------------------------------------------------------------------------
+# Variant-level QC on the PGx cohort (genotype data only, endpoint-blind).
+# Applied once so the candidate panel is identical across all phases.
+# ---------------------------------------------------------------------------
+
+pgx_uids = set(ep_df["UID"]) & set(rsid_df["UID"])
+cohort_geno_df = rsid_df[rsid_df["UID"].isin(pgx_uids)]
+
+qc_rows = []
+for rsid in rsid_list:
+    maf, hwe_p = variant_qc(cohort_geno_df[rsid])
+    passed = (
+        pd.notna(maf) and maf >= MAF_MIN
+        and (pd.isna(hwe_p) or hwe_p >= HWE_P_MIN)
+    )
+    qc_rows.append({
+        "RSID": rsid.split("(")[0],
+        "GENE": rsid_gene_dict.get(rsid.split("(")[0], ""),
+        "MAF": round_or_nan(maf, 4),
+        "HWE_P": round_or_nan(hwe_p, 4),
+        "PASS": "Y" if passed else "N",
+        "REASON": (
+            "" if passed
+            else "; ".join(
+                ([f"MAF {maf:.4f} < {MAF_MIN}"] if pd.notna(maf) and maf < MAF_MIN else [])
+                + ([f"HWE p {hwe_p:.4f} < {HWE_P_MIN}"]
+                   if pd.notna(hwe_p) and hwe_p < HWE_P_MIN else [])
+                + ([] if pd.notna(maf) else ["MAF not estimable"])
+            )
+        ),
+    })
+
+qc_df = pd.DataFrame(qc_rows)
+qc_df.to_csv(
+    f"{output_dir}/Table_variant_qc.csv", index=False, encoding="utf-8-sig"
+)
+
+excluded = qc_df[qc_df["PASS"] == "N"]
+rsid_list = [r for r in rsid_list
+             if r.split("(")[0] in set(qc_df.loc[qc_df["PASS"] == "Y", "RSID"])]
+
+print(f"Variant QC (cohort n={len(pgx_uids)}): "
+      f"{len(rsid_list)} passed, {len(excluded)} excluded")
+if len(excluded):
+    print(excluded[["RSID", "GENE", "MAF", "HWE_P", "REASON"]].to_string(index=False))
+print()
+
 result_rows = []
 
-for phase in ["IND", "MAINT", "ALL"]:
+for phase in ["IND", "MAINT", "OVERALL"]:
 
-    if phase == "ALL":
+    if phase == "OVERALL":
         phase_cond = ep_df["PHASE"].isin(["IND", "MAINT"])
     else:
         phase_cond = ep_df["PHASE"] == phase

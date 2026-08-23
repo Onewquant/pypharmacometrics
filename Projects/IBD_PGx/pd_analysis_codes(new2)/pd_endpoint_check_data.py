@@ -44,7 +44,9 @@ maint_uids = list(uniq_df[(uniq_df['START_INDMAINT']==1)]['UID'].reset_index(dro
 
 ## PD 데이터셋 로딩
 
-pd_df = pd.read_csv(f'{output_dir}/pd_bsize_df_ori.csv')
+# pd_df = pd.read_csv(f'{output_dir}/pd_bsize_df_ori.csv')
+pd_df = pd.read_csv(f'{output_dir}/pd_bsize_df.csv')
+# pd_df[pd_df['UID']==25269024].dropna(subset=['WT'])['WT']
 # df['UID'].drop_duplicates().iloc[0]
 
 ## LAB 중 CRP, fCal 을 PD 데이터셋에 붙이기

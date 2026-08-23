@@ -9,10 +9,16 @@ flags the special-case UIDs that need manual confirmation:
     covariate-complete), for IND / MAINT / ALL
 
 Wording note: the manuscript defines the analytic cohort as WGS-performed
-patients, so the PGx-branch exclusion must NOT be labeled "without WGS".
+patients, so the PGx-branch exclusion must NOT be labeled "without WGS";
+it is recorded as removal during genotype quality control.
 Confirmed reasons (2026-08):
-  - UID 17439372: sequencing sample could not be matched to the patient
-    ID (ID-matching failure) -> excluded from the genotype matrix
+  - UID 17439372: the sequencing sample was removed during genotype
+    quality control and is absent from the final QC'd variant dataset.
+    Verified that this analysis code removes no samples (the earlier QC
+    code has all filter_cols commented out; the current script applies
+    sample QC only on the mt_pca branch), so the removal occurred
+    upstream. Whether the sample was never sequenced or dropped by the
+    center's QC has not been reconciled against the sequencing list.
   - UID 35093356: included in popPK modeling (NONMEM ID 78) but the
     phase-level derived dataset row is entirely empty - phase-specific
     estimates could not be derived (maintenance-only patient, phase
@@ -62,22 +68,22 @@ no_sample_uids = sorted(set(dc["UID"]) - set(samp["UID"]))
 rows = [
     {"STEP": "Infliximab cohort (popPK)", "N": len(ifx_uids), "NOTE": ""},
     {
-        "STEP": "Excluded: sequencing sample not matched to patient ID",
+        "STEP": "Excluded: genotype data removed during quality control",
         "N": len(no_geno_uids),
-        "NOTE": f"UID {', '.join(no_geno_uids)} - ID-matching failure "
-                f"(confirmed 2026-08; genotype matrix: "
+        "NOTE": f"UID {', '.join(no_geno_uids)} - sample absent from the "
+                f"QC'd variant dataset (verified 2026-08; genotype matrix: "
                 f"{n_geno_samples_total} samples, "
-                f"{n_geno_unmatched} unmatched to a patient UID)",
+                f"{n_geno_unmatched} not mapped to a study patient UID)",
     },
     {"STEP": "PGx analysis cohort", "N": len(pgx_uids), "NOTE": ""},
 ]
 
 covar_cols = ["SEX", "WEIGHT", "ALBUMIN", "ADA"]
 
-for phase in ["IND", "MAINT", "ALL"]:
+for phase in ["IND", "MAINT", "OVERALL"]:
     cond = (
         ifx_df["PHASE"].isin(["IND", "MAINT"])
-        if phase == "ALL" else ifx_df["PHASE"] == phase
+        if phase == "OVERALL" else ifx_df["PHASE"] == phase
     )
     d = (
         ifx_df[cond]

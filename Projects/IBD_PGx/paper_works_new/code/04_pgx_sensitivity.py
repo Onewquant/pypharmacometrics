@@ -49,7 +49,7 @@ COMPARISONS = {
 
 
 def build_phase_df(ep_df, phase):
-    if phase == "ALL":
+    if phase == "OVERALL":
         cond = ep_df["PHASE"].isin(["IND", "MAINT"])
     else:
         cond = ep_df["PHASE"] == phase

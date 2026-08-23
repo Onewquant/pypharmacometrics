@@ -33,13 +33,13 @@ COLOR_REF = "#B25C00"
 COLOR_HOM = "#0072B2"
 COLOR_SUMMARY = "#1F2937"
 
-PANELS = [("MAINT", "Maintenance phase"), ("ALL", "Whole phase")]
+PANELS = [("MAINT", "Maintenance phase"), ("OVERALL", "Overall treatment")]
 
 
 def build_phase_df(ep_df, phase):
     cond = (
         ep_df["PHASE"].isin(["IND", "MAINT"])
-        if phase == "ALL" else ep_df["PHASE"] == phase
+        if phase == "OVERALL" else ep_df["PHASE"] == phase
     )
     uid_df = (
         ep_df[cond]
@@ -135,9 +135,8 @@ for ax, (phase, title) in zip(axes, PANELS):
             ha="center", va="bottom", fontsize=7.5, color=COLOR_SUMMARY,
         )
 
+# no figure title: the caption is supplied separately in the manuscript
 axes[0].set_ylabel("Infliximab clearance (L/day)", fontsize=9)
-fig.suptitle("rs1061622 (TNFRSF1B) genotype and infliximab clearance",
-             fontsize=10, y=1.02)
 fig.tight_layout()
 
 for ext in ["png", "pdf"]:

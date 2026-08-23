@@ -158,6 +158,9 @@ pk_param_list = ['CL','V2','V3']
 secondary_param_list = ['CUM_AUC','AUC24','CUM_DOSE','DOSE24','CMAX','ADJ_DOSE24','CUM_DOSEpWT','DOSE24pWT','CUM_ADJ_DOSEpWT','ADJ_DOSE24pWT','OPT_PCT','DOSING_PERIOD']
 for pk_param in bl_demo_list+cm_list+secondary_param_list+pk_param_list:
     pd_res_df[pk_param]=np.nan
+# PK 창 산출 근거 기록용 (감사/재현 목적)
+pd_res_df['PK_WINDOW_END']=pd.Series([np.nan]*len(pd_res_df), dtype='object')
+pd_res_df['PK_WINDOW_SRC']=pd.Series([np.nan]*len(pd_res_df), dtype='object')
     # uid_sim_conc_df.columns
     # pd_res_df.columns
 # pd_res_df['DRUG']
@@ -180,6 +183,43 @@ for inx, row in pd_res_df.iterrows():
     # sim_df.columns
     start_date = row['DS_DATE']
     end_date = row['DE_DATE']
+
+    ## [수정 2026-08] PK 파라미터(CL/V2/V3) 및 기저 공변량을 PD 창에서 분리
+    #  DE_DATE는 1년차 PD 측정일(TG_DATE)에 종속되므로, PD 추적이 없는 환자는
+    #  DE_DATE가 결측이 되어 PK 파라미터까지 통째로 버려지고 있었음.
+    #  PK는 PD와 무관하므로 아래에서 별도 창으로 먼저 산출한다.
+    #  창 종료일: DE_DATE가 있으면 그대로, 없으면 추적 마지막일
+    #            (단, 동일 환자의 다음 phase 시작 전날로 제한)
+    if type(start_date)!=float:
+        if type(end_date)!=float:
+            pk_end_date = end_date
+        else:
+            pk_end_date = uid_sim_df['DATETIME'].max()
+            later_ds = pd_res_df[(pd_res_df['UID']==uid)
+                                 &(pd_res_df['DRUG']==drug)
+                                 &(pd_res_df['DS_DATE'].notna())
+                                 &(pd_res_df['DS_DATE']>start_date)]['DS_DATE']
+            if len(later_ds)>0:
+                cap_date = (datetime.strptime(later_ds.min(), '%Y-%m-%d')
+                            - timedelta(days=1)).strftime('%Y-%m-%d')
+                pk_end_date = min(pk_end_date, cap_date)
+
+        pk_conc_df = uid_sim_conc_df[(uid_sim_conc_df['DATETIME'] >= start_date)
+                                     &(uid_sim_conc_df['DATETIME'] <= pk_end_date)].copy()
+        if len(pk_conc_df)>0:
+            for demo_c in bl_demo_list:
+                if demo_c!='ADA':
+                    pd_res_df.at[inx, demo_c] = pk_conc_df[demo_c].iloc[0]
+                else:
+                    pd_res_df.at[inx, demo_c] = pk_conc_df[demo_c].max()
+            for pk_p in pk_param_list:
+                pd_res_df.at[inx, pk_p] = pk_conc_df[pk_p].median()
+            pd_res_df.at[inx, 'PK_WINDOW_END'] = pk_end_date
+            pd_res_df.at[inx, 'PK_WINDOW_SRC'] = ('DE_DATE' if type(end_date)!=float
+                                                  else 'follow-up end (DE_DATE missing)')
+
+    ## 이하 기간 기반 2차 지표(누적용량/AUC 등)는 유효한 투약기간이 필요하므로
+    #  기존 가드를 유지한다.
     if (type(start_date)==float) or (type(end_date)==float):
         for pk_param in secondary_param_list:
             pd_res_df.at[inx, pk_param] = np.nan
@@ -293,6 +333,12 @@ for col in gene_res_df.columns:
 if not os.path.exists(f"{output_dir}/PKPD_EDA/GENOMICS"):
     os.mkdir(f"{output_dir}/PKPD_EDA/GENOMICS")
 # (gene_res_df.loc[:,'DAY_DELT':].sum(axis=1)+(gene_res_df['UID']/10000))*100
+# PK 창 산출 근거 감사 파일 (PD 창 분리 수정의 추적용)
+pd_res_df[['UID','DRUG','PHASE','DS_DATE','DE_DATE','TG_DATE',
+           'PK_WINDOW_END','PK_WINDOW_SRC']+pk_param_list].to_csv(
+    f"{output_dir}/PKPD_EDA/GENOMICS/pk_window_audit.csv",
+    index=False, encoding='utf-8-sig')
+
 gene_res_df['ECT'] = (((gene_res_df.loc[:,'DAYDELT':].sum(axis=1)+(gene_res_df['UID']/100000))*100).map(int))/100
 gene_res_df.to_csv(f"{output_dir}/PKPD_EDA/GENOMICS/for_genomics_df(all_drugs).csv", index=False, encoding='utf-8-sig')
 
