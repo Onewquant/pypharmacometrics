@@ -32,7 +32,11 @@ adalimumab_sim_df = pd.read_csv(f"{nonmem_dir}/run/sim92",encoding='utf-8-sig', 
 adalimumab_sim_df['DRUG'] = 'adalimumab'
 adalimumab_sim_df['ID'] = adalimumab_sim_df['ID'].astype(int)
 adalimumab_sim_df['UID'] = adalimumab_sim_df['ID'].map(adalimumab_id_uid_dict)
-infliximab_sim_df = pd.read_csv(f"{nonmem_dir}/run/sim90",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
+## [수정 2026-08] sim90(난수 ETA) -> sim95(run 94 EBE 기반) 교체
+#  sim90은 $SIM ONLYSIM으로 개인 ETA를 난수로 생성해 PGx endpoint로 부적합했음.
+#  sim95는 재추정(run 94)의 posthoc ETA를 데이터 컬럼(EBE1)으로 받아
+#  CL = TVCL(시변 공변량) x exp(EBE) 로 계산됨.
+infliximab_sim_df = pd.read_csv(f"{nonmem_dir}/run/sim95",encoding='utf-8-sig', skiprows=1, sep=r"\s+", engine='python')
 infliximab_sim_df['DRUG'] = 'infliximab'
 infliximab_sim_df['ID'] = infliximab_sim_df['ID'].astype(int)
 infliximab_sim_df['UID'] = infliximab_sim_df['ID'].map(infliximab_id_uid_dict)

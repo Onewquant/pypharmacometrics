@@ -45,6 +45,8 @@ pms_hx_df['IBD_TYPE'] = 'UC'
 # pd_df[pd_df['UID']=='29702679'][['DATETIME','PD_PRO2']]
 pd_df = pd.concat([cdai_hx_df[['UID','DATETIME','ADHERENCE','IBD_TYPE'] + pd_marker_list], pms_hx_df[['UID','DATETIME','ADHERENCE','IBD_TYPE']+pd_marker_list]]).drop_duplicates(['UID','DATETIME']).sort_values(['UID','DATETIME'])
 bsize_df = pd.concat([cdai_hx_df[['UID','DATETIME','WT','HT','BMI']], pms_hx_df[['UID','DATETIME','WT','HT','BMI']]]).drop_duplicates(['UID','DATETIME']).sort_values(['UID','DATETIME'])
+bsize_df.loc[bsize_df['WT'] >= 200, 'WT'] /= 10
+bsize_df.loc[bsize_df['BMI'] >= 100, 'BMI'] /= 10
 # adh_df[adh_df['WT'].isna()]
 # adh_df[adh_df['HT'].isna()]
 
@@ -105,6 +107,12 @@ for uid, uid_df in bsize_df.groupby('UID',as_index=False): #break
 
     # uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left').fillna(method='ffill')
     uid_fulldt_df = uid_fulldt_df.merge(uid_df, on=['UID','DATETIME'], how='left')
+
+    if len(uid_fulldt_df.loc[uid_fulldt_df['WT'] >= 200, 'WT'])>0:
+        raise ValueError
+
+    uid_fulldt_df.loc[uid_fulldt_df['WT'] >= 200, 'WT'] /= 10
+    uid_fulldt_df.loc[uid_fulldt_df['BMI'] >= 100, 'BMI'] /= 10
 
     if count==0:
         full_result_df = uid_fulldt_df.copy()

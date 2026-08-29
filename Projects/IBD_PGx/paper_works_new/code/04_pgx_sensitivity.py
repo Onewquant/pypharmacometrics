@@ -1,6 +1,7 @@
 """Sensitivity analyses for FDR-significant PGx hits.
 
-For every row of the main analysis (03) with P_VALUE_FDR < 0.05, this
+For every CL row of the main analysis (03) that is either FDR-significant
+or belongs to the pre-designated lead finding (see LEAD_TARGETS), this
 script re-evaluates the genotype effect with:
   - leave-one-out over the variant-group subjects (min/max p across
     re-fits; checks that no single subject drives the signal)
@@ -46,6 +47,12 @@ COMPARISONS = {
     "HOM_vs_OTHERS": ([2], [0, 1]),
     "CARRIER_vs_NONCARRIER": ([1, 2], [0]),
 }
+
+# Rows always carried through the robustness checks, regardless of whether
+# they reach the FDR threshold. Under the exploratory reporting frame
+# (option A, 2026-08) the lead association is reported with its sensitivity
+# analyses even though q > 0.05.
+LEAD_TARGETS = [("rs1061622", "HOM_vs_OTHERS")]
 
 
 def build_phase_df(ep_df, phase):
@@ -101,12 +108,21 @@ ep_df["WEIGHT"] = ep_df["WT"]
 ep_df["ALBUMIN"] = ep_df["ALB"]
 
 main_df = pd.read_csv(f"{output_dir}/Table_pgx_ancova_fdr_results.csv")
-sig_df = main_df[
-    (main_df["P_VALUE_FDR"] < 0.05) & (main_df["END_POINT"] == "CL")
-].copy()
+main_df["RS"] = main_df["RSID"].str.split("(").str[0]
+
+is_cl = main_df["END_POINT"] == "CL"
+is_sig = main_df["P_VALUE_FDR"] < 0.05
+is_lead = pd.Series(False, index=main_df.index)
+for rs, comp in LEAD_TARGETS:
+    is_lead |= (main_df["RS"] == rs) & (main_df["COMPARISON"] == comp)
+
+sig_df = main_df[is_cl & (is_sig | is_lead)].copy()
+sig_df["TRIGGER"] = np.where(
+    sig_df["P_VALUE_FDR"] < 0.05, "FDR-significant", "pre-designated lead"
+)
 
 if len(sig_df) == 0:
-    print("No FDR-significant CL rows found in the main results.")
+    print("No rows selected for sensitivity analysis.")
 
 no_sample_uids = get_no_sample_uids()
 
@@ -164,6 +180,7 @@ for _, hit in sig_df.iterrows():
         "RSID": rsid,
         "GENE": hit["GENE"],
         "MODEL_SCALE": hit["MODEL_SCALE"],
+        "TRIGGER": hit["TRIGGER"],
         "MAIN_P": hit["P_VALUE"],
         "MAIN_P_FDR": hit["P_VALUE_FDR"],
         "LOO_P_MIN": round(min(loo_ps), 5) if loo_ps else np.nan,

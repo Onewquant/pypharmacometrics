@@ -1,125 +1,154 @@
 # paper_works_new — Infliximab popPK + Pharmacogenomic 논문 작업 폴더
 
 논문 골자: **IBD 환자에서 infliximab 집단약동학 모델링 + 후보 유전변이의
-PK(CL)/ADA 연관성 분석** (adalimumab 제외 확정, 2026-07 교수님 코멘트 반영).
+PK(CL)/ADA 연관성 분석**
 
-기존 `paper_works/` 자료를 재정리하고, PGx 분석을 최종 프레임
-(infliximab only, phase 층화, phase×endpoint×contrast별 FDR 보정)으로
-재작성한 폴더입니다.
+**보고 방향: (A) exploratory finding 확정 (2026-08)**
+rs1061622(TNFRSF1B) 연관성은 세 분석기간에서 효과크기가 일관되나
+다중검정 보정 후 유의수준에 도달하지 못함 → 탐색적 발견으로 서술.
+
+## 바로 쓸 수 있는 것 (논문 작성용)
+
+| 항목 | 위치 |
+|---|---|
+| **원고 본문 (Methods/Results 최종본)** | `manuscript/Methods_and_Results_FINAL.md` |
+| **Figure/Table 캡션 초안** | `core_fig_tab/CAPTIONS.md` |
+| **본문 표·그림 파일** | `core_fig_tab/Table1~5, Figure1~3` |
+| **보충자료 표** | `core_fig_tab/SupplTableS1~S5` |
+
+`manuscript/Methods_and_Results_FINAL.md`가 기준 문서입니다. 기존
+`output/Methods_and_results_reviewed.docx`는 **이전 수치(PGx 96명,
+MAINT 92명, q=0.048 유의)** 기준이므로 PGx 관련 문단을 위 파일 내용으로
+교체해야 합니다. popPK 부분은 기존 docx 그대로 사용 가능합니다.
 
 ## 폴더 구조
 
 ```
 paper_works_new/
-├── code/         분석·표·그림 생성 스크립트 (번호 순서대로 실행)
-├── data/         분석 입력 스냅샷 (gene_pd_cor에서 복사)
-├── materials/    기존 paper_works에서 가져온 원고·그림·참고자료
-├── output/       스크립트가 생성하는 표·그림 (재실행으로 재현 가능)
-└── manuscript/   원고 초안 텍스트
+├── code/          분석·표·그림 생성 스크립트 (01~08, 번호순 실행)
+├── core_fig_tab/  ★ 논문용 최종 표·그림 + 캡션
+├── manuscript/    ★ 원고 본문 최종본, 교수님 보고 메일 기록
+├── data/          분석 입력 스냅샷
+├── materials/     기존 paper_works에서 가져온 원본 자료
+└── output/        중간 산출물 (raw 결과 CSV, 사용자 개정 docx 등)
 ```
 
 ## 실행 방법
 
-프로젝트 루트 venv 사용. 실행 순서 의존성: 04, 05는 03 이후에 실행.
+프로젝트 루트 venv 사용. 01~06 실행 후 07(표), 08(Figure 1) 실행.
 
 ```
-C:/Users/ilma0/PycharmProjects/pypharmacometrics/venv/Scripts/python.exe -X utf8 <script>
+C:/Users/ilma0/PycharmProjects/pypharmacometrics/venv/Scripts/python.exe -X utf8 code/<script>
 ```
 
 ## code/ ↔ 논문 요소 매핑
 
-| 스크립트 | 산출물 (output/) | 논문 요소 |
+| 스크립트 | 산출물 | 논문 요소 |
 |---|---|---|
-| `01_table1_demographics.py` | `Table1_demographics.csv` | Table 1 — Baseline characteristics (analytic / infliximab cohort). 기존 `demotable_paper.py`의 독립 실행형 재작성, adalimumab 컬럼 제거. 기존 원고 수치(139/98명)와 일치 확인됨. |
-| `02_table_genotype_summary.py` | `Table_genotype_summary.csv` | 후보 변이 요약표 — 유전형 분포(0/1/2), coded allele freq, MAF, HWE exact p (전체 genotyped 138명 / infliximab cohort 97명). |
-| `03_pgx_ancova_fdr.py` | `Table_pgx_ancova_fdr_results.csv` | **PGx 본분석.** infliximab only, phase(IND/MAINT/OVERALL) 층화, endpoint(CL/ADA), CL은 raw(BETA)+log(GMR) 두 스케일, 비교는 HOM_vs_OTHERS / CARRIER_vs_NONCARRIER. FDR은 (phase×endpoint×스케일×비교)별로 변이들에 대해 BH 보정. 최소 그룹 수 컷오프 없음. 잔차 Shapiro/skew 컬럼 포함. |
-| `04_pgx_sensitivity.py` | `Table_pgx_sensitivity.csv` | 유의 결과의 견고성 — leave-one-out(min/max p), Mann-Whitney, HC3 robust p, 관찰 농도 샘플 없는 환자(5명) 제외 재분석. |
-| `05_figure_cl_by_genotype.py` | `Figure_CL_by_rs1061622.png/.pdf` | PGx Figure — 유전형(TT/TG/GG)별 개인 CL 산점도 + 기하평균(95% CI) + GMR/q 주석, 2패널(MAINT/Whole). |
-| `06_pgx_cohort_attrition.py` | `Table_pgx_attrition.csv` | Figure 1 PGx 분기 수치 산출 — 98 → 97(유전형 매트릭스 탈락 1명) → phase별 83/92/96, 특이 UID 목록 포함. |
+| `01_table1_demographics.py` | `Table1_demographics.csv` | Table 1 (원고 수치와 일치 확인됨) |
+| `02_table_genotype_summary.py` | `Table_genotype_summary.csv` | Table 3 재료 (유전형 분포/MAF/HWE) |
+| `03_pgx_ancova_fdr.py` | `Table_pgx_ancova_fdr_results.csv`, `Table_variant_qc.csv` | **PGx 본분석** + 변이 QC |
+| `04_pgx_sensitivity.py` | `Table_pgx_sensitivity.csv` | Suppl S3 (견고성) |
+| `05_figure_cl_by_genotype.py` | `Figure_CL_by_rs1061622.png/pdf` | **Figure 3** |
+| `06_pgx_cohort_attrition.py` | `Table_pgx_attrition.csv` | Suppl S5, Figure 1 수치 |
+| `07_core_tables.py` | `core_fig_tab/Table1~5, SupplS1~S5` | **논문용 표 전체** |
+| `08_figure1_flowchart.py` | `core_fig_tab/Figure1_*.png/pdf` | **Figure 1** |
 
-## 핵심 결과 (2026-08-22 실행 기준, 최소 그룹 수 컷오프 제거 후)
+## 확정된 분석 프레임
 
-**rs1061622 (TNFRSF1B, TNFR2 M196R) GG homozygote → infliximab CL 상승**
+- infliximab만 (adalimumab 제외), phase 층화: **IND / MAINT / OVERALL**
+- 모델: `ADA ~ GROUP+SEX+WEIGHT+ALBUMIN` (logistic),
+  `CL ~ GROUP+SEX+WEIGHT+ALBUMIN+ADA` (일반 OLS ANCOVA)
+- **log(CL)이 주 분석** (잔차 정규성 log만 통과), raw는 보조
+- 최소 그룹 수 컷오프 **없음** (`MIN_GROUP_N=1`)
+- 변이 QC 사전 필터: **MAF ≥ 0.05, HWE exact p ≥ 0.05**
+  → 3개 제외 (rs3024505, rs765249238, rs776813259), 14개 통과
+  → 열성 모델 검정 가능 11개(동형접합 0명인 3개 제외), 우성 모델 14개
+- FDR(BH)은 (phase × endpoint × CL스케일 × 유전모델) 층 안에서 변이들에 대해 보정
 
-| Phase | log(CL) GMR (95% CI) | p | q | raw q | GG n |
-|---|---|---|---|---|---|
-| IND | 1.30 (1.05–1.61) | 0.017 | 0.207 | 0.144 | 5 |
-| MAINT | 1.29 (1.08–1.55) | 0.007 | 0.083 | **0.034** | 8 |
-| OVERALL | 1.31 (1.09–1.57) | 0.004 | 0.052 | **0.018** | 8 |
+## 핵심 결과
 
-- 세 phase 모두 GMR 1.29–1.31로 방향·크기 일관
-- log 모델 잔차 정규성 만족(Shapiro p 0.62–0.90), raw는 기각 → **log 모델이 주 분석**
-- 주 분석(log) q는 borderline (OVERALL 0.052), raw 스케일은 q<0.05
-- 민감도: LOO 전 케이스 p<0.05, Mann-Whitney p 0.006–0.013, HC3 p 0.012–0.026,
-  무샘플 5명 제외 후에도 유지 (GG 8명 전원 관찰 농도 보유)
-- ADA endpoint 및 carrier 비교는 전부 비유의 (열성 패턴 특이적)
-- 주의: MAINT와 OVERALL은 같은 GG 8명 공유 → 독립 재현 아님
+**rs1061622 (TNFRSF1B, TNFR2 M196R) GG vs TT+TG, log(CL), family m=11**
 
-### 컷오프 관련 이력 (중요)
+| Phase | GMR (95% CI) | p | q | GG n |
+|---|---|---|---|---|
+| Overall | 1.30 (1.08–1.56) | 0.008 | 0.084 | 8 |
+| Maintenance | 1.29 (1.07–1.55) | 0.009 | 0.098 | 8 |
+| Induction | 1.30 (1.05–1.61) | 0.017 | 0.190 | 5 |
 
-기존 코드는 그룹당 최소 8명 필터를 썼으나, 근거가 임의적이고 핵심 결과의
-GG군이 정확히 8명이라 post-hoc 비판 소지가 있어 **2026-08 컷오프를
-제거**함 (`MIN_GROUP_N = 1`). 영향:
+- **FDR 유의(q<0.05) 0건** → exploratory finding으로 보고
+- 세 기간 모두 GMR 1.29–1.30으로 방향·크기 일관
+- 민감도(Overall/Maintenance): LOO 전 케이스 p<0.05, Mann-Whitney
+  p=0.008/0.015, HC3 p=0.022/0.026, 무샘플 5명 제외 p=0.010/0.012
+  (Induction은 GG 5명이라 LOO 최대 p=0.084로 취약)
+- ADA endpoint, 우성 모델 전부 비유의 (열성 패턴 특이적)
+- BH rank-1이라 q = p × m. q<0.05엔 m ≤ 6 필요(현재 11)
 
-- FDR family: HOM 비교 7 → 12개, CARRIER 비교 14 → 16개로 증가
-- 비보정 p는 불변, **q값만 상승** (log MAINT 0.048→0.083, OVERALL 0.031→0.052)
-- IND phase가 검정 가능해짐 (GG n=5)
-
-컷오프를 되돌리려면 `03_pgx_ancova_fdr.py`의 `MIN_GROUP_N`만 수정.
-
-## PGx cohort attrition (Figure 1 분기, 06 스크립트로 재현)
+## Cohort attrition (Figure 1)
 
 ```
-Infliximab cohort 98
- └─ 제외 1명 (UID 17439372): 유전형 QC 단계에서 제거 (2026-08-23 확정)
-    → Figure 1 표기: "genotype data removed during quality control (n=1)"
-      ("without WGS"로 쓰면 본문의 analytic cohort 정의와 모순됨)
-PGx cohort 97
- ├─ IND     83 (15명은 induction phase 데이터 없음)
- ├─ MAINT   92 (5명 phase별 CL 없음: 18898880, 35093356, 37291334, 37366865, 38241008)
- └─ OVERALL 96 (35093356만 CL 전무)
-공변량(SEX/WT/ALB/ADA) 결측 탈락: 0명
+Analytic cohort 139
+ └─ Exclusion 3: No infliximab records 41
+Infliximab PopPK modeling cohort 98
+ └─ Exclusion 4: 유전형 QC 단계에서 제거 1 (UID 17439372)
+PGx analysis cohort 97
+ ├─ Overall     97
+ ├─ Induction   83  (15명은 induction phase 데이터 없음)
+ └─ Maintenance 97
 ```
 
-### 특이 UID 사유 (2026-08 확인 완료)
+## 제출 전 해결할 항목
 
-1. **UID 17439372**: **유전형 QC 단계에서 제거된 것으로 기록** (방침 확정).
-   배정 샘플 `23-B02281_EB-01`이 최종 QC VCF에 없음. ID 표기 차이 문제가
-   **아님** — tagged VCF(195샘플) 대상 완전일치/정규화/숫자/부분일치 4단계
-   탐색 모두 음성. 미매칭 57샘플은 pid_df와 교집합 0건인 별개 코호트 샘플.
-   - 검증된 범위: 본 분석 코드에서는 샘플이 제거되지 않음 (이전 QC 코드의
-     `filter_cols`는 전부 주석 처리, 현재 스크립트의 샘플 QC는 `mt_pca`
-     분기에만 적용되어 dosage matrix 경로인 `mt`은 무영향)
-   - **미확인 사항**: 시퀀싱 미실시인지 센터 QC 탈락인지는 대조하지 않음.
-     센터 확인 시 문구를 구체화할 수 있으나 n=97은 불변.
-   - 검증 코드: `genomics_sample_id_audit_hail.py`(Hail),
-     `genomics_mt_vs_vcf_check.py`(mt↔VCF 헤더 대조),
-     `genomics_sample_uid_reconcile.py`(UID 병합/감사),
-     `check_vcf_header_samples.py`(파일 단독 판정)
-2. **UID 35093356**: popPK 모델링에는 포함(NONMEM ID 78, 투여 23건·샘플
-   2건)되었으나 maintenance-only 환자로 phase 기준일 산출 불가 →
-   phase별 파생 데이터셋(for_genomics_df) 행 전부 결측. 논문 표기:
-   "phase-specific estimates could not be derived (n=1)".
+1. **popPK 모델 재추정** — Table 2 추정치는 체중 오류(834kg) 교정 **이전**
+   값. 시뮬레이션은 교정 데이터로 재실행했으나 파라미터는 미재추정.
+   재추정 후 Table 2 갱신 + PGx 재분석 필요.
+2. **희소 샘플 환자 포함 규칙** — 관찰 농도 2건뿐인 환자가 코호트 최대 CL로
+   참조군에 포함됨. 최소 관찰 농도 수 기준을 **결과 보기 전에** 확정할 것.
+3. **Figure 1 스크리닝 단계 수치** — 상단 n=X,XXX 3곳은 EMR 추출 수치 필요.
+4. 센터에 `23-B02281_EB-01` 시퀀싱 여부 확인 (Exclusion 4 문구 구체화용).
+5. VPC/GOF 플롯을 NONMEM(`C:/Users/ilma0/NONMEMProjects/IBDPGX/`)에서 가져오기.
 
-## materials/ (기존 paper_works에서 복사)
+## 데이터 수정 이력 (모두 결과와 무관하게 타당한 수정)
 
-- `Methods and results.docx` — popPK Methods/Results 기존 초안
-- `[IFX_POPPK]_core_fig_tab.docx` — Table 1, Table 2(파라미터 추정치) 등 핵심 표
-- `Figure1_eligibility flow chart.png`, `Figure2_structural model diagram.png`
-- `bootstrap_summary_corrected.xlsx`, `bootstrap_results - 복사본.csv` — 부트스트랩
-- `rsid_genotype_summary.xlsx` — 기존 유전형 요약 (02 스크립트가 CSV로 재현)
-- `QC python코드.txt`, `기본적용된 QC 확인...txt` — WGS QC (Hail) 기록
+1. **체중 834kg 오류** (UID 25269024, NONMEM ID 43): 83.4→834.0 소수점 오류.
+   NONMEM 모델링 데이터셋 원본에도 존재. 교정 및 시뮬레이션 재실행 완료.
+2. **PK가 PD 창에 연동된 버그**: `pd_endpoint_data_for_genomics2.py`에서 CL
+   추출이 DE_DATE(1년차 PD 측정일 종속)에 묶여, PD 추적 없는 환자 5명의 CL이
+   통째로 결측. PK를 PD와 분리 → MAINT 92→97, OVERALL 96→97.
+   감사파일 `results/PKPD_EDA/GENOMICS/pk_window_audit.csv`
+3. **파이프라인 `(for pda)` 브랜치 미갱신**: `added_filename_str` 플래그로
+   두 갈래 파일셋이 생성되는데 PGx가 읽는 쪽만 낡아 있었음 (해결).
+4. **최소 그룹 수 컷오프 8명 제거**: 기준이 임의적이고 핵심 결과의 GG군이
+   정확히 8명이라 post-hoc 비판 소지 → 제거 (family 7→12→11).
 
-## manuscript/
+### q값 변화 이력
 
-- `methods_results_pgx_draft.md` — PGx 통계분석 Methods + Results 영어 초안,
-  Discussion 반영 포인트 포함. `Methods and results.docx`에 병합해서 사용.
+| 단계 | MAINT q | OVERALL q |
+|---|---|---|
+| ① 최초 보고 (컷오프8, 체중오류有) | 0.048 | 0.031 |
+| ② 컷오프 제거 (family 7→12) | 0.083 | 0.052 |
+| ③ 체중 교정 + PD창 분리 (n 증가) | 0.107 | 0.091 |
+| ④ 변이 QC 필터 (m 12→11) | **0.098** | **0.084** |
 
-## 원본 데이터/코드 위치 (이 폴더 밖)
+②는 비보정 p 불변, family 크기만 12/7=1.71배 → q도 정확히 1.71배 증가.
+
+## 유전자 주석 수정
+
+rs1061622 = **TNFRSF1B** (기존 자료의 TNF 표기는 오류), rs767455 = TNFRSF1A.
+`gene_pd_cor/`의 옛 스크립트와 `rsid_genotype_summary.xlsx`에는 아직 잔존.
+
+## 유전형 샘플 추적 코드 (`../gene_pd_cor/`)
+
+| 파일 | 용도 |
+|---|---|
+| `genomics_sample_id_audit_hail.py` | Hail: VCF 샘플 목록 추출 + 타깃 4단계 탐색 |
+| `genomics_mt_vs_vcf_check.py` | Hail: `mt` ↔ VCF 헤더 대조 (필터 영향 판정) |
+| `genomics_sample_uid_reconcile.py` | 샘플ID↔UID 정규화 병합 + 감사 |
+| `check_vcf_header_samples.py` | VCF 파일 단독 판정 (Hail 불필요) |
+
+## 원본 데이터/코드 위치
 
 - popPK 모델링 코드: `../modeling_codes_infliximab/`
-- NONMEM 데이터셋: `C:/Users/ilma0/NONMEMProjects/IBDPGX/`
-- PGx 분석 원본(개발 이력 포함): `../gene_pd_cor/`
-- 주의: `../gene_pd_cor/` 및 기존 스크립트들의 `rsid_gene_dict`에는
-  rs1061622가 TNF로 잘못 주석되어 있음 → 실제는 **TNFRSF1B** (본 폴더
-  코드에는 수정 반영됨). rs767455도 TNFRSF1A로 수정함 (dbSNP 확인 권장).
+- NONMEM: `C:/Users/ilma0/NONMEMProjects/IBDPGX/`
+- PGx 분석 개발 이력: `../gene_pd_cor/`
+- PD/PK 파생 데이터 생성: `../pd_analysis_codes(new2)/`
