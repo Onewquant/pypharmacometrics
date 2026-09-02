@@ -104,7 +104,7 @@ mod = mod.replace(
 # 개인 CL: 난수 ETA(1) 대신 데이터로 받은 EBE 사용 (OMEGA(1,1)=0 FIX)
 mod = mod.replace(
     "CL = TVCL * EXP(ETA(1))",
-    f"CL = TVCL * EXP(EBE1 + ETA(1)) ; EBE1 = run {EST_RUN} posthoc eta, OMEGA(1,1)=0",
+    f"CL = TVCL * EXP(EBE1) ; EBE1 = run {EST_RUN} posthoc eta (data column)",
 )
 mod = mod.replace("$SIM (12345) (54321) ONLYSIM",
                   "$SIM (12345) (54321) ONLYSIM")

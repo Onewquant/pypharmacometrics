@@ -3,9 +3,11 @@
 논문 골자: **IBD 환자에서 infliximab 집단약동학 모델링 + 후보 유전변이의
 PK(CL)/ADA 연관성 분석**
 
-**보고 방향: (A) exploratory finding 확정 (2026-08)**
-rs1061622(TNFRSF1B) 연관성은 세 분석기간에서 효과크기가 일관되나
-다중검정 보정 후 유의수준에 도달하지 못함 → 탐색적 발견으로 서술.
+**상태: (A) exploratory 확정 + EBE 기반 최종 수치 (2026-09-02)**
+개인 CL 산출을 sim90(난수 ETA) → sim95(run 89 EBE 주입)로 교정 완료.
+최종 결론: **FDR 보정 후 유의한 변이 없음.** 이전에 보고했던
+rs1061622(TNFRSF1B) 신호는 난수 ETA의 산물로 확정 — EBE 기반에서는
+GMR 1.05, p=0.58로 완전 소멸. 최소 p는 rs396991(FCGR3A) q=0.098.
 
 ## 바로 쓸 수 있는 것 (논문 작성용)
 
@@ -16,10 +18,11 @@ rs1061622(TNFRSF1B) 연관성은 세 분석기간에서 효과크기가 일관�
 | **본문 표·그림 파일** | `core_fig_tab/Table1~5, Figure1~3` |
 | **보충자료 표** | `core_fig_tab/SupplTableS1~S5` |
 
-`manuscript/Methods_and_Results_FINAL.md`가 기준 문서입니다. 기존
-`output/Methods_and_results_reviewed.docx`는 **이전 수치(PGx 96명,
-MAINT 92명, q=0.048 유의)** 기준이므로 PGx 관련 문단을 위 파일 내용으로
-교체해야 합니다. popPK 부분은 기존 docx 그대로 사용 가능합니다.
+`manuscript/Methods_and_Results_FINAL.md`(2026-09-02, EBE 기반)가 기준
+문서입니다. 기존 `output/Methods_and_results_reviewed.docx`와
+`manuscript_optionA_final_sections.md`는 **폐기된 수치(sim90 난수 CL
+기반, q=0.048 유의 등)** 이므로 PGx 문단은 반드시 FINAL.md로 교체.
+popPK 부분은 기존 docx 그대로 사용 가능합니다.
 
 ## 폴더 구조
 
@@ -59,56 +62,71 @@ C:/Users/ilma0/PycharmProjects/pypharmacometrics/venv/Scripts/python.exe -X utf8
 - infliximab만 (adalimumab 제외), phase 층화: **IND / MAINT / OVERALL**
 - 모델: `ADA ~ GROUP+SEX+WEIGHT+ALBUMIN` (logistic),
   `CL ~ GROUP+SEX+WEIGHT+ALBUMIN+ADA` (일반 OLS ANCOVA)
-- **log(CL)이 주 분석** (잔차 정규성 log만 통과), raw는 보조
+- **log(CL)이 주 분석** (log-normal CL 가정; 잔차 정규성은 불완전하나 raw보다 우수), raw는 보조
 - 최소 그룹 수 컷오프 **없음** (`MIN_GROUP_N=1`)
 - 변이 QC 사전 필터: **MAF ≥ 0.05, HWE exact p ≥ 0.05**
   → 3개 제외 (rs3024505, rs765249238, rs776813259), 14개 통과
   → 열성 모델 검정 가능 11개(동형접합 0명인 3개 제외), 우성 모델 14개
 - FDR(BH)은 (phase × endpoint × CL스케일 × 유전모델) 층 안에서 변이들에 대해 보정
 
-## 핵심 결과
+## 핵심 결과 (2026-09-02, EBE 기반 최종)
 
-**rs1061622 (TNFRSF1B, TNFR2 M196R) GG vs TT+TG, log(CL), family m=11**
+**FDR 보정 후 유의한 변이 없음** (225개 검정 중 q<0.05 = 0건, ADA 최소 q>0.99)
 
-| Phase | GMR (95% CI) | p | q | GG n |
-|---|---|---|---|---|
-| Overall | 1.30 (1.08–1.56) | 0.008 | 0.084 | 8 |
-| Maintenance | 1.29 (1.07–1.55) | 0.009 | 0.098 | 8 |
-| Induction | 1.30 (1.05–1.61) | 0.017 | 0.190 | 5 |
+최소 p: **rs396991 (FCGR3A) CC vs AA+AC** — CC n=5, 가설생성 수준으로만 보고
 
-- **FDR 유의(q<0.05) 0건** → exploratory finding으로 보고
-- 세 기간 모두 GMR 1.29–1.30으로 방향·크기 일관
-- 민감도(Overall/Maintenance): LOO 전 케이스 p<0.05, Mann-Whitney
-  p=0.008/0.015, HC3 p=0.022/0.026, 무샘플 5명 제외 p=0.010/0.012
-  (Induction은 GG 5명이라 LOO 최대 p=0.084로 취약)
-- ADA endpoint, 우성 모델 전부 비유의 (열성 패턴 특이적)
-- BH rank-1이라 q = p × m. q<0.05엔 m ≤ 6 필요(현재 11)
+| Phase | GMR (95% CI) | p | q |
+|---|---|---|---|
+| Maintenance | 1.37 (1.09–1.71) | 0.009 | 0.098 |
+| Overall | 1.32 (1.06–1.64) | 0.014 | 0.157 |
+| Induction | 1.35 (1.05–1.72) | 0.020 | 0.218 |
+
+**rs1061622 (TNFRSF1B)**: 이전 신호는 sim90 난수 ETA의 산물로 확정.
+EBE 기반 OVERALL GMR 1.05 (0.88–1.27), p=0.58 (GG 기하평균 0.295 vs
+TT+TG 0.284 L/day).
+
+- 검증: sim95 implied ETA vs 89.phi EBE 상관 **r=1.000**
+- 잔차 정규성: log 스케일도 불완전(Shapiro p 0.0006–0.006)하나
+  raw(p<1e-6)보다 훨씬 나음 → log 주 분석 유지
 
 ## Cohort attrition (Figure 1)
 
 ```
 Analytic cohort 139
  └─ Exclusion 3: No infliximab records 41
-Infliximab PopPK modeling cohort 98
- └─ Exclusion 4: 유전형 QC 단계에서 제거 1 (UID 17439372)
-PGx analysis cohort 97
- ├─ Overall     97
+Infliximab cohort 98
+ ├─ Exclusion 4: 유지기 시작 + 관찰농도 1건 → 추정모델 제외, EBE 없음
+ │   (UID 38339532) → "clearance estimate unavailable (n=1)"
+ └─ Exclusion 5: 유전형 QC 단계에서 제거 (UID 17439372) (n=1)
+PGx 분석 코호트 96
+ ├─ Overall     96
  ├─ Induction   83  (15명은 induction phase 데이터 없음)
- └─ Maintenance 97
+ └─ Maintenance 96
 ```
 
 ## 제출 전 해결할 항목
 
-1. **popPK 모델 재추정** — Table 2 추정치는 체중 오류(834kg) 교정 **이전**
-   값. 시뮬레이션은 교정 데이터로 재실행했으나 파라미터는 미재추정.
-   재추정 후 Table 2 갱신 + PGx 재분석 필요.
-2. **희소 샘플 환자 포함 규칙** — 관찰 농도 2건뿐인 환자가 코호트 최대 CL로
-   참조군에 포함됨. 최소 관찰 농도 수 기준을 **결과 보기 전에** 확정할 것.
+1. ~~popPK 모델 재추정~~ → **완료/불필요 확정**: run 89 재추정 결과가 기존과
+   동일 (체중 오류 레코드는 다음 관찰까지 1,200일 간격으로 우도 기여 0).
+   Table 2 그대로 유효.
+2. ~~희소 샘플 환자 포함 규칙~~ → **해소**: EBE 전환으로 관찰 1건 환자
+   (38339532)는 추정모델에서 자연 제외. 관찰 2건 환자(35093356)의 CL은
+   이제 실측 기반 EBE라 문제였던 극단값(0.617)도 사라짐.
 3. **Figure 1 스크리닝 단계 수치** — 상단 n=X,XXX 3곳은 EMR 추출 수치 필요.
-4. 센터에 `23-B02281_EB-01` 시퀀싱 여부 확인 (Exclusion 4 문구 구체화용).
+4. 센터에 `23-B02281_EB-01` 시퀀싱 여부 확인 (Exclusion 문구 구체화용).
 5. VPC/GOF 플롯을 NONMEM(`C:/Users/ilma0/NONMEMProjects/IBDPGX/`)에서 가져오기.
+6. **Figure 3 대상 결정**: 현재 rs1061622(null). rs396991로 교체/병기/삭제 중
+   선택 (05 스크립트 RSID만 변경하면 재생성).
+7. **교수님 보고**: CL 산출 교정 경위(난수 ETA → EBE)와 결과 변화
+   (유의 신호 소멸) 보고 필요.
 
 ## 데이터 수정 이력 (모두 결과와 무관하게 타당한 수정)
+
+0. **개인 CL 소스 교정 (2026-09, 최종 결론을 바꾼 수정)**: 기존 sim90은
+   `$SIM ONLYSIM` + Ω=0.0711로 개인 ETA를 난수 생성 → 개인 CL이 환자
+   EBE와 무관했음(상관 −0.08). run 89 재추정의 EBE를 데이터 컬럼(EBE1)으로
+   주입한 sim95로 교체. 관련: `../modeling_codes_infliximab/prepare_sim95_ebe.py`,
+   `run/95.mod`, sim95 검증 r=1.000.
 
 1. **체중 834kg 오류** (UID 25269024, NONMEM ID 43): 83.4→834.0 소수점 오류.
    NONMEM 모델링 데이터셋 원본에도 존재. 교정 및 시뮬레이션 재실행 완료.
@@ -131,6 +149,8 @@ PGx analysis cohort 97
 | ④ 변이 QC 필터 (m 12→11) | **0.098** | **0.084** |
 
 ②는 비보정 p 불변, family 크기만 12/7=1.71배 → q도 정확히 1.71배 증가.
+**⑤ (최종) EBE 전환 후 위 수치 전부 폐기** — rs1061622는 p=0.58~0.69로
+신호 자체가 소멸. 위 표는 "난수 CL 기반에서의 이력"으로만 의미 있음.
 
 ## 유전자 주석 수정
 

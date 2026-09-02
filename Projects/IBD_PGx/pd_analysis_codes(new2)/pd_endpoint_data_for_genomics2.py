@@ -181,6 +181,14 @@ for inx, row in pd_res_df.iterrows():
     #     raise ValueError
 
     uid_sim_df = sim_df[(sim_df['UID']==uid)&(sim_df['DRUG']==drug)].copy()
+
+    ## [수정 2026-08] 시뮬 데이터에 없는 환자는 건너뜀 (모든 파라미터 NaN 유지)
+    #  예: UID 38339532 - 유지기 시작 + 관찰농도 1건이라 추정모델(89)에서
+    #  제외되어 EBE가 없고, 따라서 sim95에도 없음 -> 개인 CL 부여 불가
+    if len(uid_sim_df) == 0:
+        print(f"({inx}) {uid} / {pname} / {drug} / {phase} : 시뮬 데이터 없음(EBE 없음) - 건너뜀")
+        continue
+
     uid_sim_dose_df = uid_sim_df[uid_sim_df['MDV']==1].copy()
     uid_sim_conc_df = uid_sim_df[uid_sim_df['MDV']==0].copy()
 
