@@ -3,22 +3,24 @@
 Consolidates the raw analysis outputs (01-06) into the numbered tables
 used in the manuscript. Run 01-06 first.
 
-Reporting frame (decision 2026-08, option A): the rs1061622 association is
-reported as an exploratory finding - the effect estimate is consistent
-across analysis periods but does not reach the FDR-adjusted significance
-threshold.
+Reporting frame (2026-09, EBE-based individual CL, option A exploratory):
+no variant is FDR-significant. Table 5 follows the variant with the
+smallest P (FCGR3A rs396991, recessive) across analysis periods together
+with its leave-one-out robustness; TNFRSF1B rs1061622 (the variant with
+prior literature support, null here) goes to Supplementary Table S6.
 
 Outputs -> paper_works_new/core_fig_tab/
   Table1_baseline_characteristics.csv
-  Table2_popPK_parameters.csv                (provisional - see note)
+  Table2_popPK_parameters.csv
   Table3_variant_characteristics.csv
   Table4_CL_association_overall.csv
-  Table5_rs1061622_across_periods.csv
+  Table5_rs396991_across_periods.csv
   SupplTableS1_CL_association_by_period.csv
   SupplTableS2_ADA_association.csv
-  SupplTableS3_sensitivity_analyses.csv
+  SupplTableS3_sensitivity_analyses.csv       (rs396991 and rs1061622)
   SupplTableS4_CL_association_original_scale.csv
   SupplTableS5_cohort_attrition.csv
+  SupplTableS6_rs1061622_across_periods.csv
 """
 
 import os
@@ -30,7 +32,8 @@ prj_dir = "C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/IBD_PGx"
 out_dir = f"{prj_dir}/paper_works_new/output"
 cft_dir = f"{prj_dir}/paper_works_new/core_fig_tab"
 
-LEAD_RSID = "rs1061622"
+LEAD_RSID = "rs396991"      # smallest P in the final analysis -> Table 5
+PRIOR_RSID = "rs1061622"    # prior-literature variant, null here -> Suppl S6
 PERIOD_LABEL = {
     "OVERALL": "Overall treatment",
     "IND": "Induction phase",
@@ -81,9 +84,10 @@ shutil.copy(f"{out_dir}/Table1_demographics.csv",
             f"{cft_dir}/Table1_baseline_characteristics.csv")
 
 # ---------------------------------------------------------------- Table 2
-# Transcribed from the final NONMEM run and the bootstrap summary.
-# NOTE: these estimates predate the body-weight data correction;
-# re-estimation is pending (see README and the manuscript note).
+# Transcribed from the final NONMEM run (run 89) and the bootstrap summary.
+# Re-estimation after the body-weight data correction (2026-08-29)
+# reproduced these estimates exactly (OFV -935.665; the corrected record
+# did not contribute to the likelihood), so the table is final.
 popPK_rows = [
     ("Typical values", "", "", ""),
     ("CL (L/day)", "0.310 (9)", "0.295 (6)", "0.291 (0.267-0.330)"),
@@ -189,71 +193,115 @@ association_table(
 ).to_csv(f"{cft_dir}/SupplTableS4_CL_association_original_scale.csv",
          index=False, encoding="utf-8-sig")
 
-# ---------------------------------------------------------------- Table 5
-lead = res[(res["RS"] == LEAD_RSID)
-           & (res["COMPARISON"] == "HOM_vs_OTHERS")
-           & (res["END_POINT"] == "CL")]
-
-t5 = []
-for period in PERIOD_ORDER:
-    lg = lead[(lead["PHASE"] == period) & (lead["MODEL_SCALE"] == "log(CL)")]
-    rw = lead[(lead["PHASE"] == period) & (lead["MODEL_SCALE"] == "raw CL")]
-    if len(lg) == 0:
-        continue
-    lg = lg.iloc[0]
-    row = {
-        "Analysis period": PERIOD_LABEL[period],
-        "n (GG)": int(lg["VARIANT_N"]),
-        "n (TT+TG)": int(lg["REFERENCE_N"]),
-        "Geometric mean CL, GG (95% CI), L/day": lg["VARIANT_ESTIMATE"],
-        "Geometric mean CL, TT+TG (95% CI), L/day": lg["REFERENCE_ESTIMATE"],
-        "GMR (95% CI)": fmt_est(lg["EFFECT"], lg["CI_LOWER"], lg["CI_UPPER"]),
-        "P value": fmt_p(lg["P_VALUE"]),
-        "FDR q value": fmt_p(lg["P_VALUE_FDR"]),
-        "Shapiro-Wilk P (log-scale residuals)": fmt_p(lg["RESID_SHAPIRO_P"]),
-    }
-    if len(rw):
-        rw = rw.iloc[0]
-        row["Original-scale adjusted difference (95% CI), L/day"] = fmt_est(
-            rw["EFFECT"], rw["CI_LOWER"], rw["CI_UPPER"], digits=3)
-        row["Original-scale FDR q value"] = fmt_p(rw["P_VALUE_FDR"])
-    t5.append(row)
-
-pd.DataFrame(t5).to_csv(f"{cft_dir}/Table5_rs1061622_across_periods.csv",
-                        index=False, encoding="utf-8-sig")
-
-# ---------------------------------------------------------------- Suppl S3
+# ------------------------------------------- Table 5 / Suppl S6 (per variant)
 sens_path = f"{out_dir}/Table_pgx_sensitivity.csv"
-s3 = pd.DataFrame([{
-    "Note": "Script 04 runs sensitivity analyses only for FDR-significant "
-            "CL associations; none were significant under the final "
-            "analysis frame, so no rows were produced. Use "
-            "04_pgx_sensitivity.py with a relaxed trigger to reproduce the "
-            "robustness checks reported in the manuscript."
-}])
+sens = pd.DataFrame()
 if os.path.exists(sens_path):
     try:
         sens = pd.read_csv(sens_path)
     except pd.errors.EmptyDataError:
         sens = pd.DataFrame()
-    if len(sens):
-        sens["RS"] = sens["RSID"].str.split("(").str[0]
-        sub = sens[sens["RS"] == LEAD_RSID]
-        if len(sub):
-            s3 = pd.DataFrame({
-                "Analysis period": sub["PHASE"].map(PERIOD_LABEL),
-                "CL scale": sub["MODEL_SCALE"],
-                "Primary P value": sub["MAIN_P"].map(fmt_p),
-                "Leave-one-out P range": [
-                    f"{a:.3f}-{b:.3f}"
-                    for a, b in zip(sub["LOO_P_MIN"], sub["LOO_P_MAX"])
-                ],
-                "All leave-one-out P < 0.05": sub["LOO_ALL_BELOW_0.05"],
-                "Mann-Whitney P": sub["MANN_WHITNEY_P"].map(fmt_p),
-                "HC3 robust P": sub["HC3_ROBUST_P"].map(fmt_p),
-                "P excluding patients without observed concentrations":
-                    sub["EXCL_NO_SAMPLE_P"].map(fmt_p),
-            })
+if len(sens):
+    sens["RS"] = sens["RSID"].str.split("(").str[0]
+
+
+def strip_n(s):
+    """'0.396 (0.293-0.533), n=5' -> '0.396 (0.293-0.533)'."""
+    return str(s).split(", n=")[0]
+
+
+def loo_range(rs, period, scale):
+    if not len(sens):
+        return "NA"
+    sub = sens[(sens["RS"] == rs) & (sens["PHASE"] == period)
+               & (sens["MODEL_SCALE"] == scale)
+               & (sens["COMPARISON"] == "HOM_vs_OTHERS")]
+    if not len(sub):
+        return "NA"
+    r = sub.iloc[0]
+    return f"{r['LOO_P_MIN']:.3f}-{r['LOO_P_MAX']:.3f}"
+
+
+def variant_across_periods(rs):
+    """Recessive-model results for one variant across analysis periods,
+    log-scale primary analysis with leave-one-out range and the
+    original-scale sensitivity analysis."""
+    lead = res[(res["RS"] == rs) & (res["COMPARISON"] == "HOM_vs_OTHERS")
+               & (res["END_POINT"] == "CL")]
+    rows = []
+    for period in PERIOD_ORDER:
+        lg = lead[(lead["PHASE"] == period) & (lead["MODEL_SCALE"] == "log(CL)")]
+        rw = lead[(lead["PHASE"] == period) & (lead["MODEL_SCALE"] == "raw CL")]
+        if len(lg) == 0:
+            continue
+        lg = lg.iloc[0]
+        _, ref, alt, labels = genotype_labels(lg["RSID"])
+        hom, others = labels[2], f"{labels[0]}+{labels[1]}"
+        row = {
+            "Analysis period": PERIOD_LABEL[period],
+            f"n ({hom})": int(lg["VARIANT_N"]),
+            f"n ({others})": int(lg["REFERENCE_N"]),
+            f"Geometric mean CL, {hom} (95% CI), L/day":
+                strip_n(lg["VARIANT_ESTIMATE"]),
+            f"Geometric mean CL, {others} (95% CI), L/day":
+                strip_n(lg["REFERENCE_ESTIMATE"]),
+            "GMR (95% CI)": fmt_est(lg["EFFECT"], lg["CI_LOWER"], lg["CI_UPPER"]),
+            "P value": fmt_p(lg["P_VALUE"]),
+            "FDR q value": fmt_p(lg["P_VALUE_FDR"]),
+            "Leave-one-out P range": loo_range(rs, period, "log(CL)"),
+            "Shapiro-Wilk P (log-scale residuals)": fmt_p(lg["RESID_SHAPIRO_P"]),
+        }
+        if len(rw):
+            rw = rw.iloc[0]
+            row["Original-scale adjusted difference (95% CI), L/day"] = fmt_est(
+                rw["EFFECT"], rw["CI_LOWER"], rw["CI_UPPER"], digits=3)
+            row["Original-scale P value"] = fmt_p(rw["P_VALUE"])
+            row["Original-scale FDR q value"] = fmt_p(rw["P_VALUE_FDR"])
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
+variant_across_periods(LEAD_RSID).to_csv(
+    f"{cft_dir}/Table5_{LEAD_RSID}_across_periods.csv",
+    index=False, encoding="utf-8-sig")
+variant_across_periods(PRIOR_RSID).to_csv(
+    f"{cft_dir}/SupplTableS6_{PRIOR_RSID}_across_periods.csv",
+    index=False, encoding="utf-8-sig")
+
+# superseded file from the earlier reporting frame
+for stale in ["Table5_rs1061622_across_periods.csv",
+              "Figure3_CL_by_rs1061622.png", "Figure3_CL_by_rs1061622.pdf"]:
+    if os.path.exists(f"{cft_dir}/{stale}"):
+        os.remove(f"{cft_dir}/{stale}")
+
+# ---------------------------------------------------------------- Suppl S3
+s3 = pd.DataFrame([{
+    "Note": "04_pgx_sensitivity.py produced no rows; run it after 03."
+}])
+if len(sens):
+    sub = sens[sens["RS"].isin([LEAD_RSID, PRIOR_RSID])].copy()
+    sub["_ord"] = sub["RS"].map({LEAD_RSID: 0, PRIOR_RSID: 1})
+    sub["_per"] = sub["PHASE"].map({p: i for i, p in enumerate(PERIOD_ORDER)})
+    sub = sub.sort_values(["_ord", "_per", "MODEL_SCALE"])
+    if len(sub):
+        s3 = pd.DataFrame({
+            "rsID": sub["RS"],
+            "Gene": sub["GENE"],
+            "Analysis period": sub["PHASE"].map(PERIOD_LABEL),
+            "CL scale": sub["MODEL_SCALE"],
+            "n (homozygotes)": sub["VARIANT_N"].astype(int),
+            "Primary P value": sub["MAIN_P"].map(fmt_p),
+            "FDR q value": sub["MAIN_P_FDR"].map(fmt_p),
+            "Leave-one-out P range": [
+                f"{a:.3f}-{b:.3f}"
+                for a, b in zip(sub["LOO_P_MIN"], sub["LOO_P_MAX"])
+            ],
+            "All leave-one-out P < 0.05": sub["LOO_ALL_BELOW_0.05"],
+            "Mann-Whitney P": sub["MANN_WHITNEY_P"].map(fmt_p),
+            "HC3 robust P": sub["HC3_ROBUST_P"].map(fmt_p),
+            "P excluding patients without observed concentrations":
+                sub["EXCL_NO_SAMPLE_P"].map(fmt_p),
+        })
 s3.to_csv(f"{cft_dir}/SupplTableS3_sensitivity_analyses.csv",
           index=False, encoding="utf-8-sig")
 

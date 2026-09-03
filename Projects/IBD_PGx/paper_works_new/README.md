@@ -3,42 +3,72 @@
 논문 골자: **IBD 환자에서 infliximab 집단약동학 모델링 + 후보 유전변이의
 PK(CL)/ADA 연관성 분석**
 
-**상태: (A) exploratory 확정 + EBE 기반 최종 수치 (2026-09-02)**
+**상태: 최종 수치 확정 + 원고/표·그림 전면 갱신 완료 (2026-09-03)**
 개인 CL 산출을 sim90(난수 ETA) → sim95(run 89 EBE 주입)로 교정 완료.
-최종 결론: **FDR 보정 후 유의한 변이 없음.** 이전에 보고했던
-rs1061622(TNFRSF1B) 신호는 난수 ETA의 산물로 확정 — EBE 기반에서는
-GMR 1.05, p=0.58로 완전 소멸. 최소 p는 rs396991(FCGR3A) q=0.098.
+최종 결론: **FDR 보정 후 유의한 변이 없음** (225개 검정, q<0.05 = 0건).
+이전에 보고했던 rs1061622(TNFRSF1B) 신호는 난수 ETA의 산물로 확정 —
+EBE 기반에서는 GMR 1.05, p=0.579로 완전 소멸. 최소 p는 rs396991(FCGR3A)
+q=0.098이며 LOO에서 1명만 빼도 유의성 소실.
+
+## 교수님 발송 자료 (2026-09-03)
+
+| 항목 | 위치 |
+|---|---|
+| **메일 본문 (발송용)** | `manuscript/email_to_professor_20260903_send.md` |
+| **첨부 4개 모음** | `for_professor_20260903/` |
+
+첨부: `Methods_and_Results_FINAL.docx`,
+`[IFX_POPPK]_core_fig_tab_FINAL.docx`,
+`Figure3_forest_CL_overall.pdf`, `Figure1_eligibility_flowchart.pdf`
 
 ## 바로 쓸 수 있는 것 (논문 작성용)
 
 | 항목 | 위치 |
 |---|---|
-| **원고 본문 (Methods/Results 최종본)** | `manuscript/Methods_and_Results_FINAL.md` |
-| **Figure/Table 캡션 초안** | `core_fig_tab/CAPTIONS.md` |
+| **원고 Word (Methods/Results/Discussion)** | `manuscript/Methods_and_Results_FINAL.docx` |
+| 원고 마크다운 기준본 | `manuscript/Methods_and_Results_FINAL.md` |
+| **표·그림 Word (캡션 포함)** | `core_fig_tab/[IFX_POPPK]_core_fig_tab_FINAL.docx` |
+| **Figure/Table 캡션** | `core_fig_tab/CAPTIONS.md` |
 | **본문 표·그림 파일** | `core_fig_tab/Table1~5, Figure1~3` |
-| **보충자료 표** | `core_fig_tab/SupplTableS1~S5` |
+| **보충자료** | `core_fig_tab/SupplTableS1~S6, SupplFigureS1~S2` |
 
-`manuscript/Methods_and_Results_FINAL.md`(2026-09-02, EBE 기반)가 기준
-문서입니다. 기존 `output/Methods_and_results_reviewed.docx`와
+기존 `output/Methods_and_results_reviewed.docx`와
 `manuscript_optionA_final_sections.md`는 **폐기된 수치(sim90 난수 CL
-기반, q=0.048 유의 등)** 이므로 PGx 문단은 반드시 FINAL.md로 교체.
-popPK 부분은 기존 docx 그대로 사용 가능합니다.
+기반, q=0.048 유의 등)** 이므로 참조하지 말 것. popPK 문단은
+`Methods_and_Results_FINAL.docx`에 그대로 옮겨져 있습니다.
+
+## 표·그림 구성 (2026-09-03 확정)
+
+| 항목 | 내용 |
+|---|---|
+| Table 1–2 | 환자 특성 / popPK 파라미터 (재추정으로 확정) |
+| Table 3 | 후보 변이 특성 (유전형 분포·MAF·HWE·QC) |
+| Table 4 | 전체 기간 CL 연관성 (열성 11 + 우성 14) |
+| **Table 5** | rs396991 시기별 결과 + LOO 범위 |
+| Figure 1 | Eligibility flow chart (98→97→96) |
+| Figure 2 | Structural model diagram |
+| **Figure 3** | 전체 변이 forest plot (GMR·95% CI·p·q) |
+| Suppl S1–S5 | 시기별 CL / ADA / 민감도 / 원스케일 / 코호트 |
+| **Suppl S6** | rs1061622 시기별 결과 |
+| **Suppl Fig S1–S2** | rs396991 / rs1061622 유전형별 CL 산점도 |
 
 ## 폴더 구조
 
 ```
 paper_works_new/
-├── code/          분석·표·그림 생성 스크립트 (01~08, 번호순 실행)
+├── code/          분석·표·그림·docx 생성 스크립트 (01~10, 번호순 실행)
 ├── core_fig_tab/  ★ 논문용 최종 표·그림 + 캡션
 ├── manuscript/    ★ 원고 본문 최종본, 교수님 보고 메일 기록
 ├── data/          분석 입력 스냅샷
 ├── materials/     기존 paper_works에서 가져온 원본 자료
-└── output/        중간 산출물 (raw 결과 CSV, 사용자 개정 docx 등)
+├── output/        중간 산출물 (raw 결과 CSV, 폐기된 구 docx 등)
+└── for_professor_20260903/   교수님 발송 첨부 4개
 ```
 
 ## 실행 방법
 
-프로젝트 루트 venv 사용. 01~06 실행 후 07(표), 08(Figure 1) 실행.
+프로젝트 루트 venv 사용. 01~06 실행 후 07(표), 08(Figure 1),
+09(Figure 3 forest), 10(docx 생성) 순서로 실행.
 
 ```
 C:/Users/ilma0/PycharmProjects/pypharmacometrics/venv/Scripts/python.exe -X utf8 code/<script>
@@ -52,10 +82,12 @@ C:/Users/ilma0/PycharmProjects/pypharmacometrics/venv/Scripts/python.exe -X utf8
 | `02_table_genotype_summary.py` | `Table_genotype_summary.csv` | Table 3 재료 (유전형 분포/MAF/HWE) |
 | `03_pgx_ancova_fdr.py` | `Table_pgx_ancova_fdr_results.csv`, `Table_variant_qc.csv` | **PGx 본분석** + 변이 QC |
 | `04_pgx_sensitivity.py` | `Table_pgx_sensitivity.csv` | Suppl S3 (견고성) |
-| `05_figure_cl_by_genotype.py` | `Figure_CL_by_rs1061622.png/pdf` | **Figure 3** |
+| `05_figure_cl_by_genotype.py` | `SupplFigureS1/S2_*.png/pdf` | **Suppl Figure S1–S2** |
 | `06_pgx_cohort_attrition.py` | `Table_pgx_attrition.csv` | Suppl S5, Figure 1 수치 |
-| `07_core_tables.py` | `core_fig_tab/Table1~5, SupplS1~S5` | **논문용 표 전체** |
+| `07_core_tables.py` | `core_fig_tab/Table1~5, SupplS1~S6` | **논문용 표 전체** |
 | `08_figure1_flowchart.py` | `core_fig_tab/Figure1_*.png/pdf` | **Figure 1** |
+| `09_figure3_forest.py` | `core_fig_tab/Figure3_forest_*.png/pdf` | **Figure 3** |
+| `10_build_manuscript_docx.py` | 원고 docx + 표·그림 docx | **Word 산출물** (python-docx 필요) |
 
 ## 확정된 분석 프레임
 
@@ -69,7 +101,7 @@ C:/Users/ilma0/PycharmProjects/pypharmacometrics/venv/Scripts/python.exe -X utf8
   → 열성 모델 검정 가능 11개(동형접합 0명인 3개 제외), 우성 모델 14개
 - FDR(BH)은 (phase × endpoint × CL스케일 × 유전모델) 층 안에서 변이들에 대해 보정
 
-## 핵심 결과 (2026-09-02, EBE 기반 최종)
+## 핵심 결과 (EBE 기반 최종)
 
 **FDR 보정 후 유의한 변이 없음** (225개 검정 중 q<0.05 = 0건, ADA 최소 q>0.99)
 
@@ -80,15 +112,17 @@ log/raw). CC n=5, 가설생성 수준으로만 보고.
 |---|---|---|---|---|
 | Maintenance | 1.36 (1.09–1.71) | 0.009 | 0.098 | 0.112 |
 | Overall | 1.32 (1.06–1.64) | 0.014 | 0.157 | 0.141 |
-| Induction | 1.35 (1.05–1.72) | 0.020 | 0.218 | — |
+| Induction | 1.35 (1.05–1.72) | 0.020 | 0.218 | 0.184 |
 
 - **LOO에서 1명만 빼도 유의성 소실** → 소수 관측 의존. 과대 해석 금지
 - CC 5명 개인 CL: 0.293/0.329/0.336/0.424/0.547 (최고값 1명 영향 큼)
-- 우성 모델은 비유의 (GMR 1.08, p=0.13~0.17)
-- ADA endpoint 전부 비유의 (최소 q>0.99, ADA 양성 6명뿐)
+- 우성 모델은 비유의 (OVERALL GMR 1.08, p=0.134)
+- ADA endpoint 전부 비유의 (최소 p=0.076, q>0.99). PGx 코호트 ADA 양성
+  6명, 도입기 창에는 양성 0명이라 ADA 검정 75개 중 26개는 추정 불가
+  (실제 산출 검정 199개 = CL 150 + ADA 49)
 
 **rs1061622 (TNFRSF1B)**: 이전 신호는 sim90 난수 ETA의 산물로 확정.
-EBE 기반 OVERALL GMR 1.05 (0.88–1.27), p=0.58 (GG 기하평균 0.295 vs
+EBE 기반 OVERALL GMR 1.05 (0.88–1.27), p=0.579 (GG 기하평균 0.295 vs
 TT+TG 0.284 L/day).
 
 - 검증: sim95 implied ETA vs 89.phi EBE 상관 **r=1.000**
@@ -118,13 +152,17 @@ PGx 분석 코호트 96
 2. ~~희소 샘플 환자 포함 규칙~~ → **해소**: EBE 전환으로 관찰 1건 환자
    (38339532)는 추정모델에서 자연 제외. 관찰 2건 환자(35093356)의 CL은
    이제 실측 기반 EBE라 문제였던 극단값(0.617)도 사라짐.
-3. **Figure 1 스크리닝 단계 수치** — 상단 n=X,XXX 3곳은 EMR 추출 수치 필요.
+3. **Figure 1 스크리닝 단계 수치** — 상단 n=X,XXX 3곳은 EMR 추출 수치 필요
+   (`08_figure1_flowchart.py`의 최상단 박스 문자열).
 4. 센터에 `23-B02281_EB-01` 시퀀싱 여부 확인 (Exclusion 문구 구체화용).
-5. VPC/GOF 플롯을 NONMEM(`C:/Users/ilma0/NONMEMProjects/IBDPGX/`)에서 가져오기.
-6. **Figure 3 대상 결정**: 현재 rs1061622(null). rs396991로 교체/병기/삭제 중
-   선택 (05 스크립트 RSID만 변경하면 재생성).
-7. **교수님 보고**: CL 산출 교정 경위(난수 ETA → EBE)와 결과 변화
-   (유의 신호 소멸) 보고 필요.
+5. VPC/GOF 플롯을 NONMEM(`C:/Users/ilma0/NONMEMProjects/IBDPGX/`)에서
+   가져와 Supplementary Figure로 추가할지 결정.
+6. ~~Figure 3 대상 결정~~ → **전체 변이 forest plot으로 확정**(09 스크립트).
+   유전형별 산점도는 Suppl Figure S1(rs396991)/S2(rs1061622)로 이동.
+7. ~~교수님 보고~~ → **메일 본문·첨부 준비 완료**
+   (`manuscript/email_to_professor_20260903_send.md`). 발송 및 회신 대기.
+   질의 5건: negative finding 방향, rs396991 본문 비중, forest plot 구성,
+   Figure 1 스크리닝 수치 출처, 센터 문의 진행 여부.
 
 ## 데이터 수정 이력 (모두 결과와 무관하게 타당한 수정)
 
