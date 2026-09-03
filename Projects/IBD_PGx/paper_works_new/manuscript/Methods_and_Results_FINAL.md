@@ -138,9 +138,12 @@ consistent direction across the three analysis periods (maintenance
 phase: GMR 1.37, 95% CI 1.09–1.71, P = 0.009, q = 0.098; overall
 treatment period: GMR 1.32, 95% CI 1.06–1.64, P = 0.014, q = 0.157;
 induction phase: GMR 1.35, 95% CI 1.05–1.72, P = 0.020, q = 0.218)
-(Table 4). Given the small number of homozygotes and the absence of
-FDR-adjusted significance, this signal should be regarded as
-hypothesis-generating only.
+(Table 4). In leave-one-out analyses, however, nominal significance was
+not retained when any single CC homozygote was excluded (maximum P = 0.112
+in the maintenance phase and 0.141 over the overall treatment period),
+indicating dependence on a small number of observations. Given the small
+number of homozygotes and the absence of FDR-adjusted significance, this
+signal should be regarded as hypothesis-generating only.
 
 The TNFRSF1B rs1061622 variant, previously reported in relation to
 anti-TNF treatment response, showed no association with infliximab CL
