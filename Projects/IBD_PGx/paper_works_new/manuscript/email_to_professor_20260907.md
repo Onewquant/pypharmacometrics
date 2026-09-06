@@ -5,13 +5,17 @@
 > 경위와 최종 결과를 포함한 자기완결형**으로 작성했습니다. 9월 3일 메일이
 > 이미 전달되었다면 1~2절을 줄여도 됩니다.
 
-**첨부파일 (4개)** — `for_professor_20260907/`
+**첨부파일** — `for_professor_20260907/` (폴더째 압축하여 첨부)
 
-1. `Methods_and_Results_FINAL.docx` — Methods / Results / Discussion(참고용) 초안
-2. `[IFX_POPPK]_core_fig_tab_FINAL.docx` — Table 1–5, Figure 1–3,
-   Supplementary Table S1–S5, Supplementary Figure S1–S3 (캡션 포함)
-3. `Figure1_eligibility_flowchart.pdf` — 본문 Figure 1
-4. `Figure3_forest_CL_overall.pdf` — 본문 Figure 3
+1. `01_Manuscript/Methods_and_Results_FINAL.docx` — Methods / Results /
+   Discussion(참고용) 초안
+2. `02_Tables/Tables_1-5.xlsx`, `Supplementary_Tables_S1-S5.xlsx` — 표 전체
+   (시트별 1개 표; 원본 csv는 `csv/` 하위)
+3. `03_Figures/` — Figure 1 (flow chart, PDF·PNG), Figure 2 (structural
+   model, PNG), Figure 3 (forest plot, PDF·PNG)
+4. `04_Supplementary_Figures/` — S1 GOF, S2 VPC, S3 rs396991 산점도 (PDF·PNG)
+5. `05_All_Tables_Figures_with_captions/[IFX_POPPK]_core_fig_tab_FINAL.docx`
+   — 위 표·그림 전체를 캡션과 함께 한 문서로 모은 것
 
 **메일 제목(안)**: [IBD infliximab PGx] 개인 CL 산출 교정 최종 결과 및
 원고·표·그림 갱신본 송부
