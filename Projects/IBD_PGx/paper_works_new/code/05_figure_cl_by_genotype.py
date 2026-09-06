@@ -1,4 +1,4 @@
-"""Supplementary Figures S1/S2 - Infliximab CL by genotype (scatter panels).
+"""Supplementary Figure S3 - Infliximab CL by genotype (rs396991 only since 2026-09-07) (S1/S2 are the popPK GOF/VPC plots, exported from NONMEM run 89) (scatter panels).
 
 For each variant in TARGETS, two panels (maintenance phase / overall
 treatment): individual model-estimated (EBE-based) CL by genotype,
@@ -16,8 +16,7 @@ Figure 3 of the manuscript is the forest plot (09_figure3_forest.py).
 Run 03_pgx_ancova_fdr.py first.
 
 Outputs -> paper_works_new/core_fig_tab/
-  SupplFigureS1_CL_by_rs396991.png / .pdf   (300 dpi)
-  SupplFigureS2_CL_by_rs1061622.png / .pdf
+  SupplFigureS3_CL_by_rs396991.png / .pdf   (300 dpi)
 """
 
 import matplotlib
@@ -35,8 +34,7 @@ cft_dir = f"{prj_dir}/paper_works_new/core_fig_tab"
 
 # (full RSID column name, output file stem)
 TARGETS = [
-    ("rs396991(0=A,1=C)", "SupplFigureS1_CL_by_rs396991"),
-    ("rs1061622(0=T,1=G)", "SupplFigureS2_CL_by_rs1061622"),
+    ("rs396991(0=A,1=C)", "SupplFigureS3_CL_by_rs396991"),
 ]
 
 # two-hue categorical pair (CVD-safe): non-homozygous genotypes vs

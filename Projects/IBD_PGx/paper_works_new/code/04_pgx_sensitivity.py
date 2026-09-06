@@ -52,7 +52,9 @@ COMPARISONS = {
 # they reach the FDR threshold. Under the exploratory reporting frame
 # (option A, 2026-08) the lead association is reported with its sensitivity
 # analyses even though q > 0.05.
-LEAD_TARGETS = [("rs1061622", "HOM_vs_OTHERS"), ("rs396991", "HOM_vs_OTHERS")]
+# 2026-09-07: rs1061622 dropped from the dedicated reporting (null result,
+# no reason to single it out); only the smallest-P variant is carried.
+LEAD_TARGETS = [("rs396991", "HOM_vs_OTHERS")]
 
 
 def build_phase_df(ep_df, phase):

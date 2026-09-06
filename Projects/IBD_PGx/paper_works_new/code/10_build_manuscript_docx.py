@@ -9,8 +9,8 @@
       from the genotype matrix).
 
   core_fig_tab/[IFX_POPPK]_core_fig_tab_FINAL.docx
-      Table 1-5, Figure 1-3, Supplementary Table S1-S6 and Supplementary
-      Figure S1-S2 with captions, built from the CSV/PNG files in
+      Table 1-5, Figure 1-3, Supplementary Table S1-S5 and Supplementary
+      Figure S1-S3 with captions, built from the CSV/PNG files in
       core_fig_tab/ so the numbers cannot drift from the analysis output.
 
 Run 01-09 first. Requires python-docx.
@@ -135,14 +135,12 @@ para(doc,
      "inhibitor concentration measurements were excluded from the study "
      "population, and those without whole-genome sequencing (WGS) data were "
      "further excluded to define the overall analytic cohort (n = 139). From "
-     "this cohort, patients with infliximab administration records were "
-     "selected to form the infliximab cohort (n = 98). One patient whose data "
-     "started in the maintenance phase and who had only a single concentration "
-     "measurement was excluded from PopPK model estimation, because the first "
-     "concentration of maintenance-starting patients was used to initialize "
-     "the model and could not additionally inform individual parameter "
-     "estimation; the infliximab PopPK modeling cohort therefore comprised 97 "
-     "patients.")
+     "this cohort, patients without infliximab administration records (n = 41) "
+     "and one patient whose data started in the maintenance phase with only a "
+     "single concentration measurement, which was used to initialize the model "
+     "and could not inform individual parameter estimation, were excluded "
+     "(n = 42 in total); the infliximab PopPK modeling cohort therefore "
+     "comprised 97 patients.")
 para(doc,
      "For the pharmacogenomic analyses, one additional patient was excluded "
      "because the corresponding sequencing sample was removed during genotype "
@@ -191,8 +189,7 @@ para(doc,
      "Variant-level QC was performed after sample QC. Variants with call rates "
      "<0.95 were excluded. Minor allele frequency (MAF) filtering was applied "
      "to exclude rare variants with MAF <0.01, and analyses were restricted to "
-     "biallelic variants. HWE filtering at P <1\u00d710\u207b\u2076 had already "
-     "been applied during upstream preprocessing.")
+     "biallelic variants.")
 para(doc,
      "For the candidate-variant association analyses, an additional "
      "variant-level quality control step was applied within the "
@@ -259,8 +256,10 @@ bullets(doc, ["goodness-of-fit plots",
               "parameter precision estimates",
               "nonparametric bootstrap analysis"])
 para(doc,
-     "Bootstrap resampling was performed to estimate median parameter values "
-     "and 5th\u201395th percentile confidence intervals.")
+     "Visual predictive checks were based on 200 simulated datasets, with "
+     "observations grouped into eight time bins of equal count. Bootstrap "
+     "resampling was performed to estimate median parameter values and "
+     "5th\u201395th percentile confidence intervals.")
 
 h(doc, "Individual Clearance Estimation for Pharmacogenomic Analysis", 2)
 para(doc,
@@ -271,9 +270,19 @@ para(doc,
      "patient\u2019s EBE of the random effect on clearance with the "
      "time-varying covariate values (CL(t) = TVCL(covariates at t) \u00d7 "
      "exp(\u03b7_EBE)), and phase-specific individual CL was summarized as the "
-     "median of the record-level values within each analysis period. For one "
-     "patient without any observed concentration in the estimation dataset, no "
-     "EBE could be derived and the patient was excluded from the CL analyses.")
+     "median of the record-level values within each analysis period. The "
+     "induction-phase window extended from the first infliximab dose to the "
+     "third dose, and the maintenance-phase window from the start of "
+     "maintenance dosing to the last dose administered on or before the "
+     "one-year assessment (10\u201312 months after the start of maintenance "
+     "dosing), or to the end of follow-up when no one-year assessment was "
+     "available; the overall treatment period combined both windows. "
+     "Time-varying covariates, including ADA status, were taken from the "
+     "records within each window, so ADA positivity in the pharmacogenomic "
+     "analyses refers to a positive result within the corresponding analysis "
+     "period. For one patient without any observed concentration in the "
+     "estimation dataset, no EBE could be derived and the patient was excluded "
+     "from the CL analyses.")
 
 h(doc, "Pharmacogenomic Association Analysis", 2)
 para(doc,
@@ -323,20 +332,19 @@ h(doc, "Results", 1)
 h(doc, "Patient Characteristics", 2)
 para(doc,
      "The final analytic cohort included 139 patients, including 95 patients "
-     "(68.4%) with Crohn\u2019s disease and 44 patients (31.6%) with "
-     "ulcerative colitis. The infliximab cohort included 98 patients, whereas "
-     "the adalimumab cohort included 52 patients.")
-para(doc, "Among the 139 patients:")
-bullets(doc, ["29 patients (20.9%) were female",
-              "17 patients (12.2%) were pediatric patients (<19 years old)"])
+     "(68.4%) with Crohn\u2019s disease and 44 (31.6%) with ulcerative "
+     "colitis; 29 patients (20.9%) were female and 17 (12.2%) were pediatric "
+     "patients (<19 years old). The mean age was 32.6 years, and the mean body "
+     "weight was 66.9 kg. The infliximab PopPK modeling cohort included 97 "
+     "patients, whereas the adalimumab cohort included 52 patients.")
 para(doc,
-     "The mean age was 32.6 years, and the mean body weight was 66.9 kg. A "
-     "total of 567 serum concentration samples were available for PopPK "
-     "analysis, including 394 infliximab samples (69.5%) and 173 adalimumab "
-     "samples (30.5%). The mean number of samples per patient was 4.08. "
-     "Anti-drug antibodies were detected in 10 patients (7.2%) overall and in "
-     "9 patients (9.2%) within the infliximab cohort. Baseline demographic and "
-     "clinical characteristics are summarized in Table 1.")
+     "A total of 567 serum concentration samples were available for PopPK "
+     "analysis, including 393 infliximab samples from the PopPK modeling "
+     "cohort (69.3%) and 173 adalimumab samples (30.5%). The mean number of "
+     "samples per patient was 4.08. Anti-drug antibodies were detected at any "
+     "time during follow-up in 10 patients (7.2%) in the analytic cohort and in "
+     "9 patients (9.3%) in the infliximab PopPK modeling cohort. Baseline "
+     "demographic and clinical characteristics are summarized in Table 1.")
 
 h(doc, "Population Pharmacokinetic Model", 2)
 para(doc,
@@ -378,7 +386,8 @@ h(doc, "Model Evaluation and Bootstrap Analysis", 2)
 para(doc,
      "Goodness-of-fit plots and visual predictive checks demonstrated "
      "acceptable agreement between observed and model-predicted "
-     "concentrations. Bootstrap analysis demonstrated acceptable parameter "
+     "concentrations (Supplementary Figures S1 and S2). Bootstrap analysis "
+     "demonstrated acceptable parameter "
      "stability and robustness. Median bootstrap parameter estimates were "
      "comparable to the final model estimates, supporting the adequacy of the "
      "final PopPK model.")
@@ -401,7 +410,7 @@ para(doc,
      "phase: GMR 1.36, 95% CI 1.09\u20131.71, P = 0.009, q = 0.098; overall "
      "treatment period: GMR 1.32, 95% CI 1.06\u20131.64, P = 0.014, q = 0.157; "
      "induction phase: GMR 1.35, 95% CI 1.05\u20131.72, P = 0.020, q = 0.218) "
-     "(Table 5, Supplementary Figure S1). This was the only variant with a "
+     "(Table 5, Supplementary Figure S3). This was the only variant with a "
      "nominally significant clearance association in the entire analysis. In "
      "leave-one-out analyses, however, nominal significance was not retained "
      "when any single CC homozygote was excluded (maximum P = 0.112 in the "
@@ -413,17 +422,14 @@ para(doc,
      "and the absence of FDR-adjusted significance, this signal should be "
      "regarded as hypothesis-generating only.")
 para(doc,
-     "The TNFRSF1B rs1061622 variant, previously reported in relation to "
-     "anti-TNF treatment response, showed no association with infliximab "
-     "clearance in any analysis period (overall treatment period, GG versus TT "
-     "or TG: GMR 1.05, 95% CI 0.88\u20131.27, P = 0.579; geometric mean "
-     "clearance 0.295 versus 0.284 L/day) (Supplementary Table S6, "
-     "Supplementary Figure S2).")
-para(doc,
      "No variant was associated with ADA positivity in the maintenance phase "
      "or over the overall treatment period (smallest P = 0.076, smallest "
-     "q > 0.99; Supplementary Table S2); six patients in the pharmacogenomic "
-     "analysis cohort were ADA-positive.")
+     "q > 0.99; Supplementary Table S2). Six patients in the pharmacogenomic "
+     "analysis cohort were ADA-positive within the analysis periods; three "
+     "additional patients first became ADA-positive after the one-year "
+     "maintenance window and were therefore classified as ADA-negative in "
+     "these analyses (Table 1 reports ADA positivity at any time during "
+     "follow-up).")
 para(doc,
      "Original-scale ANCOVA yielded consistent conclusions (Supplementary "
      "Table S4). Residual normality was imperfect on both scales but "
@@ -433,12 +439,17 @@ para(doc,
      "analysis as primary.")
 
 h(doc, "Discussion (pharmacogenomic part, draft)", 1)
-note(doc, "Draft for review; to be merged into the full Discussion.")
+note(doc, "Draft for review; to be merged into the full Discussion. The "
+          "sentence on TNFRSF1B rs1061622 is offered for reference only, as "
+          "the Discussion is drafted by another author.")
 para(doc,
      "In this candidate-gene analysis of an infliximab PopPK cohort, none of "
      "the 14 variants that passed quality control was associated with "
      "individual infliximab clearance or with ADA positivity after correction "
-     "for multiple comparisons. The variant with the smallest P value, FCGR3A "
+     "for multiple comparisons. This included TNFRSF1B rs1061622, a variant "
+     "previously reported in relation to anti-TNF treatment response, which "
+     "showed no association with clearance in any analysis period (Table 4, "
+     "Figure 3). The variant with the smallest P value, FCGR3A "
      "rs396991, is mechanistically plausible: it encodes the FcγRIIIa "
      "p.Phe158Val substitution, and FcγRIIIa mediates IgG binding on effector "
      "cells, so an effect on the disposition of an IgG1 monoclonal antibody "
@@ -464,8 +475,9 @@ para(doc,
 para(doc,
      "The main limitation is statistical power. The pharmacogenomic cohort "
      "comprised 96 patients, homozygote groups under the recessive model "
-     "ranged from 1 to 32 patients, and only six patients were ADA-positive, "
-     "with none in the induction-phase window; the analysis was therefore able "
+     "ranged from 1 to 32 patients, and only six patients were ADA-positive "
+     "within the analysis periods, with none in the induction-phase window; "
+     "the analysis was therefore able "
      "to detect only comparatively large effects, and the ADA endpoint was "
      "essentially uninformative. Interindividual variability in clearance had "
      "already been reduced from 43.5% to 27.3% by the covariates retained in "
@@ -482,8 +494,6 @@ bullets(doc, [
     "extraction numbers.",
     "Confirm with the Precision Medicine Center whether sample "
     "23-B02281_EB-01 was sequenced, to make the exclusion wording specific.",
-    "Decide whether goodness-of-fit and visual predictive check plots are "
-    "added as supplementary figures.",
 ])
 
 ms_docx = f"{ms_dir}/Methods_and_Results_FINAL.docx"
@@ -505,14 +515,12 @@ CORE = [
      "Anti-TNF inhibitors included infliximab, adalimumab, and ustekinumab. "
      "Patients without available anti-TNF concentration measurements or "
      "without whole-genome sequencing data were excluded to define the "
-     "analytic cohort (n = 139). Patients with infliximab administration "
-     "records formed the infliximab cohort (n = 98). One patient whose data "
-     "started in the maintenance phase and who had a single concentration "
-     "measurement was excluded from population pharmacokinetic (PopPK) model "
-     "estimation and therefore had no individual clearance estimate (n = 97), "
-     "and one further patient was excluded from the pharmacogenomic analyses "
-     "because the corresponding sequencing sample was removed during genotype "
-     "quality control (n = 96). Analyses were performed separately for the "
+     "analytic cohort (n = 139). Patients without infliximab administration "
+     "records or without an evaluable infliximab concentration for population "
+     "pharmacokinetic (PopPK) model estimation were excluded (n = 42), leaving "
+     "the infliximab PopPK modeling cohort (n = 97); one further patient was "
+     "excluded from the pharmacogenomic analyses because the corresponding "
+     "sequencing sample was removed during genotype quality control (n = 96). Analyses were performed separately for the "
      "overall treatment period, the induction phase, and the maintenance "
      "phase. Screening-stage counts (n = X,XXX) to be completed from the EMR "
      "extraction.",
@@ -538,10 +546,13 @@ CORE = [
      "threshold of q < 0.05.",
      "Figure3_forest_CL_overall.png", 5.2),
     ("table", "Table 1.",
-     "Baseline characteristics of the analytic and infliximab cohorts.",
+     "Baseline characteristics of the analytic cohort and the infliximab PopPK modeling cohort.",
      "Categorical variables are presented as n (%) and continuous variables "
      "as mean (standard deviation). Laboratory values are the first available "
-     "measurement per patient. TL, trough level.",
+     "measurement per patient. Whole phases, patients with induction-phase "
+     "data; maintenance only, patients whose data began in the maintenance "
+     "phase. ADA, anti-drug antibody; ADA positivity denotes a positive result "
+     "at any time during follow-up. TL, trough level.",
      "Table1_baseline_characteristics.csv", 8),
     ("table", "Table 2.",
      "Base and final population pharmacokinetic model parameter estimates.",
@@ -590,6 +601,16 @@ CORE = [
 
 SUPPL = [
     ("figure", "Supplementary Figure S1.",
+     "Goodness-of-fit plots for the final infliximab population "
+     "pharmacokinetic model.",
+     "Observed infliximab concentrations versus individual (top left) and population (top right) predicted concentrations, and conditional weighted residuals (CWRES) versus population predicted concentrations (bottom left) and time after the first dose (bottom right). Black lines are lines of identity or zero, red lines are locally weighted regression trends, and dashed lines mark CWRES of ±2. Concentrations are in µg/mL and time in days.",
+     "SupplFigureS1_GOF_model89.png", 5.8),
+    ("figure", "Supplementary Figure S2.",
+     "Visual predictive check for the final infliximab population "
+     "pharmacokinetic model.",
+     "Circles are observed infliximab concentrations (µg/mL) versus time after the first dose (days). Lines are the 5th, 50th (red), and 95th percentiles of the observed data; shaded areas are the 95% confidence intervals of the corresponding percentiles obtained from 200 simulated datasets, with observations grouped into eight time bins of equal count.",
+     "SupplFigureS2_VPC_model89.png", 6.2),
+    ("figure", "Supplementary Figure S3.",
      "Infliximab clearance by FCGR3A rs396991 genotype.",
      "Individual model-estimated clearance by genotype in the maintenance "
      "phase (left) and over the overall treatment period (right). Circles "
@@ -600,12 +621,7 @@ SUPPL = [
      "value for the recessive comparison (CC versus AA + AC), from analysis "
      "of covariance on log-transformed clearance adjusted for sex, body "
      "weight, serum albumin, and anti-drug antibody status.",
-     "SupplFigureS1_CL_by_rs396991.png", 6.2),
-    ("figure", "Supplementary Figure S2.",
-     "Infliximab clearance by TNFRSF1B rs1061622 genotype.",
-     "As for Supplementary Figure S1, for the recessive comparison (GG versus "
-     "TT + TG).",
-     "SupplFigureS2_CL_by_rs1061622.png", 6.2),
+     "SupplFigureS3_CL_by_rs396991.png", 6.2),
     ("table", "Supplementary Table S1.",
      "Association between candidate variants and infliximab clearance in the "
      "induction and maintenance phases.",
@@ -620,8 +636,8 @@ SUPPL = [
      "observed within the induction-phase window.",
      "SupplTableS2_ADA_association.csv", 7),
     ("table", "Supplementary Table S3.",
-     "Sensitivity analyses for the recessive-model associations of FCGR3A "
-     "rs396991 and TNFRSF1B rs1061622.",
+     "Sensitivity analyses for the recessive-model association of FCGR3A "
+     "rs396991 with infliximab clearance.",
      "Leave-one-out re-estimation, covariate-free Mann\u2013Whitney U test, "
      "HC3 robust standard errors, and exclusion of patients whose clearance "
      "estimates were not informed by observed concentration measurements.",
@@ -636,11 +652,6 @@ SUPPL = [
      "Cohort attrition for the pharmacogenomic analyses.",
      "Per-period analysis populations and the reason for each exclusion.",
      "SupplTableS5_cohort_attrition.csv", 7),
-    ("table", "Supplementary Table S6.",
-     "TNFRSF1B rs1061622 and infliximab clearance across analysis periods "
-     "(recessive model).",
-     "Presented as in Table 5.",
-     "SupplTableS6_rs1061622_across_periods.csv", 7),
 ]
 
 

@@ -6,8 +6,9 @@ used in the manuscript. Run 01-06 first.
 Reporting frame (2026-09, EBE-based individual CL, option A exploratory):
 no variant is FDR-significant. Table 5 follows the variant with the
 smallest P (FCGR3A rs396991, recessive) across analysis periods together
-with its leave-one-out robustness; TNFRSF1B rs1061622 (the variant with
-prior literature support, null here) goes to Supplementary Table S6.
+with its leave-one-out robustness. (TNFRSF1B rs1061622 no longer has a
+dedicated table/figure - removed 2026-09-07; it is reported only in
+Table 4 / Figure 3 / Suppl S1 like every other null variant.)
 
 Outputs -> paper_works_new/core_fig_tab/
   Table1_baseline_characteristics.csv
@@ -17,10 +18,9 @@ Outputs -> paper_works_new/core_fig_tab/
   Table5_rs396991_across_periods.csv
   SupplTableS1_CL_association_by_period.csv
   SupplTableS2_ADA_association.csv
-  SupplTableS3_sensitivity_analyses.csv       (rs396991 and rs1061622)
+  SupplTableS3_sensitivity_analyses.csv       (rs396991)
   SupplTableS4_CL_association_original_scale.csv
   SupplTableS5_cohort_attrition.csv
-  SupplTableS6_rs1061622_across_periods.csv
 """
 
 import os
@@ -33,7 +33,6 @@ out_dir = f"{prj_dir}/paper_works_new/output"
 cft_dir = f"{prj_dir}/paper_works_new/core_fig_tab"
 
 LEAD_RSID = "rs396991"      # smallest P in the final analysis -> Table 5
-PRIOR_RSID = "rs1061622"    # prior-literature variant, null here -> Suppl S6
 PERIOD_LABEL = {
     "OVERALL": "Overall treatment",
     "IND": "Induction phase",
@@ -193,7 +192,7 @@ association_table(
 ).to_csv(f"{cft_dir}/SupplTableS4_CL_association_original_scale.csv",
          index=False, encoding="utf-8-sig")
 
-# ------------------------------------------- Table 5 / Suppl S6 (per variant)
+# ------------------------------------------- Table 5 (lead variant across periods)
 sens_path = f"{out_dir}/Table_pgx_sensitivity.csv"
 sens = pd.DataFrame()
 if os.path.exists(sens_path):
@@ -264,13 +263,13 @@ def variant_across_periods(rs):
 variant_across_periods(LEAD_RSID).to_csv(
     f"{cft_dir}/Table5_{LEAD_RSID}_across_periods.csv",
     index=False, encoding="utf-8-sig")
-variant_across_periods(PRIOR_RSID).to_csv(
-    f"{cft_dir}/SupplTableS6_{PRIOR_RSID}_across_periods.csv",
-    index=False, encoding="utf-8-sig")
 
-# superseded file from the earlier reporting frame
+# superseded files from earlier reporting frames
 for stale in ["Table5_rs1061622_across_periods.csv",
-              "Figure3_CL_by_rs1061622.png", "Figure3_CL_by_rs1061622.pdf"]:
+              "Figure3_CL_by_rs1061622.png", "Figure3_CL_by_rs1061622.pdf",
+              "SupplTableS6_rs1061622_across_periods.csv",
+              "SupplFigureS4_CL_by_rs1061622.png",
+              "SupplFigureS4_CL_by_rs1061622.pdf"]:
     if os.path.exists(f"{cft_dir}/{stale}"):
         os.remove(f"{cft_dir}/{stale}")
 
@@ -279,8 +278,8 @@ s3 = pd.DataFrame([{
     "Note": "04_pgx_sensitivity.py produced no rows; run it after 03."
 }])
 if len(sens):
-    sub = sens[sens["RS"].isin([LEAD_RSID, PRIOR_RSID])].copy()
-    sub["_ord"] = sub["RS"].map({LEAD_RSID: 0, PRIOR_RSID: 1})
+    sub = sens[sens["RS"] == LEAD_RSID].copy()
+    sub["_ord"] = 0
     sub["_per"] = sub["PHASE"].map({p: i for i, p in enumerate(PERIOD_ORDER)})
     sub = sub.sort_values(["_ord", "_per", "MODEL_SCALE"])
     if len(sub):

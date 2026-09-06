@@ -2,7 +2,9 @@
 
 Reproduces every patient count in the PGx branch of the flow chart and
 flags the special-case UIDs that need manual confirmation:
-  - infliximab cohort (98)
+  - infliximab cohort (98; shown in Figure 1 as the PopPK modeling cohort 97,
+    after the single-concentration maintenance-starting patient is folded
+    into exclusion 3)
   - genotype data unavailable after variant QC / sample-ID matching (1)
   - PGx cohort (97)
   - per-phase analysis populations (phase data -> phase-specific CL ->

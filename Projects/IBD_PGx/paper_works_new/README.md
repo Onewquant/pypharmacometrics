@@ -3,19 +3,28 @@
 논문 골자: **IBD 환자에서 infliximab 집단약동학 모델링 + 후보 유전변이의
 PK(CL)/ADA 연관성 분석**
 
-**상태: 최종 수치 확정 + 원고/표·그림 전면 갱신 완료 (2026-09-03)**
+**상태: 원고 검토 반영 갱신본 준비 완료 (2026-09-07)** — 결론 변화 없음.
+2026-09-07 변경: Figure 1 단순화(Excl 4 → Excl 3 병합, 98 박스 삭제),
+Table 1을 97명·Figure 1 기준 phase로 재산출, ADA 양성 정의(분석 창 vs 추적
+전체) 명시, Suppl Fig S1 GOF·S2 VPC 추가, rs1061622 전용 자료(Results 문단·
+Suppl S6·Suppl Fig S4·S3 행) 삭제. 보충자료 최종 Table S1–S5, Figure S1–S3.
+메일: `manuscript/email_to_professor_20260907.md`, 첨부 `for_professor_20260907/`
+
+**이전 상태: 최종 수치 확정 + 원고/표·그림 전면 갱신 완료 (2026-09-03)**
 개인 CL 산출을 sim90(난수 ETA) → sim95(run 89 EBE 주입)로 교정 완료.
 최종 결론: **FDR 보정 후 유의한 변이 없음** (225개 검정, q<0.05 = 0건).
 이전에 보고했던 rs1061622(TNFRSF1B) 신호는 난수 ETA의 산물로 확정 —
 EBE 기반에서는 GMR 1.05, p=0.579로 완전 소멸. 최소 p는 rs396991(FCGR3A)
 q=0.098이며 LOO에서 1명만 빼도 유의성 소실.
 
-## 교수님 발송 자료 (2026-09-03)
+## 교수님 발송 자료
 
 | 항목 | 위치 |
 |---|---|
-| **메일 본문 (발송용)** | `manuscript/email_to_professor_20260903_send.md` |
-| **첨부 4개 모음** | `for_professor_20260903/` |
+| **메일 본문 (2026-09-07, 갱신본)** | `manuscript/email_to_professor_20260907.md` |
+| **첨부 4개 모음 (2026-09-07)** | `for_professor_20260907/` |
+| 메일 본문 (2026-09-03, 발송됨) | `manuscript/email_to_professor_20260903_send.md` |
+| 첨부 4개 모음 (2026-09-03) | `for_professor_20260903/` |
 
 첨부: `Methods_and_Results_FINAL.docx`,
 `[IFX_POPPK]_core_fig_tab_FINAL.docx`,
@@ -30,7 +39,7 @@ q=0.098이며 LOO에서 1명만 빼도 유의성 소실.
 | **표·그림 Word (캡션 포함)** | `core_fig_tab/[IFX_POPPK]_core_fig_tab_FINAL.docx` |
 | **Figure/Table 캡션** | `core_fig_tab/CAPTIONS.md` |
 | **본문 표·그림 파일** | `core_fig_tab/Table1~5, Figure1~3` |
-| **보충자료** | `core_fig_tab/SupplTableS1~S6, SupplFigureS1~S2` |
+| **보충자료** | `core_fig_tab/SupplTableS1~S5, SupplFigureS1~S3` |
 
 기존 `output/Methods_and_results_reviewed.docx`와
 `manuscript_optionA_final_sections.md`는 **폐기된 수치(sim90 난수 CL
@@ -48,9 +57,10 @@ q=0.098이며 LOO에서 1명만 빼도 유의성 소실.
 | Figure 1 | Eligibility flow chart (98→97→96) |
 | Figure 2 | Structural model diagram |
 | **Figure 3** | 전체 변이 forest plot (GMR·95% CI·p·q) |
-| Suppl S1–S5 | 시기별 CL / ADA / 민감도 / 원스케일 / 코호트 |
-| **Suppl S6** | rs1061622 시기별 결과 |
-| **Suppl Fig S1–S2** | rs396991 / rs1061622 유전형별 CL 산점도 |
+| Suppl S1–S5 | 시기별 CL / ADA / 민감도(rs396991) / 원스케일 / 코호트 |
+| Suppl Fig S1–S2 | popPK GOF / VPC (run 89) |
+| **Suppl Fig S3** | rs396991 유전형별 CL 산점도 |
+| ~~Suppl S6, Suppl Fig S4~~ | rs1061622 전용 자료 — 2026-09-07 삭제 (비유의, 별도 보고 근거 없음) |
 
 ## 폴더 구조
 
@@ -78,13 +88,13 @@ C:/Users/ilma0/PycharmProjects/pypharmacometrics/venv/Scripts/python.exe -X utf8
 
 | 스크립트 | 산출물 | 논문 요소 |
 |---|---|---|
-| `01_table1_demographics.py` | `Table1_demographics.csv` | Table 1 (원고 수치와 일치 확인됨) |
+| `01_table1_demographics.py` | `Table1_demographics.csv` | Table 1 (2026-09-06: IFX 열을 추정용 97명 데이터셋으로, Treatment phase는 `for_genomics_df` PHASE 기준으로 Figure 1과 일치시킴) |
 | `02_table_genotype_summary.py` | `Table_genotype_summary.csv` | Table 3 재료 (유전형 분포/MAF/HWE) |
 | `03_pgx_ancova_fdr.py` | `Table_pgx_ancova_fdr_results.csv`, `Table_variant_qc.csv` | **PGx 본분석** + 변이 QC |
 | `04_pgx_sensitivity.py` | `Table_pgx_sensitivity.csv` | Suppl S3 (견고성) |
-| `05_figure_cl_by_genotype.py` | `SupplFigureS1/S2_*.png/pdf` | **Suppl Figure S1–S2** |
+| `05_figure_cl_by_genotype.py` | `SupplFigureS3_*.png/pdf` | **Suppl Figure S3** (S1 GOF·S2 VPC는 NONMEM run 89 PDF를 수동 반입, PNG는 PyMuPDF 300 dpi 래스터) |
 | `06_pgx_cohort_attrition.py` | `Table_pgx_attrition.csv` | Suppl S5, Figure 1 수치 |
-| `07_core_tables.py` | `core_fig_tab/Table1~5, SupplS1~S6` | **논문용 표 전체** |
+| `07_core_tables.py` | `core_fig_tab/Table1~5, SupplS1~S5` | **논문용 표 전체** |
 | `08_figure1_flowchart.py` | `core_fig_tab/Figure1_*.png/pdf` | **Figure 1** |
 | `09_figure3_forest.py` | `core_fig_tab/Figure3_forest_*.png/pdf` | **Figure 3** |
 | `10_build_manuscript_docx.py` | 원고 docx + 표·그림 docx | **Word 산출물** (python-docx 필요) |
@@ -133,11 +143,11 @@ TT+TG 0.284 L/day).
 
 ```
 Analytic cohort 139
- └─ Exclusion 3: No infliximab records 41
-Infliximab cohort 98
- ├─ Exclusion 4: 유지기 시작 + 관찰농도 1건 → 추정모델 제외, EBE 없음
- │   (UID 38339532) → "clearance estimate unavailable (n=1)"
- └─ Exclusion 5: 유전형 QC 단계에서 제거 (UID 17439372) (n=1)
+ └─ Exclusion 3 (n=42): No infliximab records 41
+     + 유지기 시작 + 관찰농도 1건 → 추정모델 제외, EBE 없음 (UID 38339532) 1
+     (2026-09-06: 기존 Exclusion 4를 Exclusion 3에 통합, 98 중간 박스 삭제)
+Infliximab PopPK modeling cohort 97
+ └─ Exclusion 4: 유전형 QC 단계에서 제거 (UID 17439372) (n=1)
 PGx 분석 코호트 96
  ├─ Overall     96
  ├─ Induction   83  (15명은 induction phase 데이터 없음)
@@ -155,10 +165,11 @@ PGx 분석 코호트 96
 3. **Figure 1 스크리닝 단계 수치** — 상단 n=X,XXX 3곳은 EMR 추출 수치 필요
    (`08_figure1_flowchart.py`의 최상단 박스 문자열).
 4. 센터에 `23-B02281_EB-01` 시퀀싱 여부 확인 (Exclusion 문구 구체화용).
-5. VPC/GOF 플롯을 NONMEM(`C:/Users/ilma0/NONMEMProjects/IBDPGX/`)에서
-   가져와 Supplementary Figure로 추가할지 결정.
+5. ~~VPC/GOF 플롯 추가~~ → **완료 (2026-09-07)**: `SupplFigureS1_GOF_model89`,
+   `SupplFigureS2_VPC_model89` (run/vpc_89: 200 samples, 8 bins by count).
+   VPC PDF 축 제목이 xpose 기본값이라 재출력 권장.
 6. ~~Figure 3 대상 결정~~ → **전체 변이 forest plot으로 확정**(09 스크립트).
-   유전형별 산점도는 Suppl Figure S1(rs396991)/S2(rs1061622)로 이동.
+   유전형별 산점도는 Suppl Figure S3(rs396991)만 유지 (rs1061622 산점도는 2026-09-07 삭제).
 7. ~~교수님 보고~~ → **메일 본문·첨부 준비 완료**
    (`manuscript/email_to_professor_20260903_send.md`). 발송 및 회신 대기.
    질의 5건: negative finding 방향, rs396991 본문 비중, forest plot 구성,

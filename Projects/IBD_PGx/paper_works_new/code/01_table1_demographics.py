@@ -1,12 +1,27 @@
-"""Table 1 - Baseline characteristics (analytic cohort / infliximab cohort).
+"""Table 1 - Baseline characteristics (analytic cohort / infliximab PopPK
+modeling cohort).
 
 Standalone rewrite of paper_works/demotable_paper.py for the
 infliximab popPK + PGx manuscript (adalimumab column dropped; the pooled
 "analytic cohort" column is kept for the eligibility flow context).
 
+2026-09-06 revision (to match the simplified Figure 1):
+  - the infliximab column is built from the NONMEM *estimation* dataset
+    (97 patients; the maintenance-starting patient with a single
+    concentration, UID 38339532 / ID 97, is not in it), not from the
+    98-patient "(for pda)" dataset
+  - "Treatment phase" rows use the phase-level endpoint dataset
+    (for_genomics_df(all_drugs).csv, PHASE == IND) - the same source that
+    gives induction n = 83 in Figure 1 - instead of the TIME == 0
+    observation heuristic, which misses maintenance-starting patients in
+    the "(for pda)" datasets (their initial concentration row is absent).
+    Analytic cohort: induction data for any drug; infliximab column:
+    infliximab induction data.
+
 Inputs:
   - results/modeling_df_covar/{drug}_integrated_datacheck(covar)(for pda).csv
-  - C:/Users/ilma0/NONMEMProjects/IBDPGX/infliximab_integrated_modeling_df_dayscale(for pda).csv
+  - C:/Users/ilma0/NONMEMProjects/IBDPGX/infliximab_integrated_modeling_df_dayscale.csv
+  - paper_works_new/data/for_genomics_df(all_drugs).csv  (PHASE per UID/DRUG)
 
 Output:
   - paper_works_new/output/Table1_demographics.csv
@@ -72,13 +87,37 @@ def load_analytic_cohort():
 
 
 def load_infliximab_cohort():
+    """NONMEM estimation dataset (97 patients) + UID via the datacheck map."""
     md_df = pd.read_csv(
-        f"{nonmem_dir}/infliximab_integrated_modeling_df_dayscale(for pda).csv"
+        f"{nonmem_dir}/infliximab_integrated_modeling_df_dayscale.csv"
     )
+    id_map = (
+        pd.read_csv(
+            f"{results_dir}/modeling_df_covar/"
+            "infliximab_integrated_datacheck(covar)(for pda).csv",
+            usecols=["ID", "UID"],
+        )
+        .drop_duplicates("ID")
+        .set_index("ID")["UID"]
+        .astype(str)
+    )
+    md_df["UID"] = md_df["ID"].map(id_map)
+    assert md_df["UID"].notna().all(), "unmapped NONMEM ID in estimation dataset"
     return md_df, "ID"
 
 
-def summarize(md_df, id_col, totals):
+def load_induction_uids():
+    """UIDs with induction-phase data (Figure 1 / attrition definition)."""
+    ep = pd.read_csv(f"{prj_dir}/paper_works_new/data/for_genomics_df(all_drugs).csv")
+    ep["UID"] = ep["UID"].astype(str)
+    ind = ep[ep["PHASE"].astype(str).str.split("_").str[0] == "IND"]
+    return {
+        "any": set(ind["UID"]),
+        "infliximab": set(ind[ind["DRUG"] == "infliximab"]["UID"]),
+    }
+
+
+def summarize(md_df, id_col, totals, ind_uids):
     md_df = md_df.copy()
     md_df["Pediatric"] = (md_df["AGE"] < 19).astype(int)
     md_df["BMI"] = md_df["WT"] / ((md_df["HT"] / 100) ** 2)
@@ -113,12 +152,8 @@ def summarize(md_df, id_col, totals):
     row["UC"] = n_pct(int((first_df["IBD_TYPE"] == 1).sum()), subtotal_n)
 
     row["Treatment phase, n (%)"] = ""
-    maintenance_only_ids = md_df[
-        (md_df["MDV"] == 0)
-        & (md_df["TIME"] == 0)
-        & (~md_df["DV"].astype(str).isin(["0.0", "."]))
-    ][id_col]
-    induction_n = md_df[~md_df[id_col].isin(maintenance_only_ids)][id_col].nunique()
+    # induction-phase data available (same definition as Figure 1 / S5)
+    induction_n = md_df[md_df["UID"].isin(ind_uids)][id_col].nunique()
     row["Whole phases"] = n_pct(induction_n, subtotal_n)
     row["Maintenance only"] = n_pct(subtotal_n - induction_n, subtotal_n)
 
@@ -160,17 +195,20 @@ totals = {"patients": None, "samples": None, "patients_with_samples": None}
 
 analytic_df, analytic_id = load_analytic_cohort()
 ifx_df, ifx_id = load_infliximab_cohort()
+ind_uids = load_induction_uids()
 
 table = pd.DataFrame({
-    "Characteristics": list(summarize(analytic_df, analytic_id, dict(totals)).keys()),
+    "Characteristics": list(
+        summarize(analytic_df, analytic_id, dict(totals), ind_uids["any"]).keys()
+    ),
 })
 
 totals = {"patients": None, "samples": None, "patients_with_samples": None}
-analytic_row = summarize(analytic_df, analytic_id, totals)
-ifx_row = summarize(ifx_df, ifx_id, totals)
+analytic_row = summarize(analytic_df, analytic_id, totals, ind_uids["any"])
+ifx_row = summarize(ifx_df, ifx_id, totals, ind_uids["infliximab"])
 
 table["Analytic cohort"] = table["Characteristics"].map(analytic_row)
-table["Infliximab cohort"] = table["Characteristics"].map(ifx_row)
+table["Infliximab PopPK modeling cohort"] = table["Characteristics"].map(ifx_row)
 
 table.to_csv(
     f"{output_dir}/Table1_demographics.csv", index=False, encoding="utf-8-sig"
