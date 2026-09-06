@@ -7,6 +7,11 @@
       pharmacogenomic paragraph is replaced with the EBE-based text, and
       TLR4 is removed from the candidate-gene list (rs5030728 is absent
       from the genotype matrix).
+      Format (2026-09-07, per user request): plain manuscript layout like
+      the reviewed version - no document title, no editorial notes, no
+      to-do section; "[Methods]" / "[Results]" / "[Discussion]" as bold
+      section headers and bold subsection titles. Editorial notes and open
+      items live in manuscript/Methods_and_Results_FINAL.md and README.md.
 
   core_fig_tab/[IFX_POPPK]_core_fig_tab_FINAL.docx
       Table 1-5, Figure 1-3, Supplementary Table S1-S5 and Supplementary
@@ -28,7 +33,7 @@ prj_dir = "C:/Users/ilma0/PycharmProjects/pypharmacometrics/Projects/IBD_PGx"
 cft_dir = f"{prj_dir}/paper_works_new/core_fig_tab"
 ms_dir = f"{prj_dir}/paper_works_new/manuscript"
 
-BODY_PT = 10.5
+BODY_PT = 11
 NOTE_COLOR = RGBColor(0x8A, 0x60, 0x00)
 
 
@@ -42,9 +47,19 @@ def new_doc():
 
 
 def h(doc, text, level=1):
-    p = doc.add_heading(text, level=level)
-    for run in p.runs:
-        run.font.color.rgb = RGBColor(0x1F, 0x29, 0x37)
+    """Bold in-line heading, as in the reviewed manuscript draft.
+
+    level 1 -> "[Section]" (Methods / Results / Discussion)
+    level 2 -> bold subsection title
+    """
+    p = doc.add_paragraph()
+    label = f"[{text}]" if level == 1 else text
+    run = p.add_run(label)
+    run.bold = True
+    run.font.size = Pt(BODY_PT)
+    p.paragraph_format.space_before = Pt(12 if level == 1 else 8)
+    p.paragraph_format.space_after = Pt(4)
+    p.paragraph_format.keep_with_next = True
     return p
 
 
@@ -114,15 +129,6 @@ def caption(doc, label, text, size=9):
 # 1) Methods and Results
 # ===========================================================================
 doc = new_doc()
-doc.add_heading("Infliximab population pharmacokinetics and candidate-variant "
-                "pharmacogenomics in inflammatory bowel disease", level=0)
-note(doc, "Methods, Results and a draft Discussion of the pharmacogenomic "
-          "part, revised 2026-09-03. Individual clearance values are "
-          "empirical Bayes estimates from the final PopPK model (run 89); "
-          "all pharmacogenomic numbers supersede earlier versions. "
-          "Population pharmacokinetic sections are unchanged from the "
-          "reviewed version. Editorial notes are shown in this style and "
-          "are not manuscript text.")
 
 h(doc, "Methods", 1)
 
@@ -361,12 +367,6 @@ para(doc,
      "Intercompartmental clearance (Q) and relative bioavailability (F1) were "
      "fixed at 0.0646 L/day and 0.667, respectively. Interindividual "
      "variability was retained only for clearance in the final model.")
-note(doc, "Model re-estimation after correction of one body-weight record "
-          "(834 kg \u2192 83.4 kg) reproduced the estimates in Table 2 exactly "
-          "(OFV \u2212935.665); the corrected record was followed by an "
-          "interval of about 1,200 days before the next observation and "
-          "therefore did not contribute to the likelihood. Table 2 is final.")
-
 h(doc, "Covariate Effects", 2)
 bullets(doc, [
     "Body weight was positively associated with both clearance and central "
@@ -438,10 +438,7 @@ para(doc,
      "P < 10\u207b\u2076 for original-scale models), supporting the log-scale "
      "analysis as primary.")
 
-h(doc, "Discussion (pharmacogenomic part, draft)", 1)
-note(doc, "Draft for review; to be merged into the full Discussion. The "
-          "sentence on TNFRSF1B rs1061622 is offered for reference only, as "
-          "the Discussion is drafted by another author.")
+h(doc, "Discussion", 1)
 para(doc,
      "In this candidate-gene analysis of an infliximab PopPK cohort, none of "
      "the 14 variants that passed quality control was associated with "
@@ -487,14 +484,6 @@ para(doc,
      "effects in this cohort rather than as evidence that such effects do not "
      "exist, and the FCGR3A rs396991 signal warrants evaluation in a larger "
      "population.")
-
-h(doc, "Outstanding items before submission", 1)
-bullets(doc, [
-    "Figure 1: the three screening-stage counts (n = X,XXX) need the EMR "
-    "extraction numbers.",
-    "Confirm with the Precision Medicine Center whether sample "
-    "23-B02281_EB-01 was sequenced, to make the exclusion wording specific.",
-])
 
 ms_docx = f"{ms_dir}/Methods_and_Results_FINAL.docx"
 doc.save(ms_docx)
