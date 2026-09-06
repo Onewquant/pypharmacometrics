@@ -11,8 +11,8 @@
    Discussion(참고용) 초안
 2. `02_Tables/Tables_1-5.xlsx`, `Supplementary_Tables_S1-S5.xlsx` — 표 전체
    (시트별 1개 표; 원본 csv는 `csv/` 하위)
-3. `03_Figures/` — Figure 1 (flow chart, PDF·PNG), Figure 2 (structural
-   model, PNG), Figure 3 (forest plot, PDF·PNG)
+3. `03_Figures/` — Figure 1 (flow chart, PNG), Figure 2 (structural model,
+   PNG), Figure 3 (forest plot, PDF·PNG)
 4. `04_Supplementary_Figures/` — S1 GOF, S2 VPC, S3 rs396991 산점도 (PDF·PNG)
 5. `05_All_Tables_Figures_with_captions/[IFX_POPPK]_core_fig_tab_FINAL.docx`
    — 위 표·그림 전체를 캡션과 함께 한 문서로 모은 것

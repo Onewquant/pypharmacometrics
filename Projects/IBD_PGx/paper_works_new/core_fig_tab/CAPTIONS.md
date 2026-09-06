@@ -23,7 +23,9 @@ removed during genotype quality control (n = 96). Analyses were performed separa
 treatment period, the induction phase, and the maintenance phase.
 *Screening-stage counts (n = X,XXX) to be completed from the EMR
 extraction.*
-`Figure1_eligibility_flowchart.png / .pdf` — from `08_figure1_flowchart.py`
+`Figure1_eligibility_flowchart_revised.png` — user-drawn (2026-09-06), used in the
+manuscript; `Figure1_eligibility_flowchart.png / .pdf` from `08_figure1_flowchart.py`
+is the reproducible fallback with the same counts
 
 **Figure 2. Structural model diagram.**
 Integrated intravenous and subcutaneous two-compartment model with

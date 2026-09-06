@@ -54,7 +54,7 @@ q=0.098이며 LOO에서 1명만 빼도 유의성 소실.
 | Table 3 | 후보 변이 특성 (유전형 분포·MAF·HWE·QC) |
 | Table 4 | 전체 기간 CL 연관성 (열성 11 + 우성 14) |
 | **Table 5** | rs396991 시기별 결과 + LOO 범위 |
-| Figure 1 | Eligibility flow chart (98→97→96) |
+| Figure 1 | Eligibility flow chart (139→42 제외→97→96) — **`Figure1_eligibility_flowchart_revised.png`(사용자 작성) 사용**, 08 스크립트 출력은 수치 재현용 |
 | Figure 2 | Structural model diagram |
 | **Figure 3** | 전체 변이 forest plot (GMR·95% CI·p·q) |
 | Suppl S1–S5 | 시기별 CL / ADA / 민감도(rs396991) / 원스케일 / 코호트 |
@@ -95,7 +95,7 @@ C:/Users/ilma0/PycharmProjects/pypharmacometrics/venv/Scripts/python.exe -X utf8
 | `05_figure_cl_by_genotype.py` | `SupplFigureS3_*.png/pdf` | **Suppl Figure S3** (S1 GOF·S2 VPC는 NONMEM run 89 PDF를 수동 반입, PNG는 PyMuPDF 300 dpi 래스터) |
 | `06_pgx_cohort_attrition.py` | `Table_pgx_attrition.csv` | Suppl S5, Figure 1 수치 |
 | `07_core_tables.py` | `core_fig_tab/Table1~5, SupplS1~S5` | **논문용 표 전체** |
-| `08_figure1_flowchart.py` | `core_fig_tab/Figure1_*.png/pdf` | **Figure 1** |
+| `08_figure1_flowchart.py` | `core_fig_tab/Figure1_eligibility_flowchart.png/pdf` | Figure 1 수치 재현용 (원고에는 `_revised.png` 사용) |
 | `09_figure3_forest.py` | `core_fig_tab/Figure3_forest_*.png/pdf` | **Figure 3** |
 | `10_build_manuscript_docx.py` | 원고 docx + 표·그림 docx | **Word 산출물** (python-docx 필요) |
 

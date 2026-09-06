@@ -16,6 +16,10 @@ Flow (2026-09-06, EBE-based frame; former exclusion 4 merged into 3):
                                                 genotype QC)
     -> overall 96 / induction 83 / maintenance 96
 
+NOTE (2026-09-07): the manuscript uses the user-drawn
+  core_fig_tab/Figure1_eligibility_flowchart_revised.png instead; this
+  script is kept to reproduce the counts and as a fallback rendering.
+
 Outputs:
   - paper_works_new/core_fig_tab/Figure1_eligibility_flowchart.png (300 dpi)
   - paper_works_new/core_fig_tab/Figure1_eligibility_flowchart.pdf

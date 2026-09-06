@@ -513,7 +513,8 @@ CORE = [
      "overall treatment period, the induction phase, and the maintenance "
      "phase. Screening-stage counts (n = X,XXX) to be completed from the EMR "
      "extraction.",
-     "Figure1_eligibility_flowchart.png", 5.4),
+     # 2026-09-07: user-drawn version replaces the matplotlib flow chart
+     "Figure1_eligibility_flowchart_revised.png", 6.2),
     ("figure", "Figure 2.", "Structural model diagram.",
      "Integrated intravenous and subcutaneous two-compartment model with "
      "first-order absorption and first-order elimination (ADVAN4 TRANS4) used "
