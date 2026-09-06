@@ -23,7 +23,7 @@ q=0.098이며 LOO에서 1명만 빼도 유의성 소실.
 |---|---|
 | **메일 본문 (2026-09-07, 갱신본)** | `manuscript/email_to_professor_20260907.md` |
 | **첨부 4개 모음 (2026-09-07)** | `for_professor_20260907/` |
-| 메일 본문 (2026-09-03, 발송됨) | `manuscript/email_to_professor_20260903_send.md` |
+| 메일 본문 (2026-09-03, 발송용 초안 — 실제 발송 여부는 사용자 확인) | `manuscript/email_to_professor_20260903_send.md` |
 | 첨부 4개 모음 (2026-09-03) | `for_professor_20260903/` |
 
 첨부: `Methods_and_Results_FINAL.docx`,
