@@ -154,6 +154,15 @@ PGx 분석 코호트 96
  └─ Maintenance 96
 ```
 
+## 다음 세션 시작점 (2026-09-07 종료 시점)
+
+1. 교수님 메일 발송 여부 확인 — `manuscript/email_to_professor_20260907.md`/`.txt`,
+   첨부 `for_professor_20260907/` 폴더째 압축. 09-03 메일 실제 발송 여부 미확인.
+2. `manuscript/Methods_and_Results_FINAL.docx`는 Word 잠금으로 재생성 실패 → 옛 형식.
+   Word 닫고 `10_build_manuscript_docx.py` 재실행 (첨부 폴더 01에는 새 형식 있음).
+3. 국문 docx는 수치·문장은 동기화됐으나 상단 메모·확인 항목 등 옛 형식 유지 (지시 대기).
+4. Figure 1은 사용자 작성 `Figure1_eligibility_flowchart_revised.png` — 수치 변경 시 수동 수정 필요.
+
 ## 제출 전 해결할 항목
 
 1. ~~popPK 모델 재추정~~ → **완료/불필요 확정**: run 89 재추정 결과가 기존과
